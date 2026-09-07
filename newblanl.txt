@@ -1,0 +1,8 @@
+newblanl
+========
+
+Plain text version of the document.
+
+Replace this content with your own. Unlike a .docx, this file can be
+edited directly in GitHub's web editor and shows readable diffs in
+commit history.
