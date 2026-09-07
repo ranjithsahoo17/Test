@@ -1,1 +1,14 @@
 
+public class WCThresholdBaseline {
+
+   private final Double defaultValue;
+   private final Double minValue;
+   private final String filteringLawName;
+
+   public WCThresholdBaseline(Double defaultValue, Double minValue, String filteringLawName) {
+      this.defaultValue = defaultValue;
+      this.minValue = minValue;
+      this.filteringLawName = filteringLawName;
+   }
+   // getters
+}
