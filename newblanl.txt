@@ -1,372 +1,238 @@
-import java.text.NumberFormat;
-import java.text.ParseException;
-import java.util.Locale;
+/***************************************/
+/** Copyright Airbus Helicopters 2019 **/
+/***************************************/
+package com.eurocopter.mgs.business.health.model;
 
-import org.eclipse.jface.dialogs.MessageDialog;
-import org.eclipse.jface.viewers.ICellModifier;
-import org.eclipse.jface.viewers.TreeViewer;
-import org.eclipse.swt.widgets.Item;
-
-import com.eurocopter.mgs.business.health.model.WCThresholdModel;
-import com.eurocopter.mgs.core.presentation.i18n.Messages;
-import com.eurocopter.mgs.datamodel.aircraft.Aircraft;
+import com.eurocopter.mgs.datamodel.alarm.Severity;
+import com.eurocopter.mgs.datamodel.health.monitoring.Indicator;
 import com.eurocopter.mgs.datamodel.health.monitoring.ThresholdLevel;
 import com.eurocopter.mgs.datamodel.health.monitoring.ThresholdType;
-import com.eurocopter.mgs.presentation.common.MgsSession;
-import com.eurocopter.mgs.presentation.configuration.preferences.healthalarms.WCHealthMechanicalComponentModel;
-import com.eurocopter.mgs.presentation.configuration.preferences.healthalarms.WCMechanicalComponentModel;
-import com.eurocopter.mgs.presentation.configuration.preferences.healthalarms.WCModelDisplayProperty;
-import com.eurocopter.mgs.presentation.configuration.store.MgsPreferenceStoreManager;
 
-public class WCTreeCellModifier implements ICellModifier {
+public class WCThresholdModel {
 
-	/** point character. */
-	private static final String POINT = ".";
+   /** Used to alternate line colors. */
+   private boolean odd;
 
-	/** Coma character. */
-	private static final String COMA = ",";
+   /** Indicator. */
+   private final Indicator indicator;
 
-	/** The format number. */
-	private final NumberFormat format = NumberFormat.getInstance(Locale.getDefault());
+   private final String healthMechanicalComponentName;
 
-	private final TreeViewer treeViewer;
+   /** Indicator severity (RED or AMBER). */
+   private Severity severity;
 
-	/**
-	 * Default constructor. Builds a WCTreeCellModifier.
-	 *
-	 * @param treeViewer TreeViewer treeViewer
-	 */
-	public WCTreeCellModifier(TreeViewer treeViewer) {
-		super();
-		this.treeViewer = treeViewer;
-		format.setMaximumFractionDigits(5);
-	}
+   /** Indicate whether this indicator is enabled or not. */
+   private Boolean enabled;
 
-	@Override
-	public boolean canModify(Object element, String property) {
-		if (element instanceof WCMechanicalComponentModel) {
-			if (WCModelDisplayProperty.MAX_TIME_WO_ACQ.equals(WCModelDisplayProperty.fromKey(property))) {
-				return true;
-			}
-		}
-		if (element instanceof WCHealthMechanicalComponentModel wcModel) {
-			if (!wcModel.getThresholdModels().isEmpty()
-					&& WCModelDisplayProperty.WORKCARD_REF == WCModelDisplayProperty.fromKey(property)) {
-				return MgsSession.getInstance().getUser().getProfile().canEditWorkcards();
-			}
-			if (WCModelDisplayProperty.MAX_TIME_WO_ACQ.equals(WCModelDisplayProperty.fromKey(property))) {
-				return true;
-			}
-		}
-		if (element instanceof WCThresholdModel) {
-			switch (WCModelDisplayProperty.fromKey(property)) {
-			case COMPONENT:
-				return false;
-			case MIN_VALUE:
-			case MAX_VALUE:
-			case LEARN_TIME:
-			case MIN_DEV:
-			case MEAN_MULT_FACTOR:
-			case DEV_COEF:
-				// These values can only be modified if threshold is Learning
-				WCThresholdModel wcThresholdModel = (WCThresholdModel) element;
-				return ThresholdType.LEARNED.equals(wcThresholdModel.getType());
-			case WORKCARD_REF:
-				// The workcards column can only be modified by authorized users
-				return MgsSession.getInstance().getUser().getProfile().canEditWorkcards();
-			default:
-				return true;
-			}
-		}
-		return false;
-	}
+   /** Indicator threshold level (HIGH or LOW). */
+   private ThresholdLevel level;
 
-	@Override
-	public Object getValue(Object element, String property) {
-		if (element instanceof WCMechanicalComponentModel wcMechanicalComponent) {
-			switch (WCModelDisplayProperty.fromKey(property)) {
-			case COMPONENT:
-				return wcMechanicalComponent.getName();
-			case MAX_TIME_WO_ACQ:
-				return getMaxTimeWOAcquition(wcMechanicalComponent);
-			default:
-				return "";
-			}
-		} else if (element instanceof WCHealthMechanicalComponentModel mcModel) {
-			switch (WCModelDisplayProperty.fromKey(property)) {
-			case WORKCARD_REF:
-				return mcModel.getWorkcardReference() != null ? mcModel.getWorkcardReference() : "";
-			case MAX_TIME_WO_ACQ:
-				return format.format(mcModel.getMaxtimeWithoutAcquitision());
-			default:
-				return "";
-			}
-		} else if (element instanceof WCThresholdModel thresholdModel) {
-			switch (WCModelDisplayProperty.fromKey(property)) {
-			case CHECKBOX:
-				return thresholdModel.isEnabled();
+   /** Threshold type (LEARNED or FIXED). */
+   private ThresholdType type;
 
-			case LEVEL:
-				return thresholdModel.getLevel();
+   /** Threshold default value. */
+   private Double defaultValue;
 
-			case TYPE:
-				return thresholdModel.getType();
+   /** Learned Threshold min value. */
+   private Double minValue;
 
-			case VALUE:
-				if (thresholdModel.getDefaultValue() != null) {
-					return format.format(thresholdModel.getDefaultValue());
-				}
-				return "";
+   /** Learned Threshold max value. */
+   private Double maxValue;
 
-			case MIN_VALUE:
-				if (thresholdModel.getMinValue() != null) {
-					return format.format(thresholdModel.getMinValue());
-				}
-				return "";
+   private Integer nbSuccessivePoints;
 
-			case MAX_VALUE:
-				return format.format(thresholdModel.getMaxValue());
+   /** Threshold learning time. */
+   private Long learningTime;
 
-			case LEARN_TIME:
-				return format.format(thresholdModel.getLearningTime() / 3600000.0);
+   /** Work card reference. */
+   private String workCardReference;
 
-			case WORKCARD_REF:
-				return thresholdModel.getWorkCardReference();
+   /**
+    * Mean factor for relearning value computation.
+    */
+   private Double meanFactor;
 
-			case MIN_DEV:
-				if (thresholdModel.getMinimumDeviation() != null) {
-					return format.format(thresholdModel.getMinimumDeviation());
-				}
-				return "";
+   /**
+    * Deviation coefficient for relearning value computation.
+    */
+   private Double deviationCoefficient;
 
-			case MEAN_MULT_FACTOR:
-				if (thresholdModel.getMeanFactor() != null) {
-					return format.format(thresholdModel.getMeanFactor());
-				}
-				return "";
+   /**
+    * Minimum deviation for relearning value computation.
+    */
+   private Double minimumDeviation;
 
-			case DEV_COEF:
-				if (thresholdModel.getDeviationCoefficient() != null) {
-					return format.format(thresholdModel.getDeviationCoefficient());
-				}
-				return "";
+   /**
+    * Minimum engine oil temperature.
+    */
+   private Double minimumEngineOilTemperature;
 
-			case NB_POINTS:
-				if (thresholdModel.getNbSuccessivePoints() != null) {
-					return format.format(thresholdModel.getNbSuccessivePoints());
-				}
-				return "";
+   /**
+    * Constructor with argument. Builds a WCIndicatorModel object with default values.
+    *
+    * @param healthMonitoringConfiguration
+    *
+    * @param indicator
+    *           the indicator
+    */
+   public WCThresholdModel(Indicator indicator, String healthMechanicalComponentName) {
+      this.indicator = indicator;
+      this.severity = null;
+      this.enabled = Boolean.FALSE;
+      this.level = ThresholdLevel.LOW;
+      this.type = ThresholdType.FIXED;
+      this.maxValue = 0.0d;
+      this.learningTime = 0L;
+      this.workCardReference = " ";
+      this.healthMechanicalComponentName = healthMechanicalComponentName;
+   }
 
-			default:
-				return "";
+   public boolean isOdd() {
+      return odd;
+   }
 
-			}
-		}
-		return null;
-	}
+   /**
+    * Sets the lineColor.
+    *
+    * @param odd
+    *           indicates whether the line number is odd or not.
+    */
+   public void setOdd(boolean odd) {
+      this.odd = odd;
+   }
 
-	@Override
-	public void modify(Object element, String property, Object value) {
-		Object data;
-		if (element instanceof Item) {
-			data = ((Item) element).getData();
+   public Indicator getIndicator() {
+      return indicator;
+   }
 
-			try {
-				if (data instanceof WCMechanicalComponentModel wcMechanicalComponent) {
-					switch (WCModelDisplayProperty.fromKey(property)) {
-					case MAX_TIME_WO_ACQ:
-						if (value != null && !value.toString().trim().isEmpty()
-								&& !"none".equals(value.toString().trim())) {
-							long newValue = format.parse(replaceSeparatorValue(value).toString()).longValue();
-							if (newValue >= 0) {
-								updateCascadeMaxTimeWOAcq(wcMechanicalComponent, value,
-										wcMechanicalComponent.getName().contains("Engine"));
-							}
-						}
-						break;
-					default:
-						break;
-					}
-					MgsPreferenceStoreManager.markAsDirty((Aircraft) treeViewer.getData("aircraft"));
-					treeViewer.refresh();
+   public Severity getSeverity() {
+      return severity;
+   }
 
-				} else if (data instanceof WCHealthMechanicalComponentModel wCModel) {
-					switch (WCModelDisplayProperty.fromKey(property)) {
-					case WORKCARD_REF:
-						if (value != null && !value.toString().trim().isEmpty()) {
-							wCModel.setWorkCardReference(value.toString());
-						} else {
-							wCModel.setWorkCardReference("");
-						}
-						break;
-					case MAX_TIME_WO_ACQ:
-						if (value != null && !value.toString().trim().isEmpty()
-								&& !"none".equals(value.toString().trim())) {
-							long newValue = format.parse(replaceSeparatorValue(value).toString()).longValue();
-							if (wCModel.getMaxtimeWithoutAcquitision() != newValue && newValue >= 0) {
-								wCModel.setMaxtimeWithoutAcquitision(newValue);
-							}
-						} else
-							wCModel.setMaxtimeWithoutAcquitision(0);
-						break;
-					default:
-						break;
-					}
-					MgsPreferenceStoreManager.markAsDirty((Aircraft) treeViewer.getData("aircraft"));
-					treeViewer.refresh();
+   /**
+    * Sets the severity.
+    *
+    * @param severities
+    *           the severity to set.
+    */
+   public void setSeverity(Severity severities) {
+      this.severity = severities;
+   }
 
-				} else if (data instanceof WCThresholdModel thresholdModel) {
-					switch (WCModelDisplayProperty.fromKey(property)) {
-					case CHECKBOX:
-						thresholdModel.setEnabled((Boolean) value);
-						break;
-					case LEVEL:
-						thresholdModel.setLevel((ThresholdLevel) value);
-						break;
-					case TYPE:
-						thresholdModel.setType((ThresholdType) value);
-						break;
-					case VALUE:
-						if (value != null && !value.toString().trim().isEmpty()
-								&& !"none".equals(value.toString().trim())) {
-							Number val = format.parse(replaceSeparatorValue(value).toString());
-							thresholdModel.setDefaultValue(val.doubleValue());
-						} else {
-							thresholdModel.setDefaultValue(null);
-						}
-						break;
-					case MIN_VALUE:
-						if (value != null && !value.toString().trim().isEmpty()) {
-							Number val = format.parse(replaceSeparatorValue(value).toString());
-							thresholdModel.setMinValue(val.doubleValue());
-						} else {
-							thresholdModel.setMinValue(null);
-						}
-						break;
-					case MAX_VALUE:
-						if (value != null && !value.toString().trim().isEmpty()) {
-							Number val = format.parse(replaceSeparatorValue(value).toString());
-							thresholdModel.setMaxValue(val.doubleValue());
-						} else {
-							thresholdModel.setMaxValue(0.0d);
-						}
-						break;
-					case LEARN_TIME:
-						if (value != null && !value.toString().trim().isEmpty()) {
-							long newValue = format.parse(replaceSeparatorValue(value).toString()).longValue() * 3600000;
-							if (thresholdModel.getLearningTime() != newValue && newValue >= 0) {
-								thresholdModel.setLearningTime(newValue);
-							}
-						}
-						break;
-					case WORKCARD_REF:
-						if (value != null && !value.toString().trim().isEmpty()) {
-							thresholdModel.setWorkCardReference(value.toString());
-						} else {
-							thresholdModel.setWorkCardReference("");
-						}
-						break;
-					case MIN_DEV:
-						if (value != null && !value.toString().trim().isEmpty()) {
-							Number val = format.parse(replaceSeparatorValue(value).toString());
-							thresholdModel.setMinimumDeviation(val.doubleValue());
-						} else {
-							thresholdModel.setMinimumDeviation(null);
-						}
-						break;
-					case MEAN_MULT_FACTOR:
-						if (value != null && !value.toString().trim().isEmpty()) {
-							Number val = format.parse(replaceSeparatorValue(value).toString());
-							thresholdModel.setMeanFactor(val.doubleValue());
-						} else {
-							thresholdModel.setMeanFactor(null);
-						}
-						break;
-					case DEV_COEF:
-						if (value != null && !value.toString().trim().isEmpty()) {
-							Number val = format.parse(replaceSeparatorValue(value).toString());
-							thresholdModel.setDeviationCoefficient(val.doubleValue());
-						} else {
-							thresholdModel.setDeviationCoefficient(null);
-						}
-						break;
-					case NB_POINTS:
-						if (value != null && !value.toString().trim().isEmpty()) {
-							Number val = format.parse(replaceSeparatorValue(value).toString());
-							thresholdModel.setNbSuccessivePoints(val.intValue());
-						} else {
-							thresholdModel.setNbSuccessivePoints(null);
-						}
-						break;
-					default:
-						break;
-					}
-					MgsPreferenceStoreManager.markAsDirty((Aircraft) treeViewer.getData("aircraft"));
-					treeViewer.refresh();
-				}
-			} catch (ParseException e) {
-				MessageDialog.openError(((Item) element).getDisplay().getActiveShell(),
-						Messages.CORE.getString("healthAlarmPageDataInvalidTitle"),
-						Messages.CORE.getMnemonicEscapedString("healthAlarmPageDataInvalidCellFormat"));
-			}
-		}
-	}
+   public Boolean isEnabled() {
+      return enabled;
+   }
 
-	/**
-	 * Replace the separator value.
-	 *
-	 * @param value Object
-	 * @return the value
-	 */
-	private Object replaceSeparatorValue(final Object value) {
-		Object val = value;
-		Locale locale = Locale.getDefault();
-		if (val.toString().contains(POINT) && (locale.equals(Locale.FRENCH) || locale.equals(Locale.FRANCE))) {
-			val = val.toString().replace(POINT, COMA);
-		} else if (val.toString().contains(COMA) && locale.equals(Locale.ENGLISH)) {
-			val = val.toString().replace(COMA, POINT);
-		}
-		return val;
-	}
+   public void setEnabled(Boolean enabled) {
+      this.enabled = enabled;
+   }
 
-	private void updateCascadeMaxTimeWOAcq(WCMechanicalComponentModel wcMechanicalComponent, Object value,
-			boolean force) throws ParseException {
+   public ThresholdLevel getLevel() {
+      return level;
+   }
 
-		for (WCHealthMechanicalComponentModel wCModel : wcMechanicalComponent.getHealthComponentModels()) {
-			if (value != null && !value.toString().trim().isEmpty() && !"none".equals(value.toString().trim())) {
-				Number val = format.parse(replaceSeparatorValue(value).toString());
-				if (force || !wCModel.getHealthMechanicalComponent().getName().contains(":Engine"))
-					wCModel.setMaxtimeWithoutAcquitision(val.longValue());
-			}
-		}
-		for (WCMechanicalComponentModel wCModel : wcMechanicalComponent.getSubHealthWCModel()) {
-			updateCascadeMaxTimeWOAcq(wCModel, value, force);
-		}
-	}
+   public void setLevel(ThresholdLevel level) {
+      this.level = level;
+   }
 
-	/**
-	 * return the maximum time without acquisition if all the sub health component
-	 * have the same value. Else return ""
-	 * 
-	 * @return
-	 */
-	private String getMaxTimeWOAcquition(WCMechanicalComponentModel element) {
+   public ThresholdType getType() {
+      return type;
+   }
 
-		String maxTimeWOAcqValue = null;
-		for (WCHealthMechanicalComponentModel wCModel : element.getHealthComponentModels()) {
-			if (maxTimeWOAcqValue == null) {
-				maxTimeWOAcqValue = format.format(wCModel.getMaxtimeWithoutAcquitision());
-			} else if (!maxTimeWOAcqValue.equals(format.format(wCModel.getMaxtimeWithoutAcquitision()))) {
-				return "";
-			}
-		}
-		for (WCMechanicalComponentModel wcModel : element.getSubHealthWCModel()) {
-			if (maxTimeWOAcqValue == null) {
-				maxTimeWOAcqValue = getMaxTimeWOAcquition(wcModel);
-			} else if (!maxTimeWOAcqValue.equals(getMaxTimeWOAcquition(wcModel))) {
-				return "";
-			}
-		}
-		return maxTimeWOAcqValue;
-	}
+   public void setType(ThresholdType type) {
+      this.type = type;
+   }
+
+   public Double getDefaultValue() {
+      return defaultValue;
+   }
+
+   public void setDefaultValue(Double defaultValue) {
+      this.defaultValue = defaultValue;
+   }
+
+   public Double getMinValue() {
+      return minValue;
+   }
+
+   public void setMinValue(Double minValue) {
+      this.minValue = minValue;
+   }
+
+   public Double getMaxValue() {
+      return maxValue;
+   }
+
+   public void setMaxValue(Double maxValue) {
+      this.maxValue = maxValue;
+   }
+
+   public Long getLearningTime() {
+      return learningTime;
+   }
+
+   public void setLearningTime(Long learningTime) {
+      this.learningTime = learningTime;
+   }
+
+   public String getWorkCardReference() {
+      if (workCardReference == null || "null".equals(workCardReference)) {
+         workCardReference = "";
+      }
+      return workCardReference;
+   }
+
+   public void setWorkCardReference(String workCardReference) {
+      this.workCardReference = workCardReference;
+   }
+
+   @Override
+   public String toString() {
+      return indicator.getName();
+   }
+
+   public Double getMeanFactor() {
+      return meanFactor;
+   }
+
+   public void setMeanFactor(Double meanFactor) {
+      this.meanFactor = meanFactor;
+   }
+
+   public Double getDeviationCoefficient() {
+      return deviationCoefficient;
+   }
+
+   public void setDeviationCoefficient(Double deviationCoefficient) {
+      this.deviationCoefficient = deviationCoefficient;
+   }
+
+   public Double getMinimumDeviation() {
+      return minimumDeviation;
+   }
+
+   public void setMinimumDeviation(Double minimumDeviation) {
+      this.minimumDeviation = minimumDeviation;
+   }
+
+   public Integer getNbSuccessivePoints() {
+      return nbSuccessivePoints;
+   }
+
+   public void setNbSuccessivePoints(Integer nbSuccessivePoint) {
+      this.nbSuccessivePoints = nbSuccessivePoint;
+   }
+
+   public String getHealthMechanicalComponentName() {
+      return healthMechanicalComponentName;
+   }
+
+   public Double getMinimumEngineOilTemperature() {
+      return minimumEngineOilTemperature;
+   }
+
+   public void setMinimumEngineOilTemperature(Double minimumEngineOilTemperature) {
+      this.minimumEngineOilTemperature = minimumEngineOilTemperature;
+   }
+
 }
