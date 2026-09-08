@@ -2,8 +2,7 @@
       Label deviationInfoLabel = new Label(this, SWT.WRAP | SWT.CENTER);
       FormData fdDeviationInfoLabel = new FormData();
       fdDeviationInfoLabel.top = new FormAttachment(combo, 10);
-      fdDeviationInfoLabel.left = new FormAttachment(0, 5);
+      fdDeviationInfoLabel.left = new FormAttachment(0, 60);
       fdDeviationInfoLabel.right = new FormAttachment(100, -5);
-      fdDeviationInfoLabel.bottom = new FormAttachment(100, -5);
       deviationInfoLabel.setLayoutData(fdDeviationInfoLabel);
       deviationInfoLabel.setText(Messages.CORE.getString("DeviationManagementMessage"));
