@@ -1,55 +1,23 @@
-Step 1 — WCModelDisplayProperty
-
-Add the two constants at the end, remove CHECKBOX:
-
-java
-FILTERING_LAW("FilteringLaw", 100),
-TE("TeReference", 120);
-
-Add a null guard in fromKey (or make it throw a named exception). Every switch (WCModelDisplayProperty.fromKey(property)) in the codebase NPEs otherwise once CHECKBOX's empty-string key is gone.
-
-Step 2 — properties files
-properties
-FilteringLaw=Filtering Law
-TeReference=TE *
-healthAlarmPageDeviationTeHelp=To create a deviation, please open a TE on AirbusWorld > Request > Technical Request > Tech Support and select the business Domain "DR : Discrepancy Report"
-
-Do this for every language file, not just the default. Missing keys render as the key name.
-
-Step 3 — WCThresholdModel
-
-Add filteringLawName, teReference, deviated, baseline plus accessors, and isModifiedAgainstBaseline().
-
-Step 4 — the page class (needs the file)
-
-Find it: Ctrl+Shift+G on WCTreeCellModifier → References. In it:
-
-Remove the checkbox column from the column-creation loop
-Remove its slot from the CellEditor[] array and from setColumnProperties(...) — both are positional, so a stale entry silently shifts every editor after it
-Remove SWT.CHECK from the Tree style if present
-Add two columns at the end: FILTERING_LAW with a ComboBoxViewerCellEditor over the law names, TE with a TextCellEditor
-Check for any hardcoded getColumn(n) / index arithmetic and shift it
-Add the guidance Label between the A/C combo and the tree
-Step 5 — WCTreeCellModifier
-canModify: null guard on prop; early return false when isDeviated(); FILTERING_LAW and TE return true
-getValue: two cases returning "" when null
-modify: two cases, TE trimmed, no format validation
-Step 6 — label provider
-
-Wherever this tree's label provider lives, implement getBackground returning the green when isDeviated(). Allocate the Color once, dispose it with the page.
-
-Step 7 — baseline seeding
-
-In the class that builds WCThresholdModel from the configuration, set the baseline in the same pass that sets defaultValue / minValue. Nothing else writes to it, ever.
-
-Step 8 — Apply validation
-
-On the page's performOk / Apply handler: for every row where isModifiedAgainstBaseline() is true, reject if teReference is empty (REQ 3), showing the error against that row. Then build the deviation payloads from the diff and send them.
-
-Steps 9+ — server side
-
-New JPA entities, the two @Stateless services, and the ThresholdResolver keyed on session data date. These block on the answer to the question from earlier: remote EJB over JNDI, or JAX-RS? That decides whether adding a service method means regenerating client stubs and redeploying the EAR.
-
-Suggested commit order
-
-Steps 1, 2, 3 land together and compile cleanly on their own. Step 4 is where the build breaks if the positional arrays are wrong — do it as its own commit so a bisect finds it. Steps 5 and 6 make the columns actually work. Everything through step 6 is testable with a hardcoded setDeviated(true) on one row and no server at all — worth doing before touching GlassFish.
+Structure of the page
+Do the three tabs — Configuration, Deviation list, Deviation history — go inside the existing Health PreferencePage, or become a separate page? Turning it into a TabFolder restructures createContents, so I want that agreed before I touch it.
+If it's a TabFolder, does the A/C combo stay above the tabs and drive all three, or does each tab get its own selector?
+Are the Deviation list and Deviation history tabs part of this same task, or a follow-up? It changes whether I refactor the page now or later.
+The checkbox
+The tick box is currently rendered inside the Severity cell, not as its own column. Removing it means editing that column's label provider rather than deleting a column — do you want it done that way, or should Severity be rebuilt cleanly?
+WCThresholdModel.isEnabled() / setEnabled() — I plan to leave the field and only remove the UI. Is the flag still read anywhere downstream that I should check first?
+Is there anything else bound to that checkbox — a select-all, a context menu action, a keyboard handler?
+The two new columns
+Filtering Law: ComboBoxViewerCellEditor returning a String, to match how LEVEL and TYPE already work with enums. Agreed, or is there a house pattern for combo columns I should follow?
+Where do the law names come from when the tree is built — the configuration file, or a server call? If server, that's an EJB call inside the page's load path and I want your view on doing it lazily versus up front.
+TE column: plain TextCellEditor, no validation in modify, emptiness checked on Apply. Confirm the check belongs in performOk and not per-cell.
+Column widths — the mock-up is much wider than our current build and existing headers are truncated. Is resizing existing columns in scope, or do I only add the two new ones at the declared widths?
+Green highlight
+Full-row background on the label provider's getBackground, returning null for normal rows. Is there already a Color registry in the plugin I should use rather than allocating and disposing my own?
+Existing rows alternate colour via the odd flag on the model. Does the green override that, and does it also override the greyed-out styling on non-editable rows?
+Model and state
+deviated on WCThresholdModel — who sets it? My assumption is the server tells us at tree load. Is there an existing load path I should extend rather than adding a call?
+I've been asked to keep a baseline of the config values. Do you want that on the model, or is there a preference-store snapshot already holding the original configuration I could read instead?
+Process
+What's the branch and commit convention for a BCR — one branch, or one per commit set?
+Are there existing UI tests on this page, or is validation manual? Affects whether I can safely restructure createContents.
+Who reviews changes in com.eurocopter.mgs.presentation.configuration.preferences.healthalarms? I'd like their view on the tab restructure before I write it.
