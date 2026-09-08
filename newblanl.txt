@@ -1,112 +1,121 @@
-Change 1 — enum
 
-Remove CHECKBOX("", 20). Everything after it shifts down one index, which is fine now that nothing indexes positionally.
+import java.util.ArrayList;
+import java.util.List;
 
-Also fix fromKey — with CHECKBOX's empty key gone, a miss returns null and every switch (fromKey(...)) NPEs:
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.eclipse.jface.viewers.ArrayContentProvider;
+import org.eclipse.jface.viewers.ComboViewer;
+import org.eclipse.jface.viewers.IStructuredSelection;
+import org.eclipse.jface.viewers.LabelProvider;
+import org.eclipse.swt.SWT;
+import org.eclipse.swt.layout.FormAttachment;
+import org.eclipse.swt.layout.FormData;
+import org.eclipse.swt.layout.FormLayout;
+import org.eclipse.swt.widgets.Combo;
+import org.eclipse.swt.widgets.Composite;
+import org.eclipse.swt.widgets.Display;
+import org.eclipse.swt.widgets.Label;
+import org.osgi.framework.BundleContext;
+import org.osgi.framework.FrameworkUtil;
 
-java
-   public static WCModelDisplayProperty fromKey(String property) {
-      for (WCModelDisplayProperty prop : values()) {
-         if (prop.getKey().equals(property)) {
-            return prop;
+import com.eurocopter.mgs.business.aircraft.api.IAircraftBusiness;
+import com.eurocopter.mgs.core.presentation.i18n.Messages;
+import com.eurocopter.mgs.datamodel.aircraft.Aircraft;
+import com.eurocopter.mgs.datamodel.aircraft.AircraftState;
+import com.eurocopter.mgs.datamodel.aircraft.configuration.AircraftConfiguration;
+import com.eurocopter.mgs.datamodel.health.monitoring.HealthMonitoringConfiguration;
+import com.eurocopter.mgs.service.exception.EntityNotFoundException;
+
+/**
+ *
+ * Composite for the aircraft Type.
+ * <P>
+ *
+ * <P>
+ *
+ */
+public class AircraftSelectionComposite extends Composite {
+
+   private static final Logger LOGGER = LogManager.getLogger(AircraftSelectionComposite.class);
+
+   private final ComboViewer comboViewer;
+
+   /**
+    *
+    * Default constructor. Builds a TypeComposite.
+    *
+    * @param parent
+    *           parent shell
+    * @param style
+    *           the style
+    */
+   public AircraftSelectionComposite(Composite parent) {
+      super(parent, SWT.NONE);
+      setLayout(new FormLayout());
+      BundleContext bundleContext = FrameworkUtil.getBundle(IAircraftBusiness.class).getBundleContext();
+      IAircraftBusiness aircraftBusiness = bundleContext.getService(bundleContext.getServiceReference(IAircraftBusiness.class));
+      Label label = new Label(this, SWT.NONE);
+      FormData fdLabel = new FormData();
+      fdLabel.top = new FormAttachment(0, 6);
+      label.setLayoutData(fdLabel);
+      label.setText(Messages.CORE.getMnemonicEscapedString("FlightSynthesis_preference_Aircraft"));
+
+      /**
+       * Adding the type of Aircraft type
+       */
+      comboViewer = new ComboViewer(this, SWT.READ_ONLY);
+      comboViewer.setContentProvider(ArrayContentProvider.getInstance());
+      comboViewer.setLabelProvider(new LabelProvider() {
+         @Override
+         public String getText(Object arg0) {
+            String stg = null;
+            if (arg0 instanceof Aircraft model) {
+               stg = model.getRegisterNumber();
+            }
+            return stg;
+         }
+      });
+
+      List<Aircraft> activeAircrafts = aircraftBusiness.getAircrafts(AircraftState.ACTIVE);
+      List<Aircraft> aircraftsWithHealthConf = new ArrayList<>();
+      AircraftConfiguration aircraftConf;
+      for (Aircraft aircraft : activeAircrafts) {
+         try {
+            aircraftConf = aircraftBusiness.getAircraftConfiguration(aircraft.getId());
+         } catch (EntityNotFoundException e) {
+            LOGGER.warn("Entity not found", e);
+            continue;
+         }
+         if (aircraftConf.getConfigurations().get(HealthMonitoringConfiguration.TYPE) != null) {
+            aircraftsWithHealthConf.add(aircraft);
          }
       }
-      throw new IllegalArgumentException("Unknown display property key: " + property);
+
+      comboViewer.setInput(aircraftsWithHealthConf);
+      Combo combo = comboViewer.getCombo();
+      fdLabel.right = new FormAttachment(100, -425);
+      FormData fdTypeCombo = new FormData();
+      fdTypeCombo.top = new FormAttachment(label, -3, SWT.TOP);
+      fdTypeCombo.left = new FormAttachment(label, 12);
+      combo.setLayoutData(fdTypeCombo);
+      combo.setBackground(Display.getDefault().getSystemColor(SWT.COLOR_WHITE));
+
+      // Information label for deviation creation process  Ranjit
+      Label deviationInfoLabel = new Label(this, SWT.WRAP);
+      FormData fdDeviationInfoLabel = new FormData();
+      fdDeviationInfoLabel.top = new FormAttachment(combo, 10);
+      fdDeviationInfoLabel.left = new FormAttachment(label, 0, SWT.LEFT);
+      fdDeviationInfoLabel.right = new FormAttachment(100, -5);
+      deviationInfoLabel.setLayoutData(fdDeviationInfoLabel);
+      deviationInfoLabel.setText(Messages.CORE.getMnemonicEscapedString("DeviationManagementMessage"));
    }
 
-If you'd rather not throw, keep returning null but add if (prop == null) return false; / break; at the top of each switch in the modifier.
+   public ComboViewer getComboViewer() {
+      return comboViewer;
+   }
 
-Change 2 — WCTreeLabelProvider.getColumnImage
-
-Delete the method body entirely:
-
-java
-	@Override
-	public Image getColumnImage(Object element, int column) {
-		return null;
-	}
-
-That's the tick box gone. Images, ImageId and possibly Image become unused imports.
-
-Change 3 — WCTreeLabelProvider.getColumnText
-
-Add the two cases in the WCThresholdModel branch:
-
-java
-			case FILTERING_LAW:
-				return model.getFilteringLawName() != null ? model.getFilteringLawName() : "";
-			case TE:
-				return model.getTeReference() != null ? model.getTeReference() : "";
-Change 4 — WCTreeLabelProvider.getBackground
-
-This needs restructuring, not just an added branch. Green must win over the odd/even striping, and Severity keeps its own colour:
-
-java
-	@Override
-	public Color getBackground(Object element, int column) {
-		if (element instanceof WCThresholdModel model) {
-			WCModelDisplayProperty property = WCModelDisplayProperty.values()[column];
-
-			if (property == WCModelDisplayProperty.SEVERITY) {
-				if (model.getSeverity() == Severity.RED) {
-					return CoreResourcesUtils.getColor(CoreResourcesUtils.COLOR_RED);
-				} else if (model.getSeverity() == Severity.AMBER) {
-					return CoreResourcesUtils.getColor(CoreResourcesUtils.COLOR_AMBER);
-				}
-				return null;
-			}
-
-			// A deviated indicator is highlighted in green on the whole row.
-			if (model.isDeviated()) {
-				return CoreResourcesUtils.getColor(CoreResourcesUtils.COLOR_GREEN);
-			}
-
-			return model.isOdd() ? ODD_NUMBER_COLOR : EVEN_NUMBER_COLOR;
-		}
-		return null;
-	}
-
-Check whether CoreResourcesUtils actually has a COLOR_GREEN. Open it — if there's no green constant, add one there rather than allocating a Color in the label provider. The two static Colors at the top of this class come from getSystemColor, which must not be disposed; a green you allocate yourself must be. Using the shared registry avoids that trap entirely.
-
-Note the mock-up shows the green covering the Severity cell too, overriding RED/AMBER. My version keeps Severity coloured. Worth confirming which the client wants — one-line change either way.
-
-Change 5 — WCTreeCellModifier
-
-getValue — uncomment nothing, just add:
-
-java
-            case FILTERING_LAW:
-               return thresholdModel.getFilteringLawName() != null ? thresholdModel.getFilteringLawName() : "";
-
-            case TE:
-               return thresholdModel.getTeReference() != null ? thresholdModel.getTeReference() : "";
-
-modify — delete the live case CHECKBOX: block (it won't compile once the constant is gone) and add:
-
-java
-                  case FILTERING_LAW:
-                     if (value != null && !value.toString().trim().isEmpty()) {
-                        thresholdModel.setFilteringLawName(value.toString());
-                     } else {
-                        thresholdModel.setFilteringLawName(null);
-                     }
-                     break;
-                  case TE:
-                     if (value != null && !value.toString().trim().isEmpty()) {
-                        thresholdModel.setTeReference(value.toString().trim());
-                     } else {
-                        thresholdModel.setTeReference(null);
-                     }
-                     break;
-
-canModify — the deviated guard, at the top of the WCThresholdModel block:
-
-java
-      if (element instanceof WCThresholdModel thresholdModel) {
-         // No update of an existing deviation: delete and recreate instead.
-         if (thresholdModel.isDeviated()) {
-            return false;
-         }
-         switch (WCModelDisplayProperty.fromKey(property)) {
-
-and add case FILTERING_LAW: case TE: return true; before the default, or leave them to fall through — default: return true already covers them.
+   public Aircraft getSelectedAircraft() {
+      return (Aircraft) ((IStructuredSelection) comboViewer.getSelection()).getFirstElement();
+   }
+}
