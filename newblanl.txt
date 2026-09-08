@@ -1,197 +1,34 @@
 
-import org.eclipse.jface.viewers.ILabelProviderListener;
-import org.eclipse.jface.viewers.ITableColorProvider;
-import org.eclipse.jface.viewers.ITableLabelProvider;
-import org.eclipse.swt.SWT;
-import org.eclipse.swt.graphics.Color;
-import org.eclipse.swt.graphics.Image;
-import org.eclipse.swt.widgets.Display;
 
-import com.eurocopter.mgs.assets.ImageId;
-import com.eurocopter.mgs.assets.Images;
-import com.eurocopter.mgs.business.health.model.WCThresholdModel;
-import com.eurocopter.mgs.core.presentation.i18n.Messages;
-import com.eurocopter.mgs.core.presentation.resources.CoreResourcesUtils;
-import com.eurocopter.mgs.core.presentation.utils.ConvertUtils;
-import com.eurocopter.mgs.datamodel.alarm.Severity;
-import com.eurocopter.mgs.datamodel.health.monitoring.HealthMechanicalComponent;
-import com.eurocopter.mgs.datamodel.health.monitoring.ThresholdLevel;
-import com.eurocopter.mgs.datamodel.health.monitoring.ThresholdType;
-import com.eurocopter.mgs.presentation.configuration.preferences.healthalarms.WCHealthMechanicalComponentModel;
-import com.eurocopter.mgs.presentation.configuration.preferences.healthalarms.WCMechanicalComponentModel;
-import com.eurocopter.mgs.presentation.configuration.preferences.healthalarms.WCModelDisplayProperty;
+public enum WCModelDisplayProperty {
+   COMPONENT("MonitoredComponents", 200), CHECKBOX("", 20), SEVERITY("Severity", 60), LEVEL("ThresholdLevel", 60), TYPE("Type", 80), VALUE("ThresholdValue", 50), MIN_VALUE("LearningThresholdMinValue",
+         50), MAX_VALUE("LearningThresholdMaxValue", 50), LEARN_TIME("healthAlarmPageColumn8", 50), WORKCARD_REF("WorkCardRef", 100), MIN_DEV("LearningThresholdMinDev", 50), MEAN_MULT_FACTOR(
+               "LearningThresholdMeanMultFactor", 50), DEV_COEF("LearningThresholdDevCoef",
+                     50), NB_POINTS("NbSuccessivePtForAlarmRaising", 50), MAX_TIME_WO_ACQ("MaxTimeWithoutAcquisition", 60), FILTERING_LAW("FilteringLaw", 100), TE("TeReference", 120);
 
-public class WCTreeLabelProvider implements ITableLabelProvider, ITableColorProvider {
+   private final String key;
 
-	private static final Color ODD_NUMBER_COLOR = Display.getDefault().getSystemColor(SWT.COLOR_DARK_GRAY);
+   private final int columnSize;
 
-	private static final Color EVEN_NUMBER_COLOR = Display.getDefault().getSystemColor(SWT.COLOR_GRAY);
+   WCModelDisplayProperty(String key, int columnSize) {
+      this.key = key;
+      this.columnSize = columnSize;
+   }
 
-	@Override
-	public void addListener(ILabelProviderListener arg0) {
-		// NOTHING TO DO
-	}
+   public String getKey() {
+      return key;
+   }
 
-	@Override
-	public void dispose() {
-		// NOTHING TO DO
-	}
+   public int getColumnSize() {
+      return columnSize;
+   }
 
-	@Override
-	public boolean isLabelProperty(Object arg0, String arg1) {
-		return false;
-	}
-
-	@Override
-	public void removeListener(ILabelProviderListener arg0) {
-		// NOTHING TO DO
-	}
-
-	@Override
-	public Image getColumnImage(Object element, int column) {
-		if (element instanceof WCThresholdModel model && column == 1) {
-			// the icon shall be displayed only when it is a threshold
-			return model.isEnabled() ? Images.getImage(ImageId.CHECKED_14) : Images.getImage(ImageId.UNCHECKED_14);
-		}
-		return null;
-	}
-
-	@Override
-	public String getColumnText(Object element, int column) {
-		if (element instanceof WCMechanicalComponentModel) {
-			switch (WCModelDisplayProperty.values()[column]) {
-			case COMPONENT:
-				return ((WCMechanicalComponentModel) element).getName();
-			case MAX_TIME_WO_ACQ:
-				return getMaxTimeWOAcquition((WCMechanicalComponentModel) element);
-			default:
-				break;
-			}
-		} else if (element instanceof WCHealthMechanicalComponentModel) {
-			switch (WCModelDisplayProperty.values()[column]) {
-			case COMPONENT:
-				WCHealthMechanicalComponentModel hmcModel = (WCHealthMechanicalComponentModel) element;
-				int position = hmcModel.getHealthMechanicalComponent().getPath()
-						.lastIndexOf(HealthMechanicalComponent.HMC_PATH_SEPARATOR);
-				String name = hmcModel.getHealthMechanicalComponent().getPath().substring(position + 1);
-				return name;
-			case WORKCARD_REF:
-				return ((WCHealthMechanicalComponentModel) element).getWorkcardReference();
-			case MAX_TIME_WO_ACQ:
-				hmcModel = (WCHealthMechanicalComponentModel) element;
-				return ConvertUtils.formatNumber(hmcModel.getMaxtimeWithoutAcquitision(), -1);
-
-			default:
-				break;
-			}
-		} else if (element instanceof WCThresholdModel model) {
-			switch (WCModelDisplayProperty.values()[column]) {
-			case COMPONENT:
-				return model.getIndicator().getName();
-			case SEVERITY:
-				return Messages.CORE.getString(model.getSeverity().name());
-			case LEVEL:
-				ThresholdLevel level = model.getLevel();
-				return level == null ? "" : Messages.CORE.getString("ThresholdLevel_" + level.name());
-			case TYPE:
-				ThresholdType type = model.getType();
-				return type == null ? "" : Messages.CORE.getString("ThresholdType_" + type.name());
-			case VALUE:
-				if (model.getDefaultValue() != null) {
-					return ConvertUtils.formatNumber(model.getDefaultValue(), -1);
-				} else {
-					return Messages.CORE.getString("none");
-				}
-			case MIN_VALUE:
-				if (model.getMinValue() != null) {
-					return ConvertUtils.formatNumber(model.getMinValue(), -1);
-				} else {
-					return "";
-				}
-			case MAX_VALUE:
-				Double maxValue = model.getMaxValue();
-				return ConvertUtils.formatNumber(maxValue, -1);
-			case LEARN_TIME:
-				double learningTime = model.getLearningTime() / 3600000.0;
-				return ConvertUtils.formatNumber(learningTime, -1);
-			case WORKCARD_REF:
-				return model.getWorkCardReference();
-			case MIN_DEV:
-				if (model.getMinimumDeviation() != null) {
-					return ConvertUtils.formatNumber(model.getMinimumDeviation(), -1);
-				} else {
-					return "";
-				}
-			case MEAN_MULT_FACTOR:
-				if (model.getMeanFactor() != null) {
-					return ConvertUtils.formatNumber(model.getMeanFactor(), -1);
-				} else {
-					return "";
-				}
-			case DEV_COEF:
-				if (model.getDeviationCoefficient() != null) {
-					return ConvertUtils.formatNumber(model.getDeviationCoefficient(), -1);
-				} else {
-					return "";
-				}
-			case NB_POINTS:
-				if (model.getNbSuccessivePoints() != null) {
-					return ConvertUtils.formatNumber(model.getNbSuccessivePoints(), -1);
-				} else {
-					return "";
-				}
-			default:
-				break;
-			}
-		}
-		return "";
-	}
-
-	@Override
-	public Color getBackground(Object element, int column) {
-		if (element instanceof WCThresholdModel model) {
-			if (WCModelDisplayProperty.values()[column] == WCModelDisplayProperty.SEVERITY) {
-				if (model.getSeverity() == Severity.RED) {
-					return CoreResourcesUtils.getColor(CoreResourcesUtils.COLOR_RED);
-				} else if (model.getSeverity() == Severity.AMBER) {
-					return CoreResourcesUtils.getColor(CoreResourcesUtils.COLOR_AMBER);
-				}
-			} else {
-				return model.isOdd() ? ODD_NUMBER_COLOR : EVEN_NUMBER_COLOR;
-			}
-		}
-		return null;
-	}
-
-	@Override
-	public Color getForeground(Object element, int column) {
-		return null;
-	}
-
-	/**
-	 * return the maximum time without acquisition if all the sub health component
-	 * have the same value. Else return ""
-	 * 
-	 * @return
-	 */
-	private String getMaxTimeWOAcquition(WCMechanicalComponentModel element) {
-
-		String maxTimeWOAcqValue = null;
-		for (WCHealthMechanicalComponentModel wCModel : element.getHealthComponentModels()) {
-			if (maxTimeWOAcqValue == null) {
-				maxTimeWOAcqValue = ConvertUtils.formatNumber(wCModel.getMaxtimeWithoutAcquitision(), -1);
-			} else if (!maxTimeWOAcqValue
-					.equals(ConvertUtils.formatNumber(wCModel.getMaxtimeWithoutAcquitision(), -1))) {
-				return "";
-			}
-		}
-		for (WCMechanicalComponentModel wcModel : element.getSubHealthWCModel()) {
-			if (maxTimeWOAcqValue == null) {
-				maxTimeWOAcqValue = getMaxTimeWOAcquition(wcModel);
-			} else if (!maxTimeWOAcqValue.equals(getMaxTimeWOAcquition(wcModel))) {
-				return "";
-			}
-		}
-		return maxTimeWOAcqValue;
-	}
+   public static WCModelDisplayProperty fromKey(String property) {
+      for (WCModelDisplayProperty prop : values()) {
+         if (prop.getKey().equals(property)) {
+            return prop;
+         }
+      }
+      return null;
+   }
 }
