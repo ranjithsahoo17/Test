@@ -1,34 +1,112 @@
+Change 1 — enum
 
+Remove CHECKBOX("", 20). Everything after it shifts down one index, which is fine now that nothing indexes positionally.
 
-public enum WCModelDisplayProperty {
-   COMPONENT("MonitoredComponents", 200), CHECKBOX("", 20), SEVERITY("Severity", 60), LEVEL("ThresholdLevel", 60), TYPE("Type", 80), VALUE("ThresholdValue", 50), MIN_VALUE("LearningThresholdMinValue",
-         50), MAX_VALUE("LearningThresholdMaxValue", 50), LEARN_TIME("healthAlarmPageColumn8", 50), WORKCARD_REF("WorkCardRef", 100), MIN_DEV("LearningThresholdMinDev", 50), MEAN_MULT_FACTOR(
-               "LearningThresholdMeanMultFactor", 50), DEV_COEF("LearningThresholdDevCoef",
-                     50), NB_POINTS("NbSuccessivePtForAlarmRaising", 50), MAX_TIME_WO_ACQ("MaxTimeWithoutAcquisition", 60), FILTERING_LAW("FilteringLaw", 100), TE("TeReference", 120);
+Also fix fromKey — with CHECKBOX's empty key gone, a miss returns null and every switch (fromKey(...)) NPEs:
 
-   private final String key;
-
-   private final int columnSize;
-
-   WCModelDisplayProperty(String key, int columnSize) {
-      this.key = key;
-      this.columnSize = columnSize;
-   }
-
-   public String getKey() {
-      return key;
-   }
-
-   public int getColumnSize() {
-      return columnSize;
-   }
-
+java
    public static WCModelDisplayProperty fromKey(String property) {
       for (WCModelDisplayProperty prop : values()) {
          if (prop.getKey().equals(property)) {
             return prop;
          }
       }
-      return null;
+      throw new IllegalArgumentException("Unknown display property key: " + property);
    }
-}
+
+If you'd rather not throw, keep returning null but add if (prop == null) return false; / break; at the top of each switch in the modifier.
+
+Change 2 — WCTreeLabelProvider.getColumnImage
+
+Delete the method body entirely:
+
+java
+	@Override
+	public Image getColumnImage(Object element, int column) {
+		return null;
+	}
+
+That's the tick box gone. Images, ImageId and possibly Image become unused imports.
+
+Change 3 — WCTreeLabelProvider.getColumnText
+
+Add the two cases in the WCThresholdModel branch:
+
+java
+			case FILTERING_LAW:
+				return model.getFilteringLawName() != null ? model.getFilteringLawName() : "";
+			case TE:
+				return model.getTeReference() != null ? model.getTeReference() : "";
+Change 4 — WCTreeLabelProvider.getBackground
+
+This needs restructuring, not just an added branch. Green must win over the odd/even striping, and Severity keeps its own colour:
+
+java
+	@Override
+	public Color getBackground(Object element, int column) {
+		if (element instanceof WCThresholdModel model) {
+			WCModelDisplayProperty property = WCModelDisplayProperty.values()[column];
+
+			if (property == WCModelDisplayProperty.SEVERITY) {
+				if (model.getSeverity() == Severity.RED) {
+					return CoreResourcesUtils.getColor(CoreResourcesUtils.COLOR_RED);
+				} else if (model.getSeverity() == Severity.AMBER) {
+					return CoreResourcesUtils.getColor(CoreResourcesUtils.COLOR_AMBER);
+				}
+				return null;
+			}
+
+			// A deviated indicator is highlighted in green on the whole row.
+			if (model.isDeviated()) {
+				return CoreResourcesUtils.getColor(CoreResourcesUtils.COLOR_GREEN);
+			}
+
+			return model.isOdd() ? ODD_NUMBER_COLOR : EVEN_NUMBER_COLOR;
+		}
+		return null;
+	}
+
+Check whether CoreResourcesUtils actually has a COLOR_GREEN. Open it — if there's no green constant, add one there rather than allocating a Color in the label provider. The two static Colors at the top of this class come from getSystemColor, which must not be disposed; a green you allocate yourself must be. Using the shared registry avoids that trap entirely.
+
+Note the mock-up shows the green covering the Severity cell too, overriding RED/AMBER. My version keeps Severity coloured. Worth confirming which the client wants — one-line change either way.
+
+Change 5 — WCTreeCellModifier
+
+getValue — uncomment nothing, just add:
+
+java
+            case FILTERING_LAW:
+               return thresholdModel.getFilteringLawName() != null ? thresholdModel.getFilteringLawName() : "";
+
+            case TE:
+               return thresholdModel.getTeReference() != null ? thresholdModel.getTeReference() : "";
+
+modify — delete the live case CHECKBOX: block (it won't compile once the constant is gone) and add:
+
+java
+                  case FILTERING_LAW:
+                     if (value != null && !value.toString().trim().isEmpty()) {
+                        thresholdModel.setFilteringLawName(value.toString());
+                     } else {
+                        thresholdModel.setFilteringLawName(null);
+                     }
+                     break;
+                  case TE:
+                     if (value != null && !value.toString().trim().isEmpty()) {
+                        thresholdModel.setTeReference(value.toString().trim());
+                     } else {
+                        thresholdModel.setTeReference(null);
+                     }
+                     break;
+
+canModify — the deviated guard, at the top of the WCThresholdModel block:
+
+java
+      if (element instanceof WCThresholdModel thresholdModel) {
+         // No update of an existing deviation: delete and recreate instead.
+         if (thresholdModel.isDeviated()) {
+            return false;
+         }
+         switch (WCModelDisplayProperty.fromKey(property)) {
+
+and add case FILTERING_LAW: case TE: return true; before the default, or leave them to fall through — default: return true already covers them.
