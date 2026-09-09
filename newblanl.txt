@@ -1,7 +1,9 @@
-package com.eurocopter.mgs.download.analysis.health.impl.filtering;
 
+
+import java.util.HashMap;
 import java.util.List;
 import java.util.ListIterator;
+import java.util.Map;
 import java.util.Set;
 
 import com.eurocopter.mgs.datamodel.health.monitoring.ContextualParameter;
@@ -9,21 +11,56 @@ import com.eurocopter.mgs.datamodel.health.monitoring.FilteringLaw;
 import com.eurocopter.mgs.download.analysis.health.data.IHealthIndicatorValueAcquisition;
 import com.eurocopter.mgs.download.analysis.health.impl.HealthIndicatorValueAdapter;
 
-public class HelionixFilteringPerFileAlgorithm extends AbstractFilteringRuleAlgorithm<String> {
+public class MarmsFilteringPerFlightHoursAlgorithm extends AbstractFilteringRuleAlgorithm<Long> {
+
+   private static final Map<String, com.eurocopter.mgs.datamodel.health.common.ContextualParameter> MAPPING_CONTEXTUAL_PARAMETERS = new HashMap<>();
+   static {
+      MAPPING_CONTEXTUAL_PARAMETERS.put("NR", com.eurocopter.mgs.datamodel.health.common.ContextualParameter.MARMS_MEAN_NR);
+      MAPPING_CONTEXTUAL_PARAMETERS.put("TRQ1_TRQ2", com.eurocopter.mgs.datamodel.health.common.ContextualParameter.MARMS_MEAN_TRQ1_TRQ2);
+      MAPPING_CONTEXTUAL_PARAMETERS.put("IAS", com.eurocopter.mgs.datamodel.health.common.ContextualParameter.MARMS_MEAN_IAS);
+      MAPPING_CONTEXTUAL_PARAMETERS.put("ZB", com.eurocopter.mgs.datamodel.health.common.ContextualParameter.MARMS_MEAN_ZB);
+      MAPPING_CONTEXTUAL_PARAMETERS.put("COLL_PITCH", com.eurocopter.mgs.datamodel.health.common.ContextualParameter.MARMS_MEAN_COLL_PITCH);
+      MAPPING_CONTEXTUAL_PARAMETERS.put("LONG_PITCH", com.eurocopter.mgs.datamodel.health.common.ContextualParameter.MARMS_MEAN_LONG_PITCH);
+      MAPPING_CONTEXTUAL_PARAMETERS.put("LATT_PITCH", com.eurocopter.mgs.datamodel.health.common.ContextualParameter.MARMS_MEAN_LATT_PITCH);
+      MAPPING_CONTEXTUAL_PARAMETERS.put("PITCH_ATT", com.eurocopter.mgs.datamodel.health.common.ContextualParameter.MARMS_MEAN_PITCH_ATT);
+      MAPPING_CONTEXTUAL_PARAMETERS.put("ROLL_ATT", com.eurocopter.mgs.datamodel.health.common.ContextualParameter.MARMS_MEAN_ROLL_ATT);
+   }
+
+   private final long flightDuration;
+
+   public MarmsFilteringPerFlightHoursAlgorithm(long flightDuration) {
+      this.flightDuration = flightDuration;
+   }
 
    @Override
    protected boolean isFilteringLawApplicable(List<HealthIndicatorValueAdapter> indicatorValueAdapters) {
-      return true;
+      if (indicatorValueAdapters.isEmpty()) {
+         // Shall not happen
+         return true;
+      }
+      HealthIndicatorValueAdapter firstIndicatorValueAdapter = indicatorValueAdapters.get(0);
+      // Apply filtering law only on EHMS indicator (i.e. those with contextual values)
+      return !firstIndicatorValueAdapter.getContextualValues().isEmpty();
    }
 
    @Override
-   protected String getKey(IHealthIndicatorValueAcquisition acquisition) {
-      return acquisition.getFileId();
+   protected Long getKey(IHealthIndicatorValueAcquisition acquisition) {
+      return Math.round(Math.floor((double) acquisition.getCumulatedFlightTime() / (double) 3600));
    }
 
    @Override
-   protected int getMaxPointsAtKey(String key, int configuredMaxPointsPerHour) {
-      // Per file, the number of point is the configured one
+   protected int getMaxPointsAtKey(Long hour, int configuredMaxPointsPerHour) {
+      long lastHourId = Math.round(Math.floor((double) flightDuration / (double) (3600 * 1000)));
+      if (hour == lastHourId) {
+         long lastFlightHourDuration = flightDuration % (3600 * 1000);
+         double durationRatio = (double) lastFlightHourDuration / (double) (3600 * 1000);
+         return (int) Math.round(Math.ceil(durationRatio * configuredMaxPointsPerHour));
+      }
+      if (hour > lastHourId) {
+         // A weird edge case, where some points are after the last flight hour
+         return 0;
+      }
+      // Full flight hour
       return configuredMaxPointsPerHour;
    }
 
@@ -35,27 +72,23 @@ public class HelionixFilteringPerFileAlgorithm extends AbstractFilteringRuleAlgo
          }
          final Set<ContextualParameter> contextualParameters = filteringLaw.getContextualParameters();
          for (ContextualParameter contextualParameter : contextualParameters) {
-            String name = contextualParameter.getName();
+            String configuredName = contextualParameter.getName();
+            if (!MAPPING_CONTEXTUAL_PARAMETERS.containsKey(configuredName)) {
+               // Ignoring unknown contextual parameter
+               continue;
+            }
+            String actualName = MAPPING_CONTEXTUAL_PARAMETERS.get(configuredName).name();
             double min = contextualParameter.getMinValue();
             double max = contextualParameter.getMaxValue();
-            double s = contextualParameter.getThresholdOfVariabilityValue();
 
             ListIterator<HealthIndicatorValueAdapter> iter = values.listIterator();
-
             while (iter.hasNext()) {
                HealthIndicatorValueAdapter healthIndicatorValue = iter.next();
-               if (healthIndicatorValue.getMinContextualValues().get(name) != null) {
-                  double minValueContextualParameter = healthIndicatorValue.getMinContextualValues().get(name).getValue();
-                  double maxValueContextualParameter = healthIndicatorValue.getMaxContextualValues().get(name).getValue();
-                  double meanValueContextualParameter = healthIndicatorValue.getMeanContextualValues().get(name).getValue();
+               if (healthIndicatorValue.getContextualValues().get(actualName) != null) {
+                  double meanValueContextualParameter = healthIndicatorValue.getContextualValues().get(actualName).getValue();
 
-                  // Use the Filtering rules
                   if (!(min <= meanValueContextualParameter) || !(meanValueContextualParameter <= max)) {
                      iter.remove();
-                  } else {
-                     if (!((maxValueContextualParameter - minValueContextualParameter) <= s)) {
-                        iter.remove();
-                     }
                   }
                } else {
                   // The contextual parameter is not present for this indicator value
