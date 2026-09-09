@@ -1,57 +1,26 @@
 
 
-import com.eurocopter.mgs.datamodel.health.monitoring.Indicator;
-import com.eurocopter.mgs.datamodel.health.monitoring.IndicatorDisplay;
-import com.eurocopter.mgs.xml.configuration.unit.Unit;
+import java.io.Serializable;
+import java.util.HashSet;
+import java.util.Set;
 
-public class IndicatorModel {
+public class IndicatorConfigurationDto implements Serializable {
 
-   private final Indicator indicator;
-   private final IndicatorDisplay indicatorDisplay;
-   private final Object[] availableUnits;
-   private final WCThresholdModel[] thresholdModels;
-   private String name;
+   private static final long serialVersionUID = 1L;
 
-   public IndicatorModel(Indicator indicator, IndicatorDisplay indicatorDisplay, Object[] availableUnits, WCThresholdModel[] thresholdModels) {
-      this.indicator = indicator;
-      this.indicatorDisplay = indicatorDisplay;
-      this.availableUnits = availableUnits;
-      this.thresholdModels = thresholdModels;
-      this.name = indicator.getName();
+   private final String indicatorId;
+
+   private final Set<ThresholdConfigurationDto> thresholdConfigurationDtos = new HashSet<>();
+
+   public IndicatorConfigurationDto(String indicatorId) {
+      this.indicatorId = indicatorId;
    }
 
-   public String getName() {
-      return name;
+   public final String getIndicatorId() {
+      return indicatorId;
    }
 
-   public void setName(String name) {
-      this.name = name;
-   }
-
-   public Indicator getIndicator() {
-      return indicator;
-   }
-
-   public IndicatorDisplay getIndicatorDisplay() {
-      return indicatorDisplay;
-   }
-
-   public Object[] getAvailableUnits() {
-      return availableUnits;
-   }
-
-   public WCThresholdModel[] getThresholdModels() {
-      return thresholdModels;
-   }
-
-   public String getUnitSymbol(String unitName) {
-      for (Object o : getAvailableUnits()) {
-         if (o instanceof Unit unit) {
-            if (unit.getName().equalsIgnoreCase(unitName)) {
-               return unit.getSymbol();
-            }
-         }
-      }
-      return null;
+   public final Set<ThresholdConfigurationDto> getThresholdConfigurationDtos() {
+      return thresholdConfigurationDtos;
    }
 }
