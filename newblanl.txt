@@ -1,71 +1,252 @@
-1:Deviation Creation
-Which specific fields in the indicator list are editable for creating a deviation?
- 
--> All
-2:Automatic Relearn Request
-What exactly happens when a relearn request is triggered?
--> A learning time of the parameterized duration (usually 40 flight hours) is launched for the indicator, in order to determine correct min/max thresholds.  
-3:Activate & Remove Threshold
-Since the checkbox is removed, how will users activate or deactivate thresholds if required in the future?
-Are there any backward compatibility concerns for existing deviations using this functionality?
- 
--> User can't desactivate indicators anymore, they have to create a deviation instead. No backwards compatibility is necessary, 
-: when the new version will be in production, the deviations will be effective for new aircraft configurations.
-4:Default Filtering Law Display
-From where is the default filtering law retrieved?
-What should be displayed if no default filtering law exists for an indicator?
- 
--> In the health configuration you have default rules that can be used. Some laws are already linked to an indicator, so this link is already present in the code / database.
- 
-Example of health_configuration.xml file present in health.zip file of a H225's configuration >
- 
-Default laws in the configurations are defined here :
- 
-	<!-- Filtering law conf for EHMS indicators -->
-<filteringLaws>
-<filteringLaw name="LAW_1">
-<contextualParameter name="NR" min="500.0" max="2500.0"/>
-</filteringLaw>
-<filteringLaw name="LAW_2">
-<contextualParameter name="IAS" min="2.0" max="15.0"/>
-</filteringLaw>
-</filteringLaws>
-	Later on in the same file, you can see indicators lines linked with one of these laws :
- 
-	<indicators>
-<indicator name="Fail Safe 1-1" algorithm="Read" reference="1-1" unit="g" lsb="1" maxPointsPerHour="5" invalidityThreshold="0.1" filteringLaw="LAW_1">
 
-5:Single Deviation Restriction
-What user message should be displayed when attempting to create a second deviation for an indicator?
-Should the creation controls be disabled or should validation occur on save?
- 
--> A popup message saying "A deviation is already set on  this indicator.", must be displayed when the user tries to click on the considered indicator line (highlighted in blue) so that he understands why he can't edit the line.
-6:Deviation Update Restriction
-Can users view deviation details even though updates are not allowed?
- 
--> When a deviation is set, the parameters of the deviation are be displayed highlighted in blue, in place of the default ones.
-Then the users can see the "deviated" parameters 
-- On the "deviated" indicator line highlighted in blue.
-- On the "indicator list" tab also
-7; Deviation Effective Date
-Since deviations become active immediately, should the system store the creation timestamp?  
- 
--> yes
-8:Applicable Indicators
-Can you provide the complete list of supported aircraft types and indicator types?
-Are there any exceptions where deviations are not allowed?
- 
--> The supported A/C types are all the aircraft that can be managed by MGS. You can find them in the dropdown lists of the aircraft creation screen.
-There are no exceptions, all indicators can be "deviated"
-9:UI Behavior
-Should all changes be saved immediately or require an explicit Save action?
-->  The save action is triggered by the "Apply" button on the right bottom corner, so that the user can double check the input data.
-The "Apply" action opens a confirmation popup message saying : 
-- "Deviation successfully set on indicator {indicator_name}" if successful.
-- "Error : deviation can't be set on indicator {indicator_name}. Reason : TE field is mandatory" if there is an error (for instance : mandatory TE field is empty)
-10Database:
-Database table design for deviation what are table linked and fields?
- 
--> An indicator table should be created with necessary fields, linked to an indicator and a configuration for an aircraft.
-The "aircraft_configuration" table stores configuration for an aircraft instance. The "indicator_configuration" table stores the current configurations of indicators that has to be ehanced with deviations.
-The link with the filtering laws is already set in the "indicator_configuration" table (column "filtering_law")
+
+
+import org.eclipse.jface.resource.ColorRegistry;
+import org.eclipse.jface.resource.FontRegistry;
+import org.eclipse.swt.SWT;
+import org.eclipse.swt.graphics.Color;
+import org.eclipse.swt.graphics.Font;
+import org.eclipse.swt.graphics.FontData;
+import org.eclipse.swt.graphics.Image;
+import org.eclipse.swt.graphics.RGB;
+
+import com.eurocopter.mgs.core.presentation.common.Activator;
+import com.eurocopter.mgs.core.presentation.utils.GuiConstants;
+
+/**
+ * MGS Core images utility class.
+ */
+public final class CoreResourcesUtils {
+
+   /** **************** TOP BANNER RESOURCES ************. */
+   /** Font for the title */
+   public static final String MGS_TITLE = "MGS_TITLE";
+   public static final String MGS_SUBTITLE = "MGS_SUBTITLE";
+
+   public static final String MGS_LOGIN_LINE1 = "MGS_LOGIN_LINE1";
+   public static final String MGS_LOGIN_LINE2 = "MGS_LOGIN_LINE2";
+   public static final String MGS_LOGIN_BUTTON = "MGS_LOGIN_BUTTON";
+   public static final String MGS_LOGIN_FIELD = "MGS_LOGIN_FIELD";
+
+   public static final String MGS_PRODUCT_KEY_FIELD = "MGS_PRODUCT_KEY_FIELD";
+   public static final String MGS_PRODUCT_KEY_TITLE = "MGS_PRODUCT_KEY_TITLE";
+   public static final String MGS_PRODUCT_KEY_TEXT = "MGS_PRODUCT_KEY_TEXT";
+   public static final String MGS_PRODUCT_KEY_BUTTON = "MGS_PRODUCT_KEY_BUTTON";
+
+   /** Font for logged as */
+   public static final String MGS_LOGGED_AS = "MGS_LOGGED_AS";
+
+   /** ************ AIRCRAFT BANNER RESOURCES ************. */
+
+   /** Font Toolbar **/
+   public static final String TOOLBAR_ACTION_FONT = "TOOLBAR_ACTION_FONT";
+
+   /** **********************************************************. */
+   /** Alarm Table font key. */
+   public static final String ALARM_TABLE_FONT = "ALARM_TABLE_FONT";
+
+   /** Alarm Table font name. */
+   public static final String ALARM_TABLE_FONT_NAME = "Segoe UI";
+
+   /** Amber color key. */
+   public static final String COLOR_AMBER = "COLOR_AMBER";
+
+   /** Red Color key */
+   public static final String COLOR_RED = "COLOR_RED";
+
+   /** Light Grey Color key */
+   public static final String COLOR_GREY_DISABLED = "COLOR_GREY_DISABLED";
+
+   /** Grey Color key */
+   public static final String COLOR_GREY = "COLOR_GREY";
+
+   /** Dark blue Color key */
+   public static final String COLOR_DARK_BLUE = "COLOR_DARK_BLUE";
+
+   /** Pale Green Color key */
+   public static final String COLOR_GREEN = "COLOR_GREEN";
+
+   /** Black color */
+   public static final String COLOR_BLACK = "COLOR_BLACK";
+
+   /** Text color */
+   public static final String COLOR_TEXT = "COLOR_TEXT";
+
+   /** Dark Blue color */
+   public static final String COLOR_BLUE_LINK = "COLOR__BLUE_LINK";
+
+   /** Selection Blue color */
+   public static final String COLOR_SELECTION_BLUE = "COLOR_SELECTION_BLUE";
+
+   public static final String COLOR_BLUE_MAIN_BUTTON_NORMAL = "COLOR_BLUE_MAIN_BUTTON_NORMAL";
+   public static final String COLOR_BLUE_MAIN_BUTTON_HOVER = "COLOR_BLUE_MAIN_BUTTON_HOVER";
+   public static final String COLOR_BLUE_MAIN_BUTTON_DISABLED_BACKGROUND = "COLOR_BLUE_MAIN_BUTTON_DISABLED_BACKGROUND";
+   public static final String COLOR_BLUE_MAIN_BUTTON_DISABLED_TEXT = "COLOR_BLUE_MAIN_BUTTON_DISABLED_TEXT";
+   public static final String COLOR_BLUE_BORDER_FOCUSED_FIELD = "COLOR_BLUE_BORDER_FOCUSED_FIELD";
+
+   /** Minor title in the flight report */
+   public static final String FLIGHT_REPORT_MINOR_TITLE = "FLIGHT_MINOR_TITLE";
+
+   /** Engine title in the flight report */
+   public static final String FLIGHT_REPORT_ENGINE_TITLE = "FLIGHT_ENGINE_TITLE";
+
+   /** exceedance */
+   public static final String EXCEEDANCE_MINOR = "EXCEEDANCE_MINOR_TITLE";
+
+   /** Aircraft Banner Register Number */
+   public static final String AIRCRAFT_BANNER_FONT_REGISTER_NUMBER = "AIRCRAFT_BANNER_FONT_REGISTER_NUMBER";
+
+   /** Aircraft Banner Type */
+   public static final String AIRCRAFT_BANNER_FONT_AIRCRAFT_TYPE = "AIRCRAFT_BANNER_FONT_AIRCRAFT_TYPE";
+
+   /** MGS Font */
+   public static final String FONT_MGS = "Microsoft Sans Serif";
+
+   /** Font for Sort By */
+   public static final String MGS_SORT_BY = "MGS_SORT_BY";
+
+   /** Font for Fleet title */
+   public static final String MGS_FLEET_TITLE = "MGS_FLEET_TITLE";
+
+   /** Font for Aircraft Name */
+   public static final String MGS_AIRCRAFT_NAME = "MGS_AIRCRAFT_NAME";
+
+   /** Font for Aircraft Type */
+   public static final String MGS_AIRCRAFT_TYPE = "MGS_AIRCRAFT_TYPE";
+
+   /** Font for Running Features */
+   public static final String MGS_RUNNING_FEATURE = "MGS_RUNNING_FEATURE";
+
+   public static final String MGS_FLIGHT_DETAILS = "MGS_FLIGHT_DETAILS";
+
+   public static final String MGS_TITLE_MAINTENANCE_REPORT = "MGS_TITLE_MAINTENANCE_REPORT";
+
+   /** White Color */
+   public static final String COLOR_WHITE = "COLOR_WHITE";
+
+   /** Minor title in the flight report */
+   public static final String MFD_FLIGHT_REPORT_MINOR_FONT = "MFD_MINOR_FONT";
+
+   /** REPORT_BACKGROUND_LABEL_COLOR */
+   public static final String REPORT_BACKGROUND_LABEL_COLOR = "REPORT_BACKGROUND_LABEL_COLOR";
+
+   /** The Constant AIRCRAFT_PERSPECTIVE_ID. */
+   public static final String AIRCRAFT_PERSPECTIVE_ID = "com.eurocopter.mgs.app.perspective.AircraftPerspective";
+
+   /** HighLight Color */
+   public static final String HIGHLIGHT_COLOR = "HIGHLIGHT_COLOR";
+
+   /** Default color for a title */
+   public static final String COLOR_BLUE_TITLE = "COLOR_BLUE_TITLE";
+
+   /** Color for failure group 1 */
+   public static final String FAILURE_GROUP1 = "FAILURE_GROUP1";
+
+   /** Color for failure group 2 */
+   public static final String FAILURE_GROUP2 = "FAILURE_GROUP2";
+
+   public static final String RTB_MODIFIABLE_VALUES_FONT = "RTB_MODIFIABLE_VALUES_FONT";
+
+   public static final String COLOR_GREY_BACKGROUND_UI = "COLOR_GREY_BACKGROUND_UI";
+
+   public static final String MGS_WARNING_MESSAGE = "MGS_WARNING_MESSAGE";
+
+   /**
+    * Prevents instantiation.
+    */
+   private CoreResourcesUtils() {
+   }
+
+   static {
+      // Font
+      FontRegistry fontRegistry = CoreResource.getFontRegistry();
+      fontRegistry.put(ALARM_TABLE_FONT, new FontData[] { new FontData(ALARM_TABLE_FONT_NAME, 9, SWT.NONE) });
+      fontRegistry.put(MFD_FLIGHT_REPORT_MINOR_FONT, new FontData[] { new FontData("Arial", 14 / 2, SWT.BOLD) });
+      fontRegistry.put(FLIGHT_REPORT_MINOR_TITLE, new FontData[] { new FontData(FONT_MGS, 10, SWT.BOLD) });
+      fontRegistry.put(RTB_MODIFIABLE_VALUES_FONT, new FontData[] { new FontData(FONT_MGS, 10, SWT.BOLD | SWT.ITALIC) });
+      fontRegistry.put(FLIGHT_REPORT_ENGINE_TITLE, new FontData[] { new FontData(FONT_MGS, 8, SWT.BOLD) });
+      fontRegistry.put(EXCEEDANCE_MINOR, new FontData[] { new FontData(FONT_MGS, 9, SWT.BOLD) });
+
+      fontRegistry.put(AIRCRAFT_BANNER_FONT_REGISTER_NUMBER, new FontData[] { new FontData(FONT_MGS, 10, SWT.BOLD) });
+      fontRegistry.put(AIRCRAFT_BANNER_FONT_AIRCRAFT_TYPE, new FontData[] { new FontData(FONT_MGS, 8, SWT.NONE) });
+
+      fontRegistry.put(MGS_LOGIN_LINE1, new FontData[] { new FontData(FONT_MGS, 24, SWT.BOLD) });
+      fontRegistry.put(MGS_LOGIN_LINE2, new FontData[] { new FontData(FONT_MGS, 24, SWT.NONE) });
+      fontRegistry.put(MGS_LOGIN_BUTTON, new FontData[] { new FontData(FONT_MGS, 12, SWT.NONE) });
+      fontRegistry.put(MGS_LOGIN_FIELD, new FontData[] { new FontData(FONT_MGS, 12, SWT.NONE) });
+      fontRegistry.put(MGS_PRODUCT_KEY_FIELD, new FontData[] { new FontData(FONT_MGS, 12, SWT.NONE) });
+      fontRegistry.put(MGS_PRODUCT_KEY_TITLE, new FontData[] { new FontData(FONT_MGS, 16, SWT.BOLD) });
+      fontRegistry.put(MGS_PRODUCT_KEY_TEXT, new FontData[] { new FontData(FONT_MGS, 12, SWT.NONE) });
+      fontRegistry.put(MGS_PRODUCT_KEY_BUTTON, new FontData[] { new FontData(FONT_MGS, 12, SWT.NONE) });
+      fontRegistry.put(MGS_WARNING_MESSAGE, new FontData[] { new FontData(FONT_MGS, 12, SWT.NONE) });
+
+      fontRegistry.put(MGS_TITLE, new FontData[] { new FontData(FONT_MGS, GuiConstants.getStyles().getFontSizeMgsTitle(), SWT.NONE) });
+      fontRegistry.put(MGS_SUBTITLE, new FontData[] { new FontData(FONT_MGS, GuiConstants.getStyles().getFontSizeMgsSubtitle(), SWT.NONE) });
+      fontRegistry.put(MGS_LOGGED_AS, new FontData[] { new FontData(FONT_MGS, GuiConstants.getStyles().getFontSizeLoggedAs(), SWT.NONE) });
+      fontRegistry.put(MGS_SORT_BY, new FontData[] { new FontData(FONT_MGS, 11, SWT.BOLD) });
+      fontRegistry.put(MGS_FLEET_TITLE, new FontData[] { new FontData(FONT_MGS, 14, SWT.NONE) });
+      fontRegistry.put(MGS_AIRCRAFT_NAME, new FontData[] { new FontData(FONT_MGS, 14, SWT.BOLD) });
+      fontRegistry.put(MGS_AIRCRAFT_TYPE, new FontData[] { new FontData(FONT_MGS, 10, SWT.NONE) });
+      fontRegistry.put(MGS_RUNNING_FEATURE, new FontData[] { new FontData(FONT_MGS, 10, SWT.BOLD) });
+      fontRegistry.put(MGS_FLIGHT_DETAILS, new FontData[] { new FontData(FONT_MGS, 10, SWT.BOLD) });
+      fontRegistry.put(MGS_TITLE_MAINTENANCE_REPORT, new FontData[] { new FontData(FONT_MGS, 10, SWT.BOLD) });
+      fontRegistry.put(TOOLBAR_ACTION_FONT, new FontData[] { new FontData(FONT_MGS, 9, SWT.NONE) });
+
+      /* Color */
+      ColorRegistry colorRegistry = CoreResource.getColorRegistry();
+      colorRegistry.put(COLOR_RED, new RGB(242, 40, 29)); // #F2281D
+      colorRegistry.put(COLOR_AMBER, new RGB(218, 166, 31)); // This is not the AH graphical guideline (but validated by Airbus)
+      colorRegistry.put(COLOR_GREEN, new RGB(132, 189, 0)); // #84BD00
+      colorRegistry.put(HIGHLIGHT_COLOR, new RGB(255, 202, 102)); // #FFCA66
+      colorRegistry.put(COLOR_GREY, new RGB(145, 159, 173)); // #919fad
+      colorRegistry.put(COLOR_DARK_BLUE, new RGB(8, 40, 77)); // #08284d
+      colorRegistry.put(COLOR_GREY_DISABLED, new RGB(212, 212, 212));
+      colorRegistry.put(COLOR_GREY_BACKGROUND_UI, new RGB(240, 240, 240));
+      colorRegistry.put(COLOR_BLACK, new RGB(0, 0, 0));
+      colorRegistry.put(COLOR_TEXT, new RGB(8, 40, 77));
+      colorRegistry.put(COLOR_WHITE, new RGB(255, 255, 255)); // #ffffff
+      colorRegistry.put(COLOR_BLUE_TITLE, new RGB(12, 63, 115)); // #0C3F73
+      colorRegistry.put(COLOR_BLUE_LINK, new RGB(25, 76, 127));
+      colorRegistry.put(COLOR_SELECTION_BLUE, new RGB(49, 169, 215));
+      colorRegistry.put(COLOR_BLUE_MAIN_BUTTON_NORMAL, new RGB(46, 167, 214)); // #2BA7D6
+      colorRegistry.put(COLOR_BLUE_MAIN_BUTTON_HOVER, new RGB(27, 134, 175)); // #1B86AF
+      colorRegistry.put(COLOR_BLUE_MAIN_BUTTON_DISABLED_BACKGROUND, new RGB(25, 72, 126)); // #19487E
+      colorRegistry.put(COLOR_BLUE_MAIN_BUTTON_DISABLED_TEXT, new RGB(92, 117, 154)); // #5C759A
+      colorRegistry.put(COLOR_BLUE_BORDER_FOCUSED_FIELD, new RGB(0, 136, 170)); // #0088aa
+      colorRegistry.put(FAILURE_GROUP1, new RGB(201, 220, 229));
+      colorRegistry.put(FAILURE_GROUP2, new RGB(230, 230, 230));
+   }
+
+   /**
+    * Gets a image from the image registry.
+    *
+    * @param key
+    *           the image key
+    * @return a image from the image registry that match the given key.
+    */
+   public static Image getImage(String key) {
+      return Activator.getDefault().getImageRegistry().get(key);
+   }
+
+   /**
+    * Gets the font.
+    *
+    * @param symbolicName
+    *           The font key
+    * @return the font;
+    */
+   public static Font getFont(String symbolicName) {
+      return CoreResource.getFontRegistry().get(symbolicName);
+   }
+
+   /**
+    * Gets the color.
+    *
+    * @param symbolicName
+    *           color key.
+    * @return the color.
+    */
+   public static Color getColor(String symbolicName) {
+      return CoreResource.getColorRegistry().get(symbolicName);
+   }
+}
