@@ -1,78 +1,69 @@
 package com.eurocopter.mgs.download.analysis.health.impl.filtering;
 
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
+import java.util.ListIterator;
 import java.util.Set;
 
+import com.eurocopter.mgs.datamodel.health.monitoring.ContextualParameter;
 import com.eurocopter.mgs.datamodel.health.monitoring.FilteringLaw;
-import com.eurocopter.mgs.datamodel.health.monitoring.HealthMonitoringConfiguration;
-import com.eurocopter.mgs.datamodel.health.monitoring.Indicator;
-import com.eurocopter.mgs.datamodel.health.monitoring.IndicatorConfiguration;
-import com.eurocopter.mgs.download.analysis.health.algo.FilteringAlgorithm;
 import com.eurocopter.mgs.download.analysis.health.data.IHealthIndicatorValueAcquisition;
 import com.eurocopter.mgs.download.analysis.health.impl.HealthIndicatorValueAdapter;
 
-public abstract class AbstractFilteringRuleAlgorithm<K> implements IFilteringRuleAlgorithm {
-
-   private static final Comparator<HealthIndicatorValueAdapter> INDICATOR_VALUE_COMPARATOR = Comparator.comparing(HealthIndicatorValueAdapter::getAcquisitionDate);
-   private final Map<K, Map<IndicatorConfiguration, List<HealthIndicatorValueAdapter>>> healthIndicatorValueAdapterByFileIdAndIndConf;
-
-   public AbstractFilteringRuleAlgorithm() {
-      this.healthIndicatorValueAdapterByFileIdAndIndConf = new HashMap<>();
-   }
-
-   protected abstract boolean isFilteringLawApplicable(List<HealthIndicatorValueAdapter> indicatorValueAdapters);
-
-   protected abstract K getKey(IHealthIndicatorValueAcquisition acquisition);
-
-   protected abstract int getMaxPointsAtKey(K key, int configuredMaxPointsPerHour);
-
-   protected abstract void applyFilteringLawAlgorithm(List<HealthIndicatorValueAdapter> values, Set<FilteringLaw> filteringLaws, String indicatorFilteringLaw);
+public class HelionixFilteringPerFileAlgorithm extends AbstractFilteringRuleAlgorithm<String> {
 
    @Override
-   public void recordAcquisition(IHealthIndicatorValueAcquisition acquisition, String indicatorId, Indicator indicator, IndicatorConfiguration indicatorConfiguration) {
-      K key = getKey(acquisition);
-      final Map<IndicatorConfiguration, List<HealthIndicatorValueAdapter>> indicatorsInFile = healthIndicatorValueAdapterByFileIdAndIndConf.computeIfAbsent(key, k -> new HashMap<>());
-      final List<HealthIndicatorValueAdapter> indicatorValues = indicatorsInFile.computeIfAbsent(indicatorConfiguration, k -> new ArrayList<>());
-      indicatorValues.add(new HealthIndicatorValueAdapter(acquisition, indicatorConfiguration, indicatorId, indicator));
+   protected boolean isFilteringLawApplicable(List<HealthIndicatorValueAdapter> indicatorValueAdapters) {
+      return true;
    }
 
    @Override
-   public List<HealthIndicatorValueAdapter> getFilteredValues(HealthMonitoringConfiguration healthConfiguration) {
-      for (Map<IndicatorConfiguration, List<HealthIndicatorValueAdapter>> indicators : healthIndicatorValueAdapterByFileIdAndIndConf.values()) {
-         for (Entry<IndicatorConfiguration, List<HealthIndicatorValueAdapter>> entry2 : indicators.entrySet()) {
-            final IndicatorConfiguration indicatorConfiguration = entry2.getKey();
-            final Set<FilteringLaw> filteringLaws = healthConfiguration.getFilteringLaws();
-            List<HealthIndicatorValueAdapter> indicatorValueAdapters = entry2.getValue();
-            if (indicatorConfiguration.getFilteringLaw() != null && isFilteringLawApplicable(indicatorValueAdapters)) {
-               applyFilteringLawAlgorithm(indicatorValueAdapters, filteringLaws, indicatorConfiguration.getFilteringLaw());
-            }
+   protected String getKey(IHealthIndicatorValueAcquisition acquisition) {
+      return acquisition.getFileId();
+   }
+
+   @Override
+   protected int getMaxPointsAtKey(String key, int configuredMaxPointsPerHour) {
+      // Per file, the number of point is the configured one
+      return configuredMaxPointsPerHour;
+   }
+
+   @Override
+   protected void applyFilteringLawAlgorithm(List<HealthIndicatorValueAdapter> values, Set<FilteringLaw> filteringLaws, String indicatorFilteringLaw) {
+      for (FilteringLaw filteringLaw : filteringLaws) {
+         if (!filteringLaw.getName().equals(indicatorFilteringLaw)) {
+            continue;
          }
-      }
+         final Set<ContextualParameter> contextualParameters = filteringLaw.getContextualParameters();
+         for (ContextualParameter contextualParameter : contextualParameters) {
+            String name = contextualParameter.getName();
+            double min = contextualParameter.getMinValue();
+            double max = contextualParameter.getMaxValue();
+            double s = contextualParameter.getThresholdOfVariabilityValue();
 
-      final List<HealthIndicatorValueAdapter> valuesToSave = new ArrayList<>();
-      for (Map.Entry<K, Map<IndicatorConfiguration, List<HealthIndicatorValueAdapter>>> indicatorsEntry : healthIndicatorValueAdapterByFileIdAndIndConf.entrySet()) {
-         K key = indicatorsEntry.getKey();
-         Map<IndicatorConfiguration, List<HealthIndicatorValueAdapter>> indicators = indicatorsEntry.getValue();
-         for (Entry<IndicatorConfiguration, List<HealthIndicatorValueAdapter>> indicatorEntry : indicators.entrySet()) {
-            final IndicatorConfiguration conf = indicatorEntry.getKey();
-            final List<HealthIndicatorValueAdapter> healthIndicatorValueAdapterValues = indicatorEntry.getValue();
-            if (conf.getMaxPointsPerHour() == null) {
-               valuesToSave.addAll(healthIndicatorValueAdapterValues);
-            } else {
-               healthIndicatorValueAdapterValues.sort(INDICATOR_VALUE_COMPARATOR);
-               int maxPointsPerHour = getMaxPointsAtKey(key, conf.getMaxPointsPerHour());
-               if (maxPointsPerHour > 0) {
-                  valuesToSave.addAll(FilteringAlgorithm.filterHealthIndicatorValues(healthIndicatorValueAdapterValues, maxPointsPerHour));
+            ListIterator<HealthIndicatorValueAdapter> iter = values.listIterator();
+
+            while (iter.hasNext()) {
+               HealthIndicatorValueAdapter healthIndicatorValue = iter.next();
+               if (healthIndicatorValue.getMinContextualValues().get(name) != null) {
+                  double minValueContextualParameter = healthIndicatorValue.getMinContextualValues().get(name).getValue();
+                  double maxValueContextualParameter = healthIndicatorValue.getMaxContextualValues().get(name).getValue();
+                  double meanValueContextualParameter = healthIndicatorValue.getMeanContextualValues().get(name).getValue();
+
+                  // Use the Filtering rules
+                  if (!(min <= meanValueContextualParameter) || !(meanValueContextualParameter <= max)) {
+                     iter.remove();
+                  } else {
+                     if (!((maxValueContextualParameter - minValueContextualParameter) <= s)) {
+                        iter.remove();
+                     }
+                  }
+               } else {
+                  // The contextual parameter is not present for this indicator value
+                  // We have to remove this indicator value as well
+                  iter.remove();
                }
             }
          }
       }
-      return valuesToSave;
    }
-
 }
