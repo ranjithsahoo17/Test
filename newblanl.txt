@@ -1,168 +1,71 @@
+1:Deviation Creation
+Which specific fields in the indicator list are editable for creating a deviation?
+ 
+-> All
+2:Automatic Relearn Request
+What exactly happens when a relearn request is triggered?
+-> A learning time of the parameterized duration (usually 40 flight hours) is launched for the indicator, in order to determine correct min/max thresholds.  
+3:Activate & Remove Threshold
+Since the checkbox is removed, how will users activate or deactivate thresholds if required in the future?
+Are there any backward compatibility concerns for existing deviations using this functionality?
+ 
+-> User can't desactivate indicators anymore, they have to create a deviation instead. No backwards compatibility is necessary, 
+: when the new version will be in production, the deviations will be effective for new aircraft configurations.
+4:Default Filtering Law Display
+From where is the default filtering law retrieved?
+What should be displayed if no default filtering law exists for an indicator?
+ 
+-> In the health configuration you have default rules that can be used. Some laws are already linked to an indicator, so this link is already present in the code / database.
+ 
+Example of health_configuration.xml file present in health.zip file of a H225's configuration >
+ 
+Default laws in the configurations are defined here :
+ 
+	<!-- Filtering law conf for EHMS indicators -->
+<filteringLaws>
+<filteringLaw name="LAW_1">
+<contextualParameter name="NR" min="500.0" max="2500.0"/>
+</filteringLaw>
+<filteringLaw name="LAW_2">
+<contextualParameter name="IAS" min="2.0" max="15.0"/>
+</filteringLaw>
+</filteringLaws>
+	Later on in the same file, you can see indicators lines linked with one of these laws :
+ 
+	<indicators>
+<indicator name="Fail Safe 1-1" algorithm="Read" reference="1-1" unit="g" lsb="1" maxPointsPerHour="5" invalidityThreshold="0.1" filteringLaw="LAW_1">
 
-
-import java.util.HashMap;
-import java.util.Map;
-
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-import org.eclipse.jface.viewers.ISelectionChangedListener;
-import org.eclipse.swt.SWT;
-import org.eclipse.swt.layout.GridData;
-import org.eclipse.swt.layout.GridLayout;
-import org.eclipse.swt.widgets.Composite;
-import org.eclipse.swt.widgets.Label;
-import org.eclipse.swt.widgets.Tree;
-
-import com.eurocopter.mgs.datamodel.aircraft.Aircraft;
-import com.eurocopter.mgs.presentation.configuration.preferences.health.AircraftSelectionComposite;
-import com.eurocopter.mgs.presentation.configuration.preferences.healthalarms.editor.WCTreeCellModifier;
-import com.eurocopter.mgs.presentation.configuration.preferences.healthalarms.provider.WCTreeContentProvider;
-import com.eurocopter.mgs.presentation.configuration.preferences.healthalarms.provider.WCTreeLabelProvider;
-import com.eurocopter.mgs.presentation.configuration.preferences.healthalarms.store.HealthAlarmsPreferenceStore;
-import com.eurocopter.mgs.presentation.configuration.preferences.healthalarms.viewer.WCModelTreeViewer;
-import com.eurocopter.mgs.presentation.configuration.store.MgsPreferenceStoreComposer;
-import com.eurocopter.mgs.presentation.configuration.store.MgsPreferenceStoreManager;
-
-public class HealthAlarmsComposite extends Composite {
-
-   private static final Logger LOGGER = LogManager.getLogger(HealthAlarmsComposite.class);
-
-   /** Hash Map for the health mechanical component. */
-   private final Map<Aircraft, WCMechanicalComponentModel> healthWcModelMap;
-
-   /** TreeViewer for the thresholds. */
-   private WCModelTreeViewer thresholdsTreeViewer;
-
-   /**
-    * ComboBox - A/C Type.
-    */
-   private final AircraftSelectionComposite aircraftCombo;
-
-   /**
-    * The Key.
-    */
-   private Aircraft selectedAircraft = null;
-
-   /**
-    * Store.
-    */
-   private final HealthAlarmsPreferenceStore healthAlarmsPreferenceStore;
-
-   /**
-    * Default constructor. Builds a HealthAlarmsComposite.
-    * 
-    * @param parentStore
-    *           the parent store
-    * @param parent
-    *           the parent composite
-    * @param style
-    *           the style
-    */
-   public HealthAlarmsComposite(MgsPreferenceStoreComposer parentStore, Composite parent) {
-      super(parent, SWT.NONE);
-      GridLayout layout = new GridLayout();
-      layout.marginHeight = 0;
-      layout.marginWidth = 0;
-      layout.verticalSpacing = 0;
-      setLayout(layout);
-      setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true, 1, 1));
-
-      // add the store
-      healthAlarmsPreferenceStore = new HealthAlarmsPreferenceStore(this);
-      parentStore.addStore(healthAlarmsPreferenceStore);
-
-      // instantiate the hash map
-      healthWcModelMap = new HashMap<>();
-
-      // A/C type composite
-      aircraftCombo = new AircraftSelectionComposite(this);
-      aircraftCombo.forceFocus();
-
-      // set a space between composite
-      new Label(this, SWT.NONE);
-
-      // creation of the treeView
-      createTreeViewer(this);
-
-      aircraftCombo.getComboViewer().addSelectionChangedListener((ISelectionChangedListener) event -> {
-         selectedAircraft = aircraftCombo.getSelectedAircraft();
-         if (selectedAircraft != null) {
-            healthAlarmsPreferenceStore.initMechanicalComponentData(selectedAircraft);
-            WCMechanicalComponentModel aircraftComponentModel = healthAlarmsPreferenceStore.getHealthModels(selectedAircraft);
-            refreshViewer(selectedAircraft, aircraftComponentModel);
-         }
-
-      });
-   }
-
-   /**
-    * Create the thresholds Tree Viewer.
-    * 
-    * @param composite
-    *           Parent Composite
-    */
-   private void createTreeViewer(Composite composite) {
-      final Tree tree = new Tree(composite, SWT.BORDER | SWT.H_SCROLL | SWT.V_SCROLL | SWT.FULL_SELECTION);
-      tree.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true, 2, 1));
-      tree.setHeaderVisible(true);
-      tree.setLinesVisible(true);
-      thresholdsTreeViewer = new WCModelTreeViewer(tree, healthWcModelMap, healthAlarmsPreferenceStore);
-      thresholdsTreeViewer.setLabelProvider(new WCTreeLabelProvider());
-      thresholdsTreeViewer.setContentProvider(new WCTreeContentProvider());
-      thresholdsTreeViewer.setCellModifier(new WCTreeCellModifier(thresholdsTreeViewer));
-   }
-
-   /**
-    * Refresh Viewer.
-    * 
-    * @param wcModel
-    *           List<HealthWCModel> models.
-    */
-   private void refreshViewer(Aircraft aircraft, WCMechanicalComponentModel wcModel) {
-      thresholdsTreeViewer.setData("aircraft", aircraft);
-      thresholdsTreeViewer.setSelectedAircraft(aircraft);
-      thresholdsTreeViewer.setInput(wcModel);
-      thresholdsTreeViewer.expandAll();
-      thresholdsTreeViewer.refresh();
-   }
-
-   /**
-    * Perform Apply for the preference page.
-    */
-   public void performApply() {
-      healthAlarmsPreferenceStore.innerSave();
-      try {
-         MgsPreferenceStoreManager.saveAircraftConfigurations();
-         MgsPreferenceStoreManager.clearAircraftConfigurations();
-      } catch (Exception e) {
-         LOGGER.error("Error while saving health preferences", e);
-      }
-   }
-
-   /**
-    * Validate data before setting them.
-    * 
-    * @return true if data are valid, false otherwise
-    */
-   public boolean isValidData() {
-      return healthAlarmsPreferenceStore.isValidData(healthWcModelMap);
-   }
-
-   /**
-    * Perform Defaults for the preference page.
-    */
-   public void performDefaults() {
-      if (selectedAircraft != null) {
-         healthWcModelMap.clear();
-         refreshViewer(selectedAircraft, healthAlarmsPreferenceStore.loadHealthModels(selectedAircraft));
-      }
-   }
-
-   /**
-    * Cancel was pressed.
-    */
-   public void performCancel() {
-      // empty the store, otherwise data will be saved because of our handling of needSaving method.
-      healthAlarmsPreferenceStore.emptyData();
-   }
-}
+5:Single Deviation Restriction
+What user message should be displayed when attempting to create a second deviation for an indicator?
+Should the creation controls be disabled or should validation occur on save?
+ 
+-> A popup message saying "A deviation is already set on  this indicator.", must be displayed when the user tries to click on the considered indicator line (highlighted in blue) so that he understands why he can't edit the line.
+6:Deviation Update Restriction
+Can users view deviation details even though updates are not allowed?
+ 
+-> When a deviation is set, the parameters of the deviation are be displayed highlighted in blue, in place of the default ones.
+Then the users can see the "deviated" parameters 
+- On the "deviated" indicator line highlighted in blue.
+- On the "indicator list" tab also
+7; Deviation Effective Date
+Since deviations become active immediately, should the system store the creation timestamp?  
+ 
+-> yes
+8:Applicable Indicators
+Can you provide the complete list of supported aircraft types and indicator types?
+Are there any exceptions where deviations are not allowed?
+ 
+-> The supported A/C types are all the aircraft that can be managed by MGS. You can find them in the dropdown lists of the aircraft creation screen.
+There are no exceptions, all indicators can be "deviated"
+9:UI Behavior
+Should all changes be saved immediately or require an explicit Save action?
+->  The save action is triggered by the "Apply" button on the right bottom corner, so that the user can double check the input data.
+The "Apply" action opens a confirmation popup message saying : 
+- "Deviation successfully set on indicator {indicator_name}" if successful.
+- "Error : deviation can't be set on indicator {indicator_name}. Reason : TE field is mandatory" if there is an error (for instance : mandatory TE field is empty)
+10Database:
+Database table design for deviation what are table linked and fields?
+ 
+-> An indicator table should be created with necessary fields, linked to an indicator and a configuration for an aircraft.
+The "aircraft_configuration" table stores configuration for an aircraft instance. The "indicator_configuration" table stores the current configurations of indicators that has to be ehanced with deviations.
+The link with the filtering laws is already set in the "indicator_configuration" table (column "filtering_law")
