@@ -1,26 +1,59 @@
-
-
-import java.io.Serializable;
-import java.util.HashSet;
-import java.util.Set;
-
-public class IndicatorConfigurationDto implements Serializable {
-
-   private static final long serialVersionUID = 1L;
-
-   private final String indicatorId;
-
-   private final Set<ThresholdConfigurationDto> thresholdConfigurationDtos = new HashSet<>();
-
-   public IndicatorConfigurationDto(String indicatorId) {
-      this.indicatorId = indicatorId;
-   }
-
-   public final String getIndicatorId() {
-      return indicatorId;
-   }
-
-   public final Set<ThresholdConfigurationDto> getThresholdConfigurationDtos() {
-      return thresholdConfigurationDtos;
-   }
+// Compiled from IndicatorConfigurationDto.java (version 21 : 65.0, super bit)
+public class com.eurocopter.mgs.service.health.common.dto.IndicatorConfigurationDto implements java.io.Serializable {
+  
+  // Field descriptor #23 J
+  private static final long serialVersionUID = 1L;
+  
+  // Field descriptor #19 Ljava/lang/String;
+  private final java.lang.String indicatorId;
+  
+  // Field descriptor #15 Ljava/util/Set;
+  // Signature: Ljava/util/Set<Lcom/eurocopter/mgs/service/health/common/dto/ThresholdConfigurationDto;>;
+  private final java.util.Set thresholdConfigurationDtos;
+  
+  // Method descriptor #29 (Ljava/lang/String;)V
+  // Stack: 3, Locals: 2
+  public IndicatorConfigurationDto(java.lang.String indicatorId);
+     0  aload_0 [this]
+     1  invokespecial java.lang.Object() [1]
+     4  aload_0 [this]
+     5  new java.util.HashSet [7]
+     8  dup
+     9  invokespecial java.util.HashSet() [9]
+    12  putfield com.eurocopter.mgs.service.health.common.dto.IndicatorConfigurationDto.thresholdConfigurationDtos : java.util.Set [10]
+    15  aload_0 [this]
+    16  aload_1 [indicatorId]
+    17  putfield com.eurocopter.mgs.service.health.common.dto.IndicatorConfigurationDto.indicatorId : java.lang.String [16]
+    20  return
+      Line numbers:
+        [pc: 0, line: 18]
+        [pc: 4, line: 16]
+        [pc: 15, line: 19]
+        [pc: 20, line: 20]
+      Local variable table:
+        [pc: 0, pc: 21] local: this index: 0 type: com.eurocopter.mgs.service.health.common.dto.IndicatorConfigurationDto
+        [pc: 0, pc: 21] local: indicatorId index: 1 type: java.lang.String
+  
+  // Method descriptor #36 ()Ljava/lang/String;
+  // Stack: 1, Locals: 1
+  public final java.lang.String getIndicatorId();
+    0  aload_0 [this]
+    1  getfield com.eurocopter.mgs.service.health.common.dto.IndicatorConfigurationDto.indicatorId : java.lang.String [16]
+    4  areturn
+      Line numbers:
+        [pc: 0, line: 23]
+      Local variable table:
+        [pc: 0, pc: 5] local: this index: 0 type: com.eurocopter.mgs.service.health.common.dto.IndicatorConfigurationDto
+  
+  // Method descriptor #38 ()Ljava/util/Set;
+  // Signature: ()Ljava/util/Set<Lcom/eurocopter/mgs/service/health/common/dto/ThresholdConfigurationDto;>;
+  // Stack: 1, Locals: 1
+  public final java.util.Set getThresholdConfigurationDtos();
+    0  aload_0 [this]
+    1  getfield com.eurocopter.mgs.service.health.common.dto.IndicatorConfigurationDto.thresholdConfigurationDtos : java.util.Set [10]
+    4  areturn
+      Line numbers:
+        [pc: 0, line: 27]
+      Local variable table:
+        [pc: 0, pc: 5] local: this index: 0 type: com.eurocopter.mgs.service.health.common.dto.IndicatorConfigurationDto
 }
