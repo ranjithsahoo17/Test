@@ -1,252 +1,172 @@
 
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 
-import org.eclipse.jface.resource.ColorRegistry;
-import org.eclipse.jface.resource.FontRegistry;
+import org.eclipse.jface.viewers.ArrayContentProvider;
+import org.eclipse.jface.viewers.CellEditor;
+import org.eclipse.jface.viewers.CheckboxCellEditor;
+import org.eclipse.jface.viewers.ComboBoxViewerCellEditor;
+import org.eclipse.jface.viewers.ICellEditorListener;
+import org.eclipse.jface.viewers.LabelProvider;
+import org.eclipse.jface.viewers.TextCellEditor;
+import org.eclipse.jface.viewers.TreeViewer;
 import org.eclipse.swt.SWT;
-import org.eclipse.swt.graphics.Color;
-import org.eclipse.swt.graphics.Font;
-import org.eclipse.swt.graphics.FontData;
-import org.eclipse.swt.graphics.Image;
-import org.eclipse.swt.graphics.RGB;
+import org.eclipse.swt.widgets.Text;
+import org.eclipse.swt.widgets.Tree;
+import org.eclipse.swt.widgets.TreeColumn;
 
-import com.eurocopter.mgs.core.presentation.common.Activator;
-import com.eurocopter.mgs.core.presentation.utils.GuiConstants;
+import com.eurocopter.mgs.core.presentation.i18n.Messages;
+import com.eurocopter.mgs.datamodel.aircraft.Aircraft;
+import com.eurocopter.mgs.datamodel.health.monitoring.ThresholdLevel;
+import com.eurocopter.mgs.datamodel.health.monitoring.ThresholdType;
+import com.eurocopter.mgs.presentation.configuration.preferences.healthalarms.WCMechanicalComponentModel;
+import com.eurocopter.mgs.presentation.configuration.preferences.healthalarms.WCModelDisplayProperty;
+import com.eurocopter.mgs.presentation.configuration.preferences.healthalarms.store.HealthAlarmsPreferenceStore;
 
-/**
- * MGS Core images utility class.
- */
-public final class CoreResourcesUtils {
+public class WCModelTreeViewer extends TreeViewer {
 
-   /** **************** TOP BANNER RESOURCES ************. */
-   /** Font for the title */
-   public static final String MGS_TITLE = "MGS_TITLE";
-   public static final String MGS_SUBTITLE = "MGS_SUBTITLE";
+   protected Map<Aircraft, WCMechanicalComponentModel> healthWcModelMap;
+   protected HealthAlarmsPreferenceStore healthAlarmsPreferenceStore;
 
-   public static final String MGS_LOGIN_LINE1 = "MGS_LOGIN_LINE1";
-   public static final String MGS_LOGIN_LINE2 = "MGS_LOGIN_LINE2";
-   public static final String MGS_LOGIN_BUTTON = "MGS_LOGIN_BUTTON";
-   public static final String MGS_LOGIN_FIELD = "MGS_LOGIN_FIELD";
+   private Aircraft selectedAircraft = null;
 
-   public static final String MGS_PRODUCT_KEY_FIELD = "MGS_PRODUCT_KEY_FIELD";
-   public static final String MGS_PRODUCT_KEY_TITLE = "MGS_PRODUCT_KEY_TITLE";
-   public static final String MGS_PRODUCT_KEY_TEXT = "MGS_PRODUCT_KEY_TEXT";
-   public static final String MGS_PRODUCT_KEY_BUTTON = "MGS_PRODUCT_KEY_BUTTON";
+   public WCModelTreeViewer(Tree tree, Map<Aircraft, WCMechanicalComponentModel> healthWcModelMap, HealthAlarmsPreferenceStore healthAlarmsPreferenceStore) {
+      super(tree);
+      this.healthWcModelMap = healthWcModelMap;
+      this.healthAlarmsPreferenceStore = healthAlarmsPreferenceStore;
+      createColumns(tree);
 
-   /** Font for logged as */
-   public static final String MGS_LOGGED_AS = "MGS_LOGGED_AS";
-
-   /** ************ AIRCRAFT BANNER RESOURCES ************. */
-
-   /** Font Toolbar **/
-   public static final String TOOLBAR_ACTION_FONT = "TOOLBAR_ACTION_FONT";
-
-   /** **********************************************************. */
-   /** Alarm Table font key. */
-   public static final String ALARM_TABLE_FONT = "ALARM_TABLE_FONT";
-
-   /** Alarm Table font name. */
-   public static final String ALARM_TABLE_FONT_NAME = "Segoe UI";
-
-   /** Amber color key. */
-   public static final String COLOR_AMBER = "COLOR_AMBER";
-
-   /** Red Color key */
-   public static final String COLOR_RED = "COLOR_RED";
-
-   /** Light Grey Color key */
-   public static final String COLOR_GREY_DISABLED = "COLOR_GREY_DISABLED";
-
-   /** Grey Color key */
-   public static final String COLOR_GREY = "COLOR_GREY";
-
-   /** Dark blue Color key */
-   public static final String COLOR_DARK_BLUE = "COLOR_DARK_BLUE";
-
-   /** Pale Green Color key */
-   public static final String COLOR_GREEN = "COLOR_GREEN";
-
-   /** Black color */
-   public static final String COLOR_BLACK = "COLOR_BLACK";
-
-   /** Text color */
-   public static final String COLOR_TEXT = "COLOR_TEXT";
-
-   /** Dark Blue color */
-   public static final String COLOR_BLUE_LINK = "COLOR__BLUE_LINK";
-
-   /** Selection Blue color */
-   public static final String COLOR_SELECTION_BLUE = "COLOR_SELECTION_BLUE";
-
-   public static final String COLOR_BLUE_MAIN_BUTTON_NORMAL = "COLOR_BLUE_MAIN_BUTTON_NORMAL";
-   public static final String COLOR_BLUE_MAIN_BUTTON_HOVER = "COLOR_BLUE_MAIN_BUTTON_HOVER";
-   public static final String COLOR_BLUE_MAIN_BUTTON_DISABLED_BACKGROUND = "COLOR_BLUE_MAIN_BUTTON_DISABLED_BACKGROUND";
-   public static final String COLOR_BLUE_MAIN_BUTTON_DISABLED_TEXT = "COLOR_BLUE_MAIN_BUTTON_DISABLED_TEXT";
-   public static final String COLOR_BLUE_BORDER_FOCUSED_FIELD = "COLOR_BLUE_BORDER_FOCUSED_FIELD";
-
-   /** Minor title in the flight report */
-   public static final String FLIGHT_REPORT_MINOR_TITLE = "FLIGHT_MINOR_TITLE";
-
-   /** Engine title in the flight report */
-   public static final String FLIGHT_REPORT_ENGINE_TITLE = "FLIGHT_ENGINE_TITLE";
-
-   /** exceedance */
-   public static final String EXCEEDANCE_MINOR = "EXCEEDANCE_MINOR_TITLE";
-
-   /** Aircraft Banner Register Number */
-   public static final String AIRCRAFT_BANNER_FONT_REGISTER_NUMBER = "AIRCRAFT_BANNER_FONT_REGISTER_NUMBER";
-
-   /** Aircraft Banner Type */
-   public static final String AIRCRAFT_BANNER_FONT_AIRCRAFT_TYPE = "AIRCRAFT_BANNER_FONT_AIRCRAFT_TYPE";
-
-   /** MGS Font */
-   public static final String FONT_MGS = "Microsoft Sans Serif";
-
-   /** Font for Sort By */
-   public static final String MGS_SORT_BY = "MGS_SORT_BY";
-
-   /** Font for Fleet title */
-   public static final String MGS_FLEET_TITLE = "MGS_FLEET_TITLE";
-
-   /** Font for Aircraft Name */
-   public static final String MGS_AIRCRAFT_NAME = "MGS_AIRCRAFT_NAME";
-
-   /** Font for Aircraft Type */
-   public static final String MGS_AIRCRAFT_TYPE = "MGS_AIRCRAFT_TYPE";
-
-   /** Font for Running Features */
-   public static final String MGS_RUNNING_FEATURE = "MGS_RUNNING_FEATURE";
-
-   public static final String MGS_FLIGHT_DETAILS = "MGS_FLIGHT_DETAILS";
-
-   public static final String MGS_TITLE_MAINTENANCE_REPORT = "MGS_TITLE_MAINTENANCE_REPORT";
-
-   /** White Color */
-   public static final String COLOR_WHITE = "COLOR_WHITE";
-
-   /** Minor title in the flight report */
-   public static final String MFD_FLIGHT_REPORT_MINOR_FONT = "MFD_MINOR_FONT";
-
-   /** REPORT_BACKGROUND_LABEL_COLOR */
-   public static final String REPORT_BACKGROUND_LABEL_COLOR = "REPORT_BACKGROUND_LABEL_COLOR";
-
-   /** The Constant AIRCRAFT_PERSPECTIVE_ID. */
-   public static final String AIRCRAFT_PERSPECTIVE_ID = "com.eurocopter.mgs.app.perspective.AircraftPerspective";
-
-   /** HighLight Color */
-   public static final String HIGHLIGHT_COLOR = "HIGHLIGHT_COLOR";
-
-   /** Default color for a title */
-   public static final String COLOR_BLUE_TITLE = "COLOR_BLUE_TITLE";
-
-   /** Color for failure group 1 */
-   public static final String FAILURE_GROUP1 = "FAILURE_GROUP1";
-
-   /** Color for failure group 2 */
-   public static final String FAILURE_GROUP2 = "FAILURE_GROUP2";
-
-   public static final String RTB_MODIFIABLE_VALUES_FONT = "RTB_MODIFIABLE_VALUES_FONT";
-
-   public static final String COLOR_GREY_BACKGROUND_UI = "COLOR_GREY_BACKGROUND_UI";
-
-   public static final String MGS_WARNING_MESSAGE = "MGS_WARNING_MESSAGE";
-
-   /**
-    * Prevents instantiation.
-    */
-   private CoreResourcesUtils() {
-   }
-
-   static {
-      // Font
-      FontRegistry fontRegistry = CoreResource.getFontRegistry();
-      fontRegistry.put(ALARM_TABLE_FONT, new FontData[] { new FontData(ALARM_TABLE_FONT_NAME, 9, SWT.NONE) });
-      fontRegistry.put(MFD_FLIGHT_REPORT_MINOR_FONT, new FontData[] { new FontData("Arial", 14 / 2, SWT.BOLD) });
-      fontRegistry.put(FLIGHT_REPORT_MINOR_TITLE, new FontData[] { new FontData(FONT_MGS, 10, SWT.BOLD) });
-      fontRegistry.put(RTB_MODIFIABLE_VALUES_FONT, new FontData[] { new FontData(FONT_MGS, 10, SWT.BOLD | SWT.ITALIC) });
-      fontRegistry.put(FLIGHT_REPORT_ENGINE_TITLE, new FontData[] { new FontData(FONT_MGS, 8, SWT.BOLD) });
-      fontRegistry.put(EXCEEDANCE_MINOR, new FontData[] { new FontData(FONT_MGS, 9, SWT.BOLD) });
-
-      fontRegistry.put(AIRCRAFT_BANNER_FONT_REGISTER_NUMBER, new FontData[] { new FontData(FONT_MGS, 10, SWT.BOLD) });
-      fontRegistry.put(AIRCRAFT_BANNER_FONT_AIRCRAFT_TYPE, new FontData[] { new FontData(FONT_MGS, 8, SWT.NONE) });
-
-      fontRegistry.put(MGS_LOGIN_LINE1, new FontData[] { new FontData(FONT_MGS, 24, SWT.BOLD) });
-      fontRegistry.put(MGS_LOGIN_LINE2, new FontData[] { new FontData(FONT_MGS, 24, SWT.NONE) });
-      fontRegistry.put(MGS_LOGIN_BUTTON, new FontData[] { new FontData(FONT_MGS, 12, SWT.NONE) });
-      fontRegistry.put(MGS_LOGIN_FIELD, new FontData[] { new FontData(FONT_MGS, 12, SWT.NONE) });
-      fontRegistry.put(MGS_PRODUCT_KEY_FIELD, new FontData[] { new FontData(FONT_MGS, 12, SWT.NONE) });
-      fontRegistry.put(MGS_PRODUCT_KEY_TITLE, new FontData[] { new FontData(FONT_MGS, 16, SWT.BOLD) });
-      fontRegistry.put(MGS_PRODUCT_KEY_TEXT, new FontData[] { new FontData(FONT_MGS, 12, SWT.NONE) });
-      fontRegistry.put(MGS_PRODUCT_KEY_BUTTON, new FontData[] { new FontData(FONT_MGS, 12, SWT.NONE) });
-      fontRegistry.put(MGS_WARNING_MESSAGE, new FontData[] { new FontData(FONT_MGS, 12, SWT.NONE) });
-
-      fontRegistry.put(MGS_TITLE, new FontData[] { new FontData(FONT_MGS, GuiConstants.getStyles().getFontSizeMgsTitle(), SWT.NONE) });
-      fontRegistry.put(MGS_SUBTITLE, new FontData[] { new FontData(FONT_MGS, GuiConstants.getStyles().getFontSizeMgsSubtitle(), SWT.NONE) });
-      fontRegistry.put(MGS_LOGGED_AS, new FontData[] { new FontData(FONT_MGS, GuiConstants.getStyles().getFontSizeLoggedAs(), SWT.NONE) });
-      fontRegistry.put(MGS_SORT_BY, new FontData[] { new FontData(FONT_MGS, 11, SWT.BOLD) });
-      fontRegistry.put(MGS_FLEET_TITLE, new FontData[] { new FontData(FONT_MGS, 14, SWT.NONE) });
-      fontRegistry.put(MGS_AIRCRAFT_NAME, new FontData[] { new FontData(FONT_MGS, 14, SWT.BOLD) });
-      fontRegistry.put(MGS_AIRCRAFT_TYPE, new FontData[] { new FontData(FONT_MGS, 10, SWT.NONE) });
-      fontRegistry.put(MGS_RUNNING_FEATURE, new FontData[] { new FontData(FONT_MGS, 10, SWT.BOLD) });
-      fontRegistry.put(MGS_FLIGHT_DETAILS, new FontData[] { new FontData(FONT_MGS, 10, SWT.BOLD) });
-      fontRegistry.put(MGS_TITLE_MAINTENANCE_REPORT, new FontData[] { new FontData(FONT_MGS, 10, SWT.BOLD) });
-      fontRegistry.put(TOOLBAR_ACTION_FONT, new FontData[] { new FontData(FONT_MGS, 9, SWT.NONE) });
-
-      /* Color */
-      ColorRegistry colorRegistry = CoreResource.getColorRegistry();
-      colorRegistry.put(COLOR_RED, new RGB(242, 40, 29)); // #F2281D
-      colorRegistry.put(COLOR_AMBER, new RGB(218, 166, 31)); // This is not the AH graphical guideline (but validated by Airbus)
-      colorRegistry.put(COLOR_GREEN, new RGB(132, 189, 0)); // #84BD00
-      colorRegistry.put(HIGHLIGHT_COLOR, new RGB(255, 202, 102)); // #FFCA66
-      colorRegistry.put(COLOR_GREY, new RGB(145, 159, 173)); // #919fad
-      colorRegistry.put(COLOR_DARK_BLUE, new RGB(8, 40, 77)); // #08284d
-      colorRegistry.put(COLOR_GREY_DISABLED, new RGB(212, 212, 212));
-      colorRegistry.put(COLOR_GREY_BACKGROUND_UI, new RGB(240, 240, 240));
-      colorRegistry.put(COLOR_BLACK, new RGB(0, 0, 0));
-      colorRegistry.put(COLOR_TEXT, new RGB(8, 40, 77));
-      colorRegistry.put(COLOR_WHITE, new RGB(255, 255, 255)); // #ffffff
-      colorRegistry.put(COLOR_BLUE_TITLE, new RGB(12, 63, 115)); // #0C3F73
-      colorRegistry.put(COLOR_BLUE_LINK, new RGB(25, 76, 127));
-      colorRegistry.put(COLOR_SELECTION_BLUE, new RGB(49, 169, 215));
-      colorRegistry.put(COLOR_BLUE_MAIN_BUTTON_NORMAL, new RGB(46, 167, 214)); // #2BA7D6
-      colorRegistry.put(COLOR_BLUE_MAIN_BUTTON_HOVER, new RGB(27, 134, 175)); // #1B86AF
-      colorRegistry.put(COLOR_BLUE_MAIN_BUTTON_DISABLED_BACKGROUND, new RGB(25, 72, 126)); // #19487E
-      colorRegistry.put(COLOR_BLUE_MAIN_BUTTON_DISABLED_TEXT, new RGB(92, 117, 154)); // #5C759A
-      colorRegistry.put(COLOR_BLUE_BORDER_FOCUSED_FIELD, new RGB(0, 136, 170)); // #0088aa
-      colorRegistry.put(FAILURE_GROUP1, new RGB(201, 220, 229));
-      colorRegistry.put(FAILURE_GROUP2, new RGB(230, 230, 230));
+      String[] properties = new String[WCModelDisplayProperty.values().length];
+      int i = 0;
+      for (WCModelDisplayProperty prop : WCModelDisplayProperty.values()) {
+         properties[i++] = prop.getKey();
+      }
+      setColumnProperties(properties);
    }
 
    /**
-    * Gets a image from the image registry.
-    *
-    * @param key
-    *           the image key
-    * @return a image from the image registry that match the given key.
+    * Create columns of the tree.
+    * 
+    * @param tree
+    *           the tree for which columns have to be created
+    * @return the list of columns name
     */
-   public static Image getImage(String key) {
-      return Activator.getDefault().getImageRegistry().get(key);
+   private void createColumns(Tree tree) {
+
+      final WCModelDisplayProperty[] properties = WCModelDisplayProperty.values();
+
+      for (WCModelDisplayProperty property : properties) {
+         final TreeColumn column = new TreeColumn(tree, SWT.CENTER);
+         column.setText(property.getKey().isEmpty() ? "" : Messages.CORE.getMnemonicEscapedString(property.getKey()));
+         column.setWidth(property.getColumnSize());
+      }
+
+      createCellEditors(tree, properties);
+   }
+
+   private void createCellEditors(Tree tree, final WCModelDisplayProperty[] propertyNames) {
+      CellEditor[] editors = new CellEditor[propertyNames.length];
+      /* editors[WCModelDisplayProperty.CHECKBOX.ordinal()] = getCellEditor(tree, false); */ // BCR-6605 Check Box Remove from cell editor.
+      ComboBoxViewerCellEditor cellEditor = new ComboBoxViewerCellEditor(tree, SWT.READ_ONLY);
+      cellEditor.setLabelProvider(new LabelProvider() {
+         @Override
+         public String getText(Object element) {
+            if (element instanceof ThresholdLevel level) {
+               return Messages.CORE.getString("ThresholdLevel_" + level.name());
+            }
+            return null;
+         }
+      });
+      cellEditor.addListener(createWCColumnListener());
+      cellEditor.setContentProvider(new ArrayContentProvider());
+      List<ThresholdLevel> levels = new ArrayList<>();
+      levels.add(ThresholdLevel.LOW);
+      levels.add(ThresholdLevel.HIGH);
+      cellEditor.setInput(levels);
+      editors[WCModelDisplayProperty.LEVEL.ordinal()] = cellEditor;
+
+      cellEditor = new ComboBoxViewerCellEditor(tree, SWT.READ_ONLY);
+      cellEditor.setLabelProvider(new LabelProvider() {
+         @Override
+         public String getText(Object element) {
+            if (element instanceof ThresholdType type) {
+               return Messages.CORE.getString("ThresholdType_" + type.name());
+            }
+            return null;
+         }
+      });
+      cellEditor.addListener(createWCColumnListener());
+      cellEditor.setContentProvider(new ArrayContentProvider());
+      List<ThresholdType> types = new ArrayList<>();
+      types.add(ThresholdType.FIXED);
+      types.add(ThresholdType.LEARNED);
+      cellEditor.setInput(types);
+
+      editors[WCModelDisplayProperty.TYPE.ordinal()] = cellEditor;
+
+      editors[WCModelDisplayProperty.VALUE.ordinal()] = getCellEditor(tree, true);
+      editors[WCModelDisplayProperty.MIN_VALUE.ordinal()] = getCellEditor(tree, true);
+      editors[WCModelDisplayProperty.MAX_VALUE.ordinal()] = getCellEditor(tree, true);
+      editors[WCModelDisplayProperty.LEARN_TIME.ordinal()] = getCellEditor(tree, true);
+
+      TextCellEditor workcardEditor = (TextCellEditor) getCellEditor(tree, true);
+      ((Text) workcardEditor.getControl()).setTextLimit(255);
+      editors[WCModelDisplayProperty.WORKCARD_REF.ordinal()] = workcardEditor;
+
+      editors[WCModelDisplayProperty.MIN_DEV.ordinal()] = getCellEditor(tree, true);
+      editors[WCModelDisplayProperty.MEAN_MULT_FACTOR.ordinal()] = getCellEditor(tree, true);
+      editors[WCModelDisplayProperty.DEV_COEF.ordinal()] = getCellEditor(tree, true);
+      editors[WCModelDisplayProperty.NB_POINTS.ordinal()] = getCellEditor(tree, true);
+
+      editors[WCModelDisplayProperty.MAX_TIME_WO_ACQ.ordinal()] = getCellEditor(tree, true);
+
+      editors[WCModelDisplayProperty.FILTERING_LAW.ordinal()] = getCellEditor(tree, true); // added
+      editors[WCModelDisplayProperty.TE.ordinal()] = getCellEditor(tree, true); // field edit
+
+      super.setCellEditors(editors);
    }
 
    /**
-    * Gets the font.
-    *
-    * @param symbolicName
-    *           The font key
-    * @return the font;
+    * 
+    * @return
     */
-   public static Font getFont(String symbolicName) {
-      return CoreResource.getFontRegistry().get(symbolicName);
+   private CellEditor getCellEditor(Tree tree, boolean isTextEditor) {
+      CellEditor cellEditor = isTextEditor ? new TextCellEditor(tree) : new CheckboxCellEditor(tree);
+      cellEditor.addListener(createWCColumnListener());
+      return cellEditor;
    }
 
    /**
-    * Gets the color.
-    *
-    * @param symbolicName
-    *           color key.
-    * @return the color.
+    * @return
     */
-   public static Color getColor(String symbolicName) {
-      return CoreResource.getColorRegistry().get(symbolicName);
+   private ICellEditorListener createWCColumnListener() {
+      return new ICellEditorListener() {
+         @Override
+         public void editorValueChanged(boolean arg0, boolean arg1) {
+            // nothing to do
+         }
+
+         @Override
+         public void cancelEditor() {
+            // nothing to do
+         }
+
+         @Override
+         public void applyEditorValue() {
+            if (!healthWcModelMap.containsKey(selectedAircraft)) {
+               healthWcModelMap.put(selectedAircraft, healthAlarmsPreferenceStore.getHealthModels(selectedAircraft));
+            }
+         }
+      };
+   }
+
+   /**
+    * @param selectedAircraft
+    *           the selectedAircraft to set
+    */
+   public void setSelectedAircraft(Aircraft selectedAircraft) {
+      this.selectedAircraft = selectedAircraft;
    }
 }
