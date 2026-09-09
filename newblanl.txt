@@ -1,70 +1,115 @@
 
-
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import org.eclipse.persistence.annotations.JoinFetch;
+import org.eclipse.persistence.annotations.JoinFetchType;
+
 import com.eurocopter.mgs.datamodel.health.common.Accelerometer;
 import com.eurocopter.mgs.datamodel.health.common.HealthAlgorithm;
 
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.CollectionTable;
+import jakarta.persistence.Column;
+import jakarta.persistence.ElementCollection;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.NamedQuery;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.OrderColumn;
+import jakarta.persistence.Table;
+
+@Entity
+@Table(name = "INDICATOR_CONFIGURATION")
+@NamedQuery(name = "findIndicatorConfigurationByHealthConfigurationAndIndicator", query = "SELECT ic FROM HealthMonitoringConfiguration hmc JOIN hmc.mechanicalComponentConfigurations hmcc JOIN hmcc.indicatorConfigurations ic WHERE hmc.id = :configurationId AND ic.indicator.id = :indicatorId")
 public class IndicatorConfiguration implements Serializable {
 
    private static final long serialVersionUID = 1L;
 
+   @Id
+   @Column(name = "ID", nullable = false)
    private String id;
 
+   @ManyToOne(fetch = FetchType.EAGER, optional = false)
+   @JoinColumn(name = "INDICATOR_ID", nullable = false)
    private Indicator indicator;
 
+   @Column(name = "REFERENCE")
    private String reference;
 
+   @Column(name = "REFERENCE_INDICATOR")
    private String referenceIndicator;
 
+   @Column(name = "SLIDING_MEDIAN")
    private Integer slidingMedian;
 
+   @Column(name = "ALGORITHM")
    private String healthAlgorithm;
 
    /**
     * Algorithm parameters.
     */
+   @Column(name = "PARAMETER")
+   @ElementCollection(fetch = FetchType.EAGER)
+   @CollectionTable(name = "INDICATOR_PARAMETER")
+   @OrderColumn(name = "PARAMETER_ORDER")
    private List<Double> parameters = new ArrayList<>();
 
+   @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.EAGER, orphanRemoval = true)
+   @JoinColumn(name = "INDICATOR_CONFIGURATION_ID", referencedColumnName = "ID")
    private Set<ThresholdConfiguration> thresholdConfigurations = new HashSet<>();
 
    /**
     * Accelerometer that monitors the component.
     */
+   @ManyToOne(fetch = FetchType.EAGER)
+   @JoinColumn(name = "ACCELEROMETER_ID")
+   @JoinFetch(JoinFetchType.OUTER)
    private Accelerometer accelerometer;
 
    /**
     * Filtering Law
     */
+   @Column(name = "FILTERING_LAW")
    private String filteringLaw;
 
    /**
     * Max points per hour
     */
+   @Column(name = "MAX_POINTS_PER_HOUR")
    private Integer maxPointsPerHour;
 
    /**
     * Min Sensor anomaly
     */
+   @Column(name = "MIN_SENSOR")
    private Double minSensor;
 
    /**
     * Max Sensor Anomaly
     */
+   @Column(name = "MAX_SENSOR")
    private Double maxSensor;
 
+   @Column(name = "SENSOR_ANOMALY_WORK_CARD")
    private String sensorAnomalyWorkcard;
 
+   @Column(name = "SENSOR_ANOMALY_SUCCESSIVE_POINTS")
    private Integer sensorAnomalySuccessivePoints;
 
+   @Column(name = "INVALIDITY_WORK_CARD")
    private String invalidityWorkcard;
 
+   @Column(name = "INVALIDITY_THRESHOLD")
    private Double invalidityThreshold;
 
+   @Column(name = "MULTIPLIER")
    private Double multiplier;
 
    IndicatorConfiguration() {
