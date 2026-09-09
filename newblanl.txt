@@ -1,100 +1,216 @@
 
 
-import java.util.HashMap;
+import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.Map;
+import java.util.List;
 import java.util.Set;
 
-import com.eurocopter.mgs.datamodel.aircraft.configuration.Configuration;
-import com.eurocopter.mgs.datamodel.health.monitoring.vpu.VpuComponent;
-import com.eurocopter.mgs.datamodel.health.monitoring.vpu.VpuCounterLabel;
+import com.eurocopter.mgs.datamodel.health.common.Accelerometer;
+import com.eurocopter.mgs.datamodel.health.common.HealthAlgorithm;
 
-/**
- * The Class HealthMonitoringConfiguration.
- */
-public class HealthMonitoringConfiguration extends Configuration {
+public class IndicatorConfiguration implements Serializable {
 
-   /** The Constant serialVersionUID. */
    private static final long serialVersionUID = 1L;
 
-   /** The Constant TYPE. */
-   public static final String TYPE = "HEALTH_MONITORING_CONFIGURATION";
+   private String id;
 
-   /** The health mechanical component configurations. */
-   private Map<HealthMechanicalComponent, HealthMechanicalComponentConfiguration> mechanicalComponentConfigurations = new HashMap<>();
+   private Indicator indicator;
 
-   private EvmConfiguration evmConfiguration;
+   private String reference;
 
-   private Set<FilteringLaw> filteringLaws = new HashSet<>();
+   private String referenceIndicator;
 
-   private Set<VpuCounterLabel> vpuCounterLabels = new HashSet<>();
+   private Integer slidingMedian;
 
-   private Set<VpuComponent> vpuComponents = new HashSet<>();
-
-   private String vpuCounterWorkcard;
+   private String healthAlgorithm;
 
    /**
-    * Instantiates a new health monitoring configuration.
+    * Algorithm parameters.
     */
-   HealthMonitoringConfiguration() {
-   }
+   private List<Double> parameters = new ArrayList<>();
+
+   private Set<ThresholdConfiguration> thresholdConfigurations = new HashSet<>();
 
    /**
-    * Instantiates a new health monitoring configuration.
-    *
-    * @param id
-    *           the id
+    * Accelerometer that monitors the component.
     */
-   public HealthMonitoringConfiguration(String id) {
-      super(id);
+   private Accelerometer accelerometer;
+
+   /**
+    * Filtering Law
+    */
+   private String filteringLaw;
+
+   /**
+    * Max points per hour
+    */
+   private Integer maxPointsPerHour;
+
+   /**
+    * Min Sensor anomaly
+    */
+   private Double minSensor;
+
+   /**
+    * Max Sensor Anomaly
+    */
+   private Double maxSensor;
+
+   private String sensorAnomalyWorkcard;
+
+   private Integer sensorAnomalySuccessivePoints;
+
+   private String invalidityWorkcard;
+
+   private Double invalidityThreshold;
+
+   private Double multiplier;
+
+   IndicatorConfiguration() {
    }
 
-   public Map<HealthMechanicalComponent, HealthMechanicalComponentConfiguration> getMechanicalComponentConfigurations() {
-      return mechanicalComponentConfigurations;
+   public IndicatorConfiguration(String id) {
+      this.id = id;
    }
 
-   public EvmConfiguration getEvmConfiguration() {
-      return evmConfiguration;
+   public final String getId() {
+      return id;
    }
 
-   public void setEvmConfiguration(EvmConfiguration evmConfiguration) {
-      this.evmConfiguration = evmConfiguration;
+   public final Indicator getIndicator() {
+      return indicator;
    }
 
-   @Override
-   public String getConfigurationType() {
-      return TYPE;
+   public String getReference() {
+      return reference;
    }
 
-   public Set<FilteringLaw> getFilteringLaws() {
-      return filteringLaws;
+   public void setReference(String reference) {
+      this.reference = reference;
    }
 
-   public void setFilteringLaws(Set<FilteringLaw> filteringLaws) {
-      this.filteringLaws = filteringLaws;
+   public String getReferenceIndicator() {
+      return referenceIndicator;
    }
 
-   public Set<VpuCounterLabel> getVpuCounterLabels() {
-      return vpuCounterLabels;
+   public void setReferenceIndicator(String referenceIndicator) {
+      this.referenceIndicator = referenceIndicator;
    }
 
-   public void setVpuCounterLabels(Set<VpuCounterLabel> vpuCounterLabels) {
-      this.vpuCounterLabels = vpuCounterLabels;
+   public Integer getSlidingMedian() {
+      return slidingMedian;
    }
 
-   public String getVpuCounterWorkcard() {
-      return vpuCounterWorkcard;
+   public void setSlidingMedian(Integer slidingMedian) {
+      this.slidingMedian = slidingMedian;
    }
 
-   public void setVpuCounterWorkcard(String vpuCounterWorkcard) {
-      this.vpuCounterWorkcard = vpuCounterWorkcard;
+   public final void setIndicator(Indicator indicator) {
+      this.indicator = indicator;
    }
 
-   public Set<VpuComponent> getVpuComponents() {
-      return vpuComponents;
+   public final HealthAlgorithm getHealthAlgorithm() {
+      return healthAlgorithm != null ? HealthAlgorithm.valueOf(healthAlgorithm) : null;
    }
 
-   public void setVpuComponents(Set<VpuComponent> vpuComponents) {
-      this.vpuComponents = vpuComponents;
+   public final void setHealthAlgorithm(HealthAlgorithm healthAlgorithm) {
+      this.healthAlgorithm = healthAlgorithm != null ? healthAlgorithm.name() : null;
+   }
+
+   public List<Double> getParameters() {
+      return parameters;
+   }
+
+   public void setParameters(List<Double> parameters) {
+      this.parameters = parameters;
+   }
+
+   public Set<ThresholdConfiguration> getThresholdConfigurations() {
+      return thresholdConfigurations;
+   }
+
+   public void setThresholdConfigurations(Set<ThresholdConfiguration> thresholdConfigurations) {
+      this.thresholdConfigurations = thresholdConfigurations;
+   }
+
+   public Accelerometer getAccelerometer() {
+      return accelerometer;
+   }
+
+   public void setAccelerometer(Accelerometer accelerometer) {
+      this.accelerometer = accelerometer;
+   }
+
+   public String getFilteringLaw() {
+      return filteringLaw;
+   }
+
+   public void setFilteringLaw(String filteringLaw) {
+      this.filteringLaw = filteringLaw;
+   }
+
+   public Integer getMaxPointsPerHour() {
+      return maxPointsPerHour;
+   }
+
+   public void setMaxPointsPerHour(Integer maxPointsPerHour) {
+      this.maxPointsPerHour = maxPointsPerHour;
+   }
+
+   public Double getMinSensor() {
+      return minSensor;
+   }
+
+   public void setMinSensor(Double minSensor) {
+      this.minSensor = minSensor;
+   }
+
+   public Double getMaxSensor() {
+      return maxSensor;
+   }
+
+   public void setMaxSensor(Double maxSensor) {
+      this.maxSensor = maxSensor;
+   }
+
+   public String getSensorAnomalyWorkcard() {
+      return sensorAnomalyWorkcard;
+   }
+
+   public void setSensorAnomalyWorkcard(String sensorAnomalyWorkcard) {
+      this.sensorAnomalyWorkcard = sensorAnomalyWorkcard;
+   }
+
+   public Integer getSensorAnomalySuccessivePoints() {
+      return sensorAnomalySuccessivePoints;
+   }
+
+   public void setSensorAnomalySuccessivePoints(Integer sensorAnomalySuccessivePoints) {
+      this.sensorAnomalySuccessivePoints = sensorAnomalySuccessivePoints;
+   }
+
+   public Double getInvalidityThreshold() {
+      return invalidityThreshold;
+   }
+
+   public void setInvalidityThreshold(Double invalidityThreshold) {
+      this.invalidityThreshold = invalidityThreshold;
+   }
+
+   public String getInvalidityWorkcard() {
+      return invalidityWorkcard;
+   }
+
+   public void setInvalidityWorkcard(String invalidityWorkcard) {
+      this.invalidityWorkcard = invalidityWorkcard;
+   }
+
+   public Double getMultiplier() {
+      return multiplier;
+   }
+
+   public void setMultiplier(Double multiplier) {
+      this.multiplier = multiplier;
    }
 }
