@@ -1,102 +1,60 @@
+/***************************************/
+/** Copyright Airbus Helicopters 2019 **/
+/***************************************/
+package com.eurocopter.mgs.business.health.model;
 
+import com.eurocopter.mgs.datamodel.health.monitoring.Indicator;
+import com.eurocopter.mgs.datamodel.health.monitoring.IndicatorDisplay;
+import com.eurocopter.mgs.xml.configuration.unit.Unit;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.ListIterator;
-import java.util.Map;
-import java.util.Set;
+public class IndicatorModel {
 
-import com.eurocopter.mgs.datamodel.health.monitoring.ContextualParameter;
-import com.eurocopter.mgs.datamodel.health.monitoring.FilteringLaw;
-import com.eurocopter.mgs.download.analysis.health.data.IHealthIndicatorValueAcquisition;
-import com.eurocopter.mgs.download.analysis.health.impl.HealthIndicatorValueAdapter;
+   private final Indicator indicator;
+   private final IndicatorDisplay indicatorDisplay;
+   private final Object[] availableUnits;
+   private final WCThresholdModel[] thresholdModels;
+   private String name;
 
-public class MarmsFilteringPerFlightHoursAlgorithm extends AbstractFilteringRuleAlgorithm<Long> {
-
-   private static final Map<String, com.eurocopter.mgs.datamodel.health.common.ContextualParameter> MAPPING_CONTEXTUAL_PARAMETERS = new HashMap<>();
-   static {
-      MAPPING_CONTEXTUAL_PARAMETERS.put("NR", com.eurocopter.mgs.datamodel.health.common.ContextualParameter.MARMS_MEAN_NR);
-      MAPPING_CONTEXTUAL_PARAMETERS.put("TRQ1_TRQ2", com.eurocopter.mgs.datamodel.health.common.ContextualParameter.MARMS_MEAN_TRQ1_TRQ2);
-      MAPPING_CONTEXTUAL_PARAMETERS.put("IAS", com.eurocopter.mgs.datamodel.health.common.ContextualParameter.MARMS_MEAN_IAS);
-      MAPPING_CONTEXTUAL_PARAMETERS.put("ZB", com.eurocopter.mgs.datamodel.health.common.ContextualParameter.MARMS_MEAN_ZB);
-      MAPPING_CONTEXTUAL_PARAMETERS.put("COLL_PITCH", com.eurocopter.mgs.datamodel.health.common.ContextualParameter.MARMS_MEAN_COLL_PITCH);
-      MAPPING_CONTEXTUAL_PARAMETERS.put("LONG_PITCH", com.eurocopter.mgs.datamodel.health.common.ContextualParameter.MARMS_MEAN_LONG_PITCH);
-      MAPPING_CONTEXTUAL_PARAMETERS.put("LATT_PITCH", com.eurocopter.mgs.datamodel.health.common.ContextualParameter.MARMS_MEAN_LATT_PITCH);
-      MAPPING_CONTEXTUAL_PARAMETERS.put("PITCH_ATT", com.eurocopter.mgs.datamodel.health.common.ContextualParameter.MARMS_MEAN_PITCH_ATT);
-      MAPPING_CONTEXTUAL_PARAMETERS.put("ROLL_ATT", com.eurocopter.mgs.datamodel.health.common.ContextualParameter.MARMS_MEAN_ROLL_ATT);
+   public IndicatorModel(Indicator indicator, IndicatorDisplay indicatorDisplay, Object[] availableUnits, WCThresholdModel[] thresholdModels) {
+      this.indicator = indicator;
+      this.indicatorDisplay = indicatorDisplay;
+      this.availableUnits = availableUnits;
+      this.thresholdModels = thresholdModels;
+      this.name = indicator.getName();
    }
 
-   private final long flightDuration;
-
-   public MarmsFilteringPerFlightHoursAlgorithm(long flightDuration) {
-      this.flightDuration = flightDuration;
+   public String getName() {
+      return name;
    }
 
-   @Override
-   protected boolean isFilteringLawApplicable(List<HealthIndicatorValueAdapter> indicatorValueAdapters) {
-      if (indicatorValueAdapters.isEmpty()) {
-         // Shall not happen
-         return true;
-      }
-      HealthIndicatorValueAdapter firstIndicatorValueAdapter = indicatorValueAdapters.get(0);
-      // Apply filtering law only on EHMS indicator (i.e. those with contextual values)
-      return !firstIndicatorValueAdapter.getContextualValues().isEmpty();
+   public void setName(String name) {
+      this.name = name;
    }
 
-   @Override
-   protected Long getKey(IHealthIndicatorValueAcquisition acquisition) {
-      return Math.round(Math.floor((double) acquisition.getCumulatedFlightTime() / (double) 3600));
+   public Indicator getIndicator() {
+      return indicator;
    }
 
-   @Override
-   protected int getMaxPointsAtKey(Long hour, int configuredMaxPointsPerHour) {
-      long lastHourId = Math.round(Math.floor((double) flightDuration / (double) (3600 * 1000)));
-      if (hour == lastHourId) {
-         long lastFlightHourDuration = flightDuration % (3600 * 1000);
-         double durationRatio = (double) lastFlightHourDuration / (double) (3600 * 1000);
-         return (int) Math.round(Math.ceil(durationRatio * configuredMaxPointsPerHour));
-      }
-      if (hour > lastHourId) {
-         // A weird edge case, where some points are after the last flight hour
-         return 0;
-      }
-      // Full flight hour
-      return configuredMaxPointsPerHour;
+   public IndicatorDisplay getIndicatorDisplay() {
+      return indicatorDisplay;
    }
 
-   @Override
-   protected void applyFilteringLawAlgorithm(List<HealthIndicatorValueAdapter> values, Set<FilteringLaw> filteringLaws, String indicatorFilteringLaw) {
-      for (FilteringLaw filteringLaw : filteringLaws) {
-         if (!filteringLaw.getName().equals(indicatorFilteringLaw)) {
-            continue;
-         }
-         final Set<ContextualParameter> contextualParameters = filteringLaw.getContextualParameters();
-         for (ContextualParameter contextualParameter : contextualParameters) {
-            String configuredName = contextualParameter.getName();
-            if (!MAPPING_CONTEXTUAL_PARAMETERS.containsKey(configuredName)) {
-               // Ignoring unknown contextual parameter
-               continue;
-            }
-            String actualName = MAPPING_CONTEXTUAL_PARAMETERS.get(configuredName).name();
-            double min = contextualParameter.getMinValue();
-            double max = contextualParameter.getMaxValue();
+   public Object[] getAvailableUnits() {
+      return availableUnits;
+   }
 
-            ListIterator<HealthIndicatorValueAdapter> iter = values.listIterator();
-            while (iter.hasNext()) {
-               HealthIndicatorValueAdapter healthIndicatorValue = iter.next();
-               if (healthIndicatorValue.getContextualValues().get(actualName) != null) {
-                  double meanValueContextualParameter = healthIndicatorValue.getContextualValues().get(actualName).getValue();
+   public WCThresholdModel[] getThresholdModels() {
+      return thresholdModels;
+   }
 
-                  if (!(min <= meanValueContextualParameter) || !(meanValueContextualParameter <= max)) {
-                     iter.remove();
-                  }
-               } else {
-                  // The contextual parameter is not present for this indicator value
-                  // We have to remove this indicator value as well
-                  iter.remove();
-               }
+   public String getUnitSymbol(String unitName) {
+      for (Object o : getAvailableUnits()) {
+         if (o instanceof Unit unit) {
+            if (unit.getName().equalsIgnoreCase(unitName)) {
+               return unit.getSymbol();
             }
          }
       }
+      return null;
    }
 }
