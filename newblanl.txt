@@ -1,283 +1,148 @@
 
 
-import java.util.Calendar;
-import java.util.Date;
-import java.util.EnumMap;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Set;
-import java.util.TimeZone;
-import java.util.UUID;
+import java.io.Serializable;
 
-import org.joda.time.Duration;
+import jakarta.persistence.Column;
+import jakarta.persistence.DiscriminatorColumn;
+import jakarta.persistence.DiscriminatorType;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Inheritance;
+import jakarta.persistence.InheritanceType;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.MappedSuperclass;
+import jakarta.persistence.NamedQuery;
+import jakarta.persistence.Table;
 
-import com.eurocopter.mgs.datamodel.alarm.Severity;
-import com.eurocopter.mgs.datamodel.health.monitoring.FixedThresholdConfiguration;
-import com.eurocopter.mgs.datamodel.health.monitoring.Indicator;
-import com.eurocopter.mgs.datamodel.health.monitoring.IndicatorConfiguration;
-import com.eurocopter.mgs.datamodel.health.monitoring.LearnedThresholdConfiguration;
-import com.eurocopter.mgs.datamodel.health.monitoring.RelearnThresholdRequest;
-import com.eurocopter.mgs.datamodel.health.monitoring.Threshold;
-import com.eurocopter.mgs.datamodel.health.monitoring.ThresholdConfiguration;
-import com.eurocopter.mgs.datamodel.health.monitoring.ThresholdLevel;
-import com.eurocopter.mgs.datamodel.health.monitoring.ThresholdType;
-import com.eurocopter.mgs.delegate.exception.DelegateException;
-import com.eurocopter.mgs.download.analysis.health.impl.LearnedThresholdAnalyzer;
-import com.eurocopter.mgs.service.health.common.dto.ThresholdConfigurationDto;
-import com.eurocopter.mgs.xml.aircraftconfiguration.health.common.IndicatorXMLBean;
-import com.eurocopter.mgs.xml.aircraftconfiguration.health.common.ThresholdLevelXMLBean;
-import com.eurocopter.mgs.xml.aircraftconfiguration.health.common.ThresholdSeverityXMLBean;
-import com.eurocopter.mgs.xml.aircraftconfiguration.health.common.ThresholdTypeXMLBean;
-import com.eurocopter.mgs.xml.aircraftconfiguration.health.common.ThresholdXMLBean;
+@Entity
+@Table(name = "THRESHOLD_CONFIGURATION")
+@MappedSuperclass
+@Inheritance(strategy = InheritanceType.SINGLE_TABLE)
+@DiscriminatorColumn(name = "THRESHOLD_TYPE", discriminatorType = DiscriminatorType.STRING)
+@NamedQuery(name = "findThresholdConfigurationByIndicator", query = "SELECT tc FROM HealthMonitoringConfiguration hmc JOIN hmc.mechanicalComponentConfigurations mcc JOIN mcc.indicatorConfigurations ic JOIN ic.thresholdConfigurations tc WHERE ic.indicator.id = :indicatorId AND hmc.id = :configurationId")
+@NamedQuery(name = "findThresholdConfigurationsByThresholdId", query = "SELECT tc FROM HealthMonitoringConfiguration hmc JOIN hmc.mechanicalComponentConfigurations mcc JOIN mcc.indicatorConfigurations ic JOIN ic.thresholdConfigurations tc WHERE tc.threshold.id = :thresholdId")
+public abstract class ThresholdConfiguration implements Serializable {
 
-class HealthThresholdDelegate {
+   private static final long serialVersionUID = 1L;
 
-   private static final long ONE_MINUTE = 60L;
+   @Id
+   @Column(name = "ID", nullable = false)
+   private String id;
 
-   void createThreshold(Indicator indicator, ThresholdXMLBean thresholdXMLBean) {
-      final Threshold threshold = new Threshold(UUID.randomUUID().toString());
-      threshold.setActive(true);
-      threshold.setFunctionalId(thresholdXMLBean.getName());
-      threshold.setSeverity(Severity.valueOf(thresholdXMLBean.getSeverity().name()));
-      indicator.getThresholds().add(threshold);
+   @ManyToOne(fetch = FetchType.EAGER, optional = false)
+   @JoinColumn(name = "THRESHOLD_ID", nullable = false)
+   private Threshold threshold;
+
+   /**
+    * The Level of the Threshold
+    */
+   @Column(name = "THRESHOLD_LEVEL")
+   private String thresholdLevel;
+
+   @Column(name = "NB_SUCCESIVE_POINTS")
+   private Integer nbSuccessivePoints;
+
+   /**
+    * Minimum engine oil temperature.
+    */
+   @Column(name = "MINIMUM_ENGINE_OIL_TEMPERATURE")
+   private Double minimumEngineOilTemperature;
+
+   /**
+    * Reference of the work card to apply when an alarm is raised.
+    */
+   @Column(name = "WORK_CARD")
+   private String workcard;
+
+   ThresholdConfiguration() {
    }
 
-   void updateThreshold(Threshold threshold, ThresholdXMLBean thresholdXMLBean) {
-      threshold.setActive(true);
-      threshold.setSeverity(Severity.valueOf(thresholdXMLBean.getSeverity().name()));
+   public ThresholdConfiguration(String id) {
+      this.id = id;
    }
 
-   void checkThresholdValues(IndicatorXMLBean indicatorXMLBean, String hmcFuncId) throws DelegateException {
-      ThresholdXMLBean redModel = null;
-      ThresholdXMLBean amberModel = null;
-
-      for (ThresholdXMLBean currentThreshold : indicatorXMLBean.getThresholds()) {
-         if (currentThreshold.getType() == ThresholdTypeXMLBean.FIXED && currentThreshold.getValue() == null) {
-            throw new DelegateException("Issue with health configuration concerning " + hmcFuncId + " > "
-                  + indicatorXMLBean.getFunctionalId() + " thresholds values: fixed threshold value is undefined.");
-         }
-         if (currentThreshold.getType() == ThresholdTypeXMLBean.LEARNED) {
-            if (currentThreshold.getMaximumThreshold() == null) {
-               throw new DelegateException("Issue with health configuration concerning " + hmcFuncId + " > "
-                     + indicatorXMLBean.getFunctionalId() + " thresholds values: learned maximum value must be defined.");
-            }
-            if (currentThreshold.getMinimumThreshold() != null) {
-               validateMinMaxThreshold(indicatorXMLBean, hmcFuncId, currentThreshold);
-            }
-         }
-         if (currentThreshold.getSeverity() == ThresholdSeverityXMLBean.RED) {
-            redModel = currentThreshold;
-         } else {
-            amberModel = currentThreshold;
-         }
-
-         if (redModel != null && amberModel != null) {
-
-            boolean valid = true;
-
-            if (amberModel.getValue() == null || redModel.getValue() == null) {
-               // learned threshold without default value --> Nothing more to check
-               // (fixed threshold without value cannot occur at this step --> checked before)
-               continue;
-            } else {
-               boolean isAmberHigh = amberModel.getLevel() == ThresholdLevelXMLBean.HIGH;
-               boolean isAmberLow = amberModel.getLevel() == ThresholdLevelXMLBean.LOW;
-               boolean amberHigherThanRed = amberModel.getValue() > redModel.getValue();
-               boolean amberLowerThanRed = amberModel.getValue() < redModel.getValue();
-               if (amberModel.getLevel() == redModel.getLevel()) {
-                  if (isAmberHigh && amberHigherThanRed || isAmberLow && amberLowerThanRed) {
-                     // the value of the high amber threshold is greater than the value of the high red threshold
-                     // or
-                     // the value of the low amber threshold is smaller than the value of the low red threshold
-                     valid = false;
-                  }
-               } else if (isAmberHigh && amberLowerThanRed || !isAmberHigh && amberHigherThanRed) {
-                  // the value of the low threshold is greater than the value of the high threshold
-                  // or
-                  // the value of the low threshold is greater than the value of the high threshold
-                  valid = false;
-               }
-            }
-            if (!valid) {
-               throw new DelegateException("Issue with health configuration concerning " + hmcFuncId + " > "
-                     + indicatorXMLBean.getFunctionalId() + " thresholds values: check red and amber values.");
-            }
-         }
-      }
+   public final String getId() {
+      return id;
    }
 
-   void createThresholdConfiguration(IndicatorConfiguration indicatorConfiguration, ThresholdXMLBean thresholdBean, Map<String, Threshold> thresholds,
-         Map<Threshold, Set<RelearnThresholdRequest>> relearnRequests) throws DelegateException {
-      Threshold threshold = thresholds.get(thresholdBean.getName());
-      Set<RelearnThresholdRequest> relearnThresholdRequests = relearnRequests.get(threshold);
-
-      final ThresholdConfiguration thresholdConfiguration;
-      if (thresholdBean.getType() == ThresholdTypeXMLBean.LEARNED) {
-         LearnedThresholdConfiguration learnedThresholdConfiguration = new LearnedThresholdConfiguration(UUID.randomUUID().toString());
-         learnedThresholdConfiguration.setThreshold(threshold);
-
-         Duration learningTime;
-         Float learningTimeBean = thresholdBean.getLearningTime();
-         if (learningTimeBean != null) {
-            learningTime = Duration.standardMinutes(learningTimeBean.longValue() * ONE_MINUTE);
-         } else {
-            throw new DelegateException("Learning time undefined");
-         }
-
-         learnedThresholdConfiguration.setLearningTime(learningTime.getMillis());         
-         learnedThresholdConfiguration.setMinimumThreshold(thresholdBean.getMinimumThreshold());
-         learnedThresholdConfiguration.setMaximumThreshold(thresholdBean.getMaximumThreshold());
-         learnedThresholdConfiguration.setMinimumDeviation(thresholdBean.getMinimumDeviation());
-         learnedThresholdConfiguration.setDeviationCoefficient(thresholdBean.getDeviationCoefficient());
-         learnedThresholdConfiguration.setMeanFactor(thresholdBean.getMeanFactor());
-         learnedThresholdConfiguration.setThresholdLevel(ThresholdLevel.valueOf(thresholdBean.getLevel().name()));
-         learnedThresholdConfiguration.setValue(thresholdBean.getValue());
-         
-         thresholdConfiguration = learnedThresholdConfiguration;
-         
-      } else {
-         FixedThresholdConfiguration fixedThresholdConfiguration = new FixedThresholdConfiguration(UUID.randomUUID().toString());
-         fixedThresholdConfiguration.setThreshold(threshold);
-         fixedThresholdConfiguration.setThresholdLevel(ThresholdLevel.valueOf(thresholdBean.getLevel().name()));
-         fixedThresholdConfiguration.setValue(thresholdBean.getValue());
-         thresholdConfiguration = fixedThresholdConfiguration;
-      }
-
-      thresholdConfiguration.setWorkcard(thresholdBean.getWorkcard());
-      if (thresholdBean.getNbSuccessivePoints() != null) {
-         int successivePoints = thresholdBean.getNbSuccessivePoints();
-         if (successivePoints <= 0) {
-            throw new DelegateException("The 'successive points' parameter must be positive for threshold " + thresholdBean.getName());
-         }
-         thresholdConfiguration.setNbSuccessivePoints(successivePoints);
-      }
-      thresholdConfiguration.setMinimumEngineOilTemperature(thresholdBean.getMinimumEngineOilTemperature());
-      thresholdConfiguration.setThreshold(threshold);
-      
-      if (thresholdBean.getType() == ThresholdTypeXMLBean.LEARNED) {
-	      // Create automatically a relearn request for all learned thresholds
-	      createRelearnRequests(thresholdBean.getValue(), relearnThresholdRequests, (LearnedThresholdConfiguration) thresholdConfiguration);
-      }
-
-      indicatorConfiguration.getThresholdConfigurations().add(thresholdConfiguration);
+   public ThresholdLevel getThresholdLevel() {
+      return thresholdLevel != null ? ThresholdLevel.valueOf(thresholdLevel) : null;
    }
 
-   Map<Severity, Threshold> toThresholdMap(Set<Threshold> thresholds) {
-      Map<Severity, Threshold> thresholdsMap = new EnumMap<>(Severity.class);
-      for (Threshold threshold : thresholds) {
-         thresholdsMap.put(threshold.getSeverity(), threshold);
-      }
-      return thresholdsMap;
+   public void setThresholdLevel(ThresholdLevel thresholdLevel) {
+      this.thresholdLevel = thresholdLevel != null ? thresholdLevel.name() : null;
    }
 
-   Threshold createThreshold(ThresholdConfigurationDto thresholdConfigurationDto) {
-      Threshold threshold = new Threshold(UUID.randomUUID().toString());
-      threshold.setSeverity(thresholdConfigurationDto.getThresholdSeverity());
-      threshold.setFunctionalId(thresholdConfigurationDto.getThresholdSeverity().name().toLowerCase(Locale.US));
-      threshold.setActive(true);
+   public Threshold getThreshold() {
       return threshold;
    }
 
-   ThresholdConfiguration createThresholdConfiguration(ThresholdConfigurationDto thresholdConfigurationDto, Set<RelearnThresholdRequest> relearnThresholdRequests) {
-      ThresholdConfiguration thresholdConfiguration;
-      if (thresholdConfigurationDto.getThresholdType() == ThresholdType.FIXED) {
-         thresholdConfiguration = new FixedThresholdConfiguration(UUID.randomUUID().toString());
-         thresholdConfiguration.setThresholdLevel(thresholdConfigurationDto.getThresholdLevel());
-         ((FixedThresholdConfiguration) thresholdConfiguration).setValue(thresholdConfigurationDto.getValue());         
-      } else {
-         thresholdConfiguration = new LearnedThresholdConfiguration(UUID.randomUUID().toString());
-         ((LearnedThresholdConfiguration) thresholdConfiguration).setLearningTime(thresholdConfigurationDto.getLearningTime());
-         ((LearnedThresholdConfiguration) thresholdConfiguration).setMinimumThreshold(thresholdConfigurationDto.getMinimumThreshold());
-         ((LearnedThresholdConfiguration) thresholdConfiguration).setMaximumThreshold(thresholdConfigurationDto.getMaximumThreshold());
-         ((LearnedThresholdConfiguration) thresholdConfiguration).setMinimumDeviation(thresholdConfigurationDto.getMinimumDeviation());
-         ((LearnedThresholdConfiguration) thresholdConfiguration).setDeviationCoefficient(thresholdConfigurationDto.getDeviationCoefficient());
-         ((LearnedThresholdConfiguration) thresholdConfiguration).setMeanFactor(thresholdConfigurationDto.getMeanFactor());
-         thresholdConfiguration.setThresholdLevel(thresholdConfigurationDto.getThresholdLevel());
-         ((LearnedThresholdConfiguration) thresholdConfiguration).setValue(thresholdConfigurationDto.getDefaultValue());
-         
-      }
-      thresholdConfiguration.setNbSuccessivePoints(thresholdConfigurationDto.getNbSuccessivePoints());
-      thresholdConfiguration.setMinimumEngineOilTemperature(thresholdConfigurationDto.getMinimumEngineOilTemperature());      
-
-      if (thresholdConfigurationDto.getThresholdType() == ThresholdType.LEARNED) {
-	      // Create automatically a relearn request for all learned thresholds
-	      createRelearnRequests(thresholdConfigurationDto.getDefaultValue(), relearnThresholdRequests, (LearnedThresholdConfiguration) thresholdConfiguration);
-      }
-      
-      return thresholdConfiguration;
+   public void setThreshold(Threshold threshold) {
+      this.threshold = threshold;
    }
 
-   private void createRelearnRequests(Double defaultValue, Set<RelearnThresholdRequest> relearnThresholdRequests, LearnedThresholdConfiguration learnedThresholdConfiguration) {
-   	LearnedThresholdAnalyzer learnedThresholdAnalyzer = new LearnedThresholdAnalyzer();   	
-   	if (relearnThresholdRequests == null) {
-   		RelearnThresholdRequest relearnRequest = createDefaultRelearnRequest(defaultValue);
-		   learnedThresholdConfiguration.getRelearnRequests().add(relearnRequest);
-	   } else {
-		   for (RelearnThresholdRequest relearnRequest : relearnThresholdRequests) {
-		   	// If learned threshold value is out of bounds after learning, ajust it to the min/max of the new configuration
-		   	// The learned value is null as long as the relearn request has not been handled yet
-		   	Double learnedValue = relearnRequest.getLearnedValue();
-		   	if (relearnRequest.isHandled() && learnedValue != null) {
-		   		double adjustedLearnedValue = learnedThresholdAnalyzer.ajustThresholdBounds(learnedThresholdConfiguration, learnedValue);
-		   		if (Double.compare(adjustedLearnedValue, learnedValue) != 0) {
-		   			// Adjust threshold value to min/max if out of bounds
-		   			learnedThresholdConfiguration.getRelearnRequests().add(createAdjustedCopyOfRelearnRequest(relearnRequest, adjustedLearnedValue));
-		   			continue;
-		   		}
-		   	}
-		   	learnedThresholdConfiguration.getRelearnRequests().add(createCopyOfRelearnRequest(relearnRequest));
-		   }
-	  }
-   }
-   
-   private RelearnThresholdRequest createDefaultRelearnRequest(Double value) {
-      // Create automatically a relearn request for learned thresholds without previous relearn request
-      RelearnThresholdRequest relearnRequest = new RelearnThresholdRequest(UUID.randomUUID().toString());
-      relearnRequest.setDescription("A/C Configuration update");
-      Calendar startDate = Calendar.getInstance(TimeZone.getTimeZone("GMT"));
-      relearnRequest.setStartDate(startDate.getTime());
-      relearnRequest.setStartFlightDate(new Date(0));
-      relearnRequest.setHandled(false);
-      relearnRequest.setLearnedValue(value);
-      relearnRequest.setCreateMarker(false);
-      return relearnRequest;
+   public Integer getNbSuccessivePoints() {
+      return nbSuccessivePoints;
    }
 
-   private RelearnThresholdRequest createCopyOfRelearnRequest(RelearnThresholdRequest latestRelearnRequest) {
-      // Create automatically a relearn request based on the previous relearn request
-      RelearnThresholdRequest relearnRequest = new RelearnThresholdRequest(UUID.randomUUID().toString());
-      relearnRequest.setDescription(latestRelearnRequest.getDescription());
-      relearnRequest.setStartDate(latestRelearnRequest.getStartDate());
-      relearnRequest.setHandled(latestRelearnRequest.isHandled());
-      relearnRequest.setLearnedValue(latestRelearnRequest.getLearnedValue());
-      relearnRequest.setApplicableFlightDate(latestRelearnRequest.getApplicableFlightDate());
-      relearnRequest.setStartFlightDate(latestRelearnRequest.getStartFlightDate());
-      relearnRequest.setEndDate(latestRelearnRequest.getEndDate());
-      relearnRequest.setHistoryLearningTime(latestRelearnRequest.getHistoryLearningTime());
-      relearnRequest.setCreateMarker(latestRelearnRequest.isCreateMarker());
-      return relearnRequest;
-   }
-   
-   private RelearnThresholdRequest createAdjustedCopyOfRelearnRequest(RelearnThresholdRequest latestRelearnRequest, double adjustedLearnedValue) {
-      // Create automatically a relearn request with adjusted value (when learned value is out of bounds) based on the previous relearn request
-      RelearnThresholdRequest relearnRequest = createCopyOfRelearnRequest(latestRelearnRequest);
-      relearnRequest.setLearnedValue(adjustedLearnedValue);
-      return relearnRequest;
+   public void setNbSuccessivePoints(Integer nbSuccessivePoints) {
+      this.nbSuccessivePoints = nbSuccessivePoints;
    }
 
-   private void validateMinMaxThreshold(IndicatorXMLBean indicatorXMLBean, String hmcFuncId, ThresholdXMLBean currentThreshold) throws DelegateException {
-      final double min;
-      final double max;
-      if (currentThreshold.getLevel() == ThresholdLevelXMLBean.HIGH) {
-         min = currentThreshold.getMinimumThreshold();
-         max = currentThreshold.getMaximumThreshold();
-      } else {
-         min = currentThreshold.getMaximumThreshold();
-         max = currentThreshold.getMinimumThreshold();
+   public Double getMinimumEngineOilTemperature() {
+      return minimumEngineOilTemperature;
+   }
+
+   public void setMinimumEngineOilTemperature(Double minimumEngineOilTemperature) {
+      this.minimumEngineOilTemperature = minimumEngineOilTemperature;
+   }
+
+   public abstract Double getValue();
+
+   /**
+    * Gets the workcard.
+    * 
+    * @return the workcard
+    */
+   public String getWorkcard() {
+      return workcard;
+   }
+
+   /**
+    * Sets the workcard.
+    * 
+    * @param workcard
+    *           the new workcard
+    */
+   public void setWorkcard(String workcard) {
+      this.workcard = workcard;
+   }
+
+   @Override
+   public int hashCode() {
+      final int prime = 31;
+      int result = 1;
+      result = prime * result + ((id == null) ? 0 : id.hashCode());
+      return result;
+   }
+
+   @Override
+   public boolean equals(Object obj) {
+      if (this == obj) {
+         return true;
       }
-      if (min >= max) {
-         throw new DelegateException("Issue with health configuration concerning " + hmcFuncId + " > "
-               + indicatorXMLBean.getFunctionalId() + " thresholds values: check min and max values.");
+      if (obj == null) {
+         return false;
       }
+      if (getClass() != obj.getClass()) {
+         return false;
+      }
+      ThresholdConfiguration other = (ThresholdConfiguration) obj;
+      if (id == null) {
+         return other.id == null;
+      } else
+         return id.equals(other.id);
    }
 }
