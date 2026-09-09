@@ -1,445 +1,283 @@
 
 
+import java.util.Calendar;
+import java.util.Date;
 import java.util.EnumMap;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
+import java.util.Locale;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Set;
+import java.util.TimeZone;
 import java.util.UUID;
 
-import com.eurocopter.mgs.datamodel.aircraft.Aircraft;
-import com.eurocopter.mgs.datamodel.aircraft.Avionic;
-import com.eurocopter.mgs.datamodel.aircraft.configuration.AircraftConfiguration;
+import org.joda.time.Duration;
+
 import com.eurocopter.mgs.datamodel.alarm.Severity;
-import com.eurocopter.mgs.datamodel.health.common.Accelerometer;
-import com.eurocopter.mgs.datamodel.health.monitoring.AircraftDisplayData;
-import com.eurocopter.mgs.datamodel.health.monitoring.ContextualParameter;
-import com.eurocopter.mgs.datamodel.health.monitoring.EvmConfiguration;
-import com.eurocopter.mgs.datamodel.health.monitoring.FilteringLaw;
-import com.eurocopter.mgs.datamodel.health.monitoring.HealthMechanicalComponent;
-import com.eurocopter.mgs.datamodel.health.monitoring.HealthMechanicalComponentConfiguration;
-import com.eurocopter.mgs.datamodel.health.monitoring.HealthMonitoringConfiguration;
+import com.eurocopter.mgs.datamodel.health.monitoring.FixedThresholdConfiguration;
 import com.eurocopter.mgs.datamodel.health.monitoring.Indicator;
 import com.eurocopter.mgs.datamodel.health.monitoring.IndicatorConfiguration;
 import com.eurocopter.mgs.datamodel.health.monitoring.LearnedThresholdConfiguration;
-import com.eurocopter.mgs.datamodel.health.monitoring.MechanicalComponentDisplayData;
 import com.eurocopter.mgs.datamodel.health.monitoring.RelearnThresholdRequest;
 import com.eurocopter.mgs.datamodel.health.monitoring.Threshold;
 import com.eurocopter.mgs.datamodel.health.monitoring.ThresholdConfiguration;
-import com.eurocopter.mgs.datamodel.health.monitoring.vpu.VpuComponent;
-import com.eurocopter.mgs.datamodel.health.monitoring.vpu.VpuCounterLabel;
-import com.eurocopter.mgs.datamodel.health.monitoring.vpu.VpuCounterName;
+import com.eurocopter.mgs.datamodel.health.monitoring.ThresholdLevel;
+import com.eurocopter.mgs.datamodel.health.monitoring.ThresholdType;
 import com.eurocopter.mgs.delegate.exception.DelegateException;
-import com.eurocopter.mgs.service.health.common.dto.IndicatorConfigurationDto;
-import com.eurocopter.mgs.service.health.common.dto.MechanicalComponentConfigurationDto;
+import com.eurocopter.mgs.download.analysis.health.impl.LearnedThresholdAnalyzer;
 import com.eurocopter.mgs.service.health.common.dto.ThresholdConfigurationDto;
-import com.eurocopter.mgs.xml.aircraftconfiguration.health.common.AccelerometerXMLBean;
-import com.eurocopter.mgs.xml.aircraftconfiguration.health.common.ContextualParameterXMLBean;
-import com.eurocopter.mgs.xml.aircraftconfiguration.health.common.FilteringLawXMLBean;
-import com.eurocopter.mgs.xml.aircraftconfiguration.health.common.HealthConfigurationXMLBean;
-import com.eurocopter.mgs.xml.aircraftconfiguration.health.common.HealthMechanicalComponentXMLBean;
-import com.eurocopter.mgs.xml.aircraftconfiguration.health.common.MechanicalComponentXMLBean;
-import com.eurocopter.mgs.xml.aircraftconfiguration.health.evm.EvmAccelerometerXMLBean;
-import com.eurocopter.mgs.xml.aircraftconfiguration.health.evm.EvmParametersXMLBean;
-import com.eurocopter.mgs.xml.aircraftconfiguration.health.vpu.VpuComponentXMLBean;
-import com.eurocopter.mgs.xml.aircraftconfiguration.health.vpu.VpuComponentXMLBean.VpuBlockName;
-import com.eurocopter.mgs.xml.aircraftconfiguration.health.vpu.VpuComponentXMLBean.VpuPhase;
-import com.eurocopter.mgs.xml.aircraftconfiguration.health.vpu.VpuFailureCounterXMLBean;
-import com.eurocopter.mgs.xml.aircraftconfiguration.health.vpu.VpuFailuresXMLBean;
-import com.eurocopter.mgs.xml.configuration.unit.Unit;
+import com.eurocopter.mgs.xml.aircraftconfiguration.health.common.IndicatorXMLBean;
+import com.eurocopter.mgs.xml.aircraftconfiguration.health.common.ThresholdLevelXMLBean;
+import com.eurocopter.mgs.xml.aircraftconfiguration.health.common.ThresholdSeverityXMLBean;
+import com.eurocopter.mgs.xml.aircraftconfiguration.health.common.ThresholdTypeXMLBean;
+import com.eurocopter.mgs.xml.aircraftconfiguration.health.common.ThresholdXMLBean;
 
-public class HealthDelegate {
+class HealthThresholdDelegate {
 
-   private static final String INVALID_CONF_FOR_AC_TYPE_MSG = "Health Monitoring Configuration file is not valid for the selected aircraft type";
+   private static final long ONE_MINUTE = 60L;
 
-   private static final HealthEvmDelegate EVM_DELEGATE = new HealthEvmDelegate();
-   private static final HealthMechanicalComponentDelegate MECHANICAL_COMPONENT_DELEGATE = new HealthMechanicalComponentDelegate();
-   private static final HealthThresholdDelegate THRESHOLD_DELEGATE = new HealthThresholdDelegate();
-
-   public void createHealthSignalAnalysis(Aircraft aircraft, HealthConfigurationXMLBean healthConfigurationBean) throws DelegateException {
-      // Check health configuration validity.
-      if (!aircraft.getAircraftType().getName().equals(healthConfigurationBean.getAircraftType())) {
-         throw new DelegateException(INVALID_CONF_FOR_AC_TYPE_MSG);
-      }
-
-      for (AccelerometerXMLBean accelerometerBean : healthConfigurationBean.getAccelerometers()) {
-         Accelerometer accelerometer = new Accelerometer(UUID.randomUUID().toString());
-         accelerometer.setFunctionalId(Accelerometer.normalize(accelerometerBean.getFunctionalId()));
-         accelerometer.setName(accelerometerBean.getName());
-         accelerometer.setActive(true);
-         aircraft.getAccelerometers().add(accelerometer);
-      }
+   void createThreshold(Indicator indicator, ThresholdXMLBean thresholdXMLBean) {
+      final Threshold threshold = new Threshold(UUID.randomUUID().toString());
+      threshold.setActive(true);
+      threshold.setFunctionalId(thresholdXMLBean.getName());
+      threshold.setSeverity(Severity.valueOf(thresholdXMLBean.getSeverity().name()));
+      indicator.getThresholds().add(threshold);
    }
 
-   public void createHealthMonitoring(Aircraft aircraft, HealthConfigurationXMLBean healthConfigurationBean, Map<String, byte[]> images, Map<String, Map<String, Unit>> unitsByPhysicalQuantity)
-         throws DelegateException {
-      // Check health configuration validity.
-      if (!aircraft.getAircraftType().getName().equals(healthConfigurationBean.getAircraftType())) {
-         throw new DelegateException(INVALID_CONF_FOR_AC_TYPE_MSG);
-      }
-
-      AircraftDisplayData acDisplayData = new AircraftDisplayData(UUID.randomUUID().toString());
-      byte[] aircraftImage = images.get(healthConfigurationBean.getAircraftImg());
-      if (aircraftImage == null) {
-         throw new DelegateException("The A/C image cannot be found (" + healthConfigurationBean.getAircraftImg() + ")");
-      }
-      acDisplayData.setAcImage(aircraftImage);
-      aircraft.setDisplayData(acDisplayData);
-
-      final Avionic avionic = aircraft.getAircraftType().getAvionic();
-
-      String currentPath = "";
-      Set<HealthMechanicalComponent> acHealthComponents = aircraft.getHealthComponents();
-      // Create mechanical components.
-      for (MechanicalComponentXMLBean componentBean : healthConfigurationBean.getMechanicalComponents()) {
-         acHealthComponents
-               .addAll(MECHANICAL_COMPONENT_DELEGATE.createHealthMechanicalComponents(avionic, componentBean, acDisplayData, images, currentPath, unitsByPhysicalQuantity, healthConfigurationBean));
-      }
+   void updateThreshold(Threshold threshold, ThresholdXMLBean thresholdXMLBean) {
+      threshold.setActive(true);
+      threshold.setSeverity(Severity.valueOf(thresholdXMLBean.getSeverity().name()));
    }
 
-   public void updateHealthMonitoring(Aircraft aircraft, HealthConfigurationXMLBean healthConfigurationBean, Map<String, byte[]> images, Map<String, Map<String, Unit>> units)
-         throws DelegateException {
-      if (!aircraft.getAircraftType().getName().equals(healthConfigurationBean.getAircraftType())) {
-         throw new DelegateException(INVALID_CONF_FOR_AC_TYPE_MSG);
-      }
+   void checkThresholdValues(IndicatorXMLBean indicatorXMLBean, String hmcFuncId) throws DelegateException {
+      ThresholdXMLBean redModel = null;
+      ThresholdXMLBean amberModel = null;
 
-      // Index accelerometers by their functional ID
-      Map<String, Accelerometer> accelerometers = new HashMap<>(aircraft.getAccelerometers().size());
-      for (Accelerometer accelerometer : aircraft.getAccelerometers()) {
-         accelerometers.put(accelerometer.getFunctionalId(), accelerometer);
-         // Disable all accelerometers
-         // --> accelerometers present in the new configuration will be enabled below
-         accelerometer.setActive(false);
-      }
-
-      // Create or update accelerometers
-      for (AccelerometerXMLBean accelerometerBean : healthConfigurationBean.getAccelerometers()) {
-         updateAccelerometer(aircraft, accelerometers, accelerometerBean);
-      }
-
-      // Index components by their functional ID
-      Map<String, HealthMechanicalComponent> hmcFuncIdHmcMap = new HashMap<>(aircraft.getHealthComponents().size());
-      for (HealthMechanicalComponent healthComponent : aircraft.getHealthComponents()) {
-         hmcFuncIdHmcMap.put(healthComponent.getFunctionalId(), healthComponent);
-         // Disable all components
-         // --> active components will be enabled by the following instructions
-         healthComponent.setActive(false);
-      }
-
-      String rootPath = "";
-      for (MechanicalComponentXMLBean componentBean : healthConfigurationBean.getMechanicalComponents()) {
-         MECHANICAL_COMPONENT_DELEGATE.updateMechanicalComponent(aircraft, componentBean, hmcFuncIdHmcMap, accelerometers, rootPath, units, healthConfigurationBean);
-      }
-
-      // update AircraftDisplayData
-      AircraftDisplayData acDisplayData = new AircraftDisplayData(UUID.randomUUID().toString());
-      byte[] aircraftImage = images.get(healthConfigurationBean.getAircraftImg());
-      if (aircraftImage == null) {
-         throw new DelegateException("The A/C image cannot be found (" + healthConfigurationBean.getAircraftImg() + ")");
-      }
-      acDisplayData.setAcImage(aircraftImage);
-      aircraft.setDisplayData(acDisplayData);
-      aircraft.getDisplayData().setMechanicalComponentDisplayData(updateAircraftDisplayData(aircraft.getDisplayData(), healthConfigurationBean.getMechanicalComponents(), images));
-   }
-
-   public void createHealthMonitoringConfiguration(AircraftConfiguration aircraftConfiguration, HealthConfigurationXMLBean healthConfigurationBean,
-         Map<Threshold, Set<RelearnThresholdRequest>> relearnRequests)
-         throws DelegateException {
-      Aircraft aircraft = aircraftConfiguration.getAircraft();
-      // Check health configuration validity.
-      if (!aircraft.getAircraftType().getName().equals(healthConfigurationBean.getAircraftType())) {
-         throw new DelegateException(INVALID_CONF_FOR_AC_TYPE_MSG);
-      }
-
-      Set<FilteringLaw> filteringLaws = createFilteringLawConfiguration(aircraft.getAircraftType().getAvionic(), healthConfigurationBean);
-
-      // Create health monitoring configuration
-      HealthMonitoringConfiguration configuration = new HealthMonitoringConfiguration(UUID.randomUUID().toString());
-      configuration.setVersion(healthConfigurationBean.getVersion());
-      configuration.setOriginal(true);
-      configuration.setFilteringLaws(filteringLaws);
-
-      if (healthConfigurationBean.getVpuFailures() != null) {
-         validateVpuComponentConfiguration(healthConfigurationBean.getVpuFailures());
-         configuration.setVpuCounterLabels(createVpuCounterLabelConfiguration(healthConfigurationBean.getVpuFailures()));
-         configuration.setVpuComponents(createVpuComponentConfiguration(configuration, healthConfigurationBean.getVpuFailures()));
-         configuration.setVpuCounterWorkcard(healthConfigurationBean.getVpuFailures().getWorkcard());
-      }
-
-      aircraftConfiguration.getConfigurations().put(configuration.getConfigurationType(), configuration);
-
-      // Index components by their functional ID
-      Map<String, HealthMechanicalComponent> components = new HashMap<>(aircraft.getHealthComponents().size());
-
-      for (HealthMechanicalComponent healthComponent : aircraft.getHealthComponents()) {
-         components.put(healthComponent.getFunctionalId(), healthComponent);
-      }
-
-      // Create accelerometers.
-      Map<String, Accelerometer> accelerometers = new HashMap<>(aircraft.getAccelerometers().size());
-      for (Accelerometer accelerometer : aircraft.getAccelerometers()) {
-         accelerometers.put(accelerometer.getFunctionalId(), accelerometer);
-      }
-
-      Avionic avionic = aircraft.getAircraftType().getAvionic();
-      for (MechanicalComponentXMLBean componentBean : healthConfigurationBean.getMechanicalComponents()) {
-         MECHANICAL_COMPONENT_DELEGATE.createMechanicalComponentConfiguration(avionic, configuration, componentBean, components, healthConfigurationBean.getEvmParameters(), accelerometers,
-               healthConfigurationBean, relearnRequests);
-      }
-
-      if (EVM_DELEGATE.containsEvmComponents(configuration.getMechanicalComponentConfigurations())) {
-         EvmParametersXMLBean evmParameters = healthConfigurationBean.getEvmParameters();
-         EvmConfiguration evmConfiguration = new EvmConfiguration(UUID.randomUUID().toString());
-         for (EvmAccelerometerXMLBean accelerometerBean : evmParameters.getAccelerometers()) {
-            evmConfiguration.getAccelerometerConfigurations().add(EVM_DELEGATE.createEvmAccelerometerConfiguration(aircraft.getAircraftType().getAvionic(), accelerometerBean));
+      for (ThresholdXMLBean currentThreshold : indicatorXMLBean.getThresholds()) {
+         if (currentThreshold.getType() == ThresholdTypeXMLBean.FIXED && currentThreshold.getValue() == null) {
+            throw new DelegateException("Issue with health configuration concerning " + hmcFuncId + " > "
+                  + indicatorXMLBean.getFunctionalId() + " thresholds values: fixed threshold value is undefined.");
          }
-         configuration.setEvmConfiguration(evmConfiguration);
-      }
-   }
-
-   public Map<Threshold, Set<RelearnThresholdRequest>> getRelearnRequestsByThreshold(HealthMonitoringConfiguration healthMonitoringConfiguration) {
-      Map<Threshold, Set<RelearnThresholdRequest>> requests = new HashMap<>();
-      for (HealthMechanicalComponentConfiguration mechanicalComponentConfiguration : healthMonitoringConfiguration.getMechanicalComponentConfigurations().values()) {
-         for (IndicatorConfiguration indicatorConfiguration : mechanicalComponentConfiguration.getIndicatorConfigurations().values()) {
-            for (ThresholdConfiguration thresholdConfiguration : indicatorConfiguration.getThresholdConfigurations()) {
-               if (thresholdConfiguration instanceof LearnedThresholdConfiguration learnedThresholdConfiguration) {
-            	   requests.put(thresholdConfiguration.getThreshold(), learnedThresholdConfiguration.getRelearnRequests());
-               }
+         if (currentThreshold.getType() == ThresholdTypeXMLBean.LEARNED) {
+            if (currentThreshold.getMaximumThreshold() == null) {
+               throw new DelegateException("Issue with health configuration concerning " + hmcFuncId + " > "
+                     + indicatorXMLBean.getFunctionalId() + " thresholds values: learned maximum value must be defined.");
+            }
+            if (currentThreshold.getMinimumThreshold() != null) {
+               validateMinMaxThreshold(indicatorXMLBean, hmcFuncId, currentThreshold);
             }
          }
-      }
-      return requests;
-   }
-
-   private Set<VpuComponent> createVpuComponentConfiguration(HealthMonitoringConfiguration healthMonitoringConfiguration, VpuFailuresXMLBean vpuFailures) throws DelegateException {
-      Set<VpuComponent> components = new HashSet<>();
-      for (VpuComponentXMLBean componentBean : vpuFailures.getComponents()) {
-         VpuComponent component = new VpuComponent(UUID.randomUUID().toString());
-         component.setBlock(componentBean.getBlockName().name());
-         if (componentBean.getPhase() != null) {
-            component.setPhase(componentBean.getPhase().name());
-         }
-         component.setEngineNumber(componentBean.getEngineNumber());
-         component.setLabel(componentBean.getLabel());
-         component.setVpuFailureCounters(MECHANICAL_COMPONENT_DELEGATE.processVpuFailureCounters(healthMonitoringConfiguration, componentBean.getFailureCounters(), component.getBlock()));
-         components.add(component);
-      }
-      return components;
-   }
-
-   private Set<VpuCounterLabel> createVpuCounterLabelConfiguration(VpuFailuresXMLBean vpuFailuresXMLBean) throws DelegateException {
-      Map<VpuCounterName, VpuCounterLabel> vpuCounterLabels = new EnumMap<>(VpuCounterName.class);
-      for (VpuFailureCounterXMLBean failureCounterBean : vpuFailuresXMLBean.getFailureCounters()) {
-         VpuCounterName vpuCounterName = VpuCounterName.valueOf(failureCounterBean.getId().name());
-         if (vpuCounterLabels.containsKey(vpuCounterName)) {
-            throw new DelegateException("Health Monitoring Configuration file is not valid: VPU Failure counter label for '" + failureCounterBean.getId() + "' is defined twice.");
-         }
-         VpuCounterLabel counterLabel = new VpuCounterLabel(UUID.randomUUID().toString());
-         counterLabel.setName(vpuCounterName);
-         counterLabel.setLabel(failureCounterBean.getLabel());
-         vpuCounterLabels.put(vpuCounterName, counterLabel);
-      }
-      return new HashSet<>(vpuCounterLabels.values());
-   }
-
-   private void validateVpuComponentConfiguration(VpuFailuresXMLBean vpuFailuresXMLBean) throws DelegateException {
-      // This set is only here to check uniqueness in configuration
-      // I.e. a natural key is built for each component configured
-      // And if the natural key is found twice, it raises an error
-      Set<String> processedBlocks = new HashSet<>();
-      for (VpuComponentXMLBean component : vpuFailuresXMLBean.getComponents()) {
-         final String functionalKey;
-         if (component.getBlockName() == VpuBlockName.SSVM) {
-            if (component.getPhase() == VpuPhase.POWER_UP) {
-               functionalKey = "SSVM Power-Up " + (component.getEngineNumber() == null ? "" : "Eng " + component.getEngineNumber());
-            } else if (component.getPhase() == VpuPhase.STABILIZED) {
-               if (component.getEngineNumber() == null) {
-                  throw new DelegateException("VPU Failures Configuration: 'engine' attribute is mandatory for SSVM Stabilized block.");
-               }
-               functionalKey = "SSVM Stabilized Eng " + component.getEngineNumber();
-            } else {
-               throw new DelegateException("VPU Failures Configuration: 'phase' attribute is mandatory for SSVM block");
-            }
-         } else if (component.getBlockName() == VpuBlockName.SBRP || component.getBlockName() == VpuBlockName.SBRA) {
-            if (component.getPhase() != null) {
-               throw new DelegateException("VPU Failures Configuration: No 'phase' attribute shall be present for block " + component.getBlockName());
-            }
-            if (component.getEngineNumber() != null) {
-               throw new DelegateException("VPU Failures Configuration: No 'engine' attribute shall be present for block " + component.getBlockName());
-            }
-            functionalKey = component.getBlockName().name();
+         if (currentThreshold.getSeverity() == ThresholdSeverityXMLBean.RED) {
+            redModel = currentThreshold;
          } else {
-            throw new DelegateException("VPU Failures Configuration: Invalid block " + component.getBlockName());
+            amberModel = currentThreshold;
          }
-         if (processedBlocks.contains(functionalKey)) {
-            throw new DelegateException("VPU Failures Configuration: Duplicated block " + functionalKey);
-         }
-         processedBlocks.add(functionalKey);
-      }
-   }
 
-   private Set<FilteringLaw> createFilteringLawConfiguration(Avionic avionic, HealthConfigurationXMLBean healthConfigurationBean) throws DelegateException {
-      Map<String, FilteringLaw> mapFilteringLaws = new HashMap<>();
-      for (FilteringLawXMLBean filteringLaw : healthConfigurationBean.getFilteringLaws()) {
-         Set<ContextualParameter> contextualParameters = new HashSet<>();
-         Set<String> listNameCtx = new HashSet<>();
-         FilteringLaw temp = new FilteringLaw(UUID.randomUUID().toString());
-         temp.setName(filteringLaw.getName());
-         for (ContextualParameterXMLBean xmlContextualParameter : filteringLaw.getContextualParameter()) {
-            ContextualParameter contextualParameter = new ContextualParameter(UUID.randomUUID().toString());
-            contextualParameter.setName(xmlContextualParameter.getName());
-            contextualParameter.setMinValue(xmlContextualParameter.getMin());
-            contextualParameter.setMaxValue(xmlContextualParameter.getMax());
-            if (avionic == Avionic.CIGALHE) {
-               // On HELIONIX, the parameter 's' is mandatory
-               if (xmlContextualParameter.getS() == null) {
-                  throw new DelegateException("HealthMonitoring: The parameter 's' must be configured on filtering law (parameter = " + contextualParameter.getName() + ").");
-               }
-               contextualParameter.setThresholdOfVariabilityValue(xmlContextualParameter.getS());
-            }
-            // On M'ARMS, the parameter is ignored
-            if (listNameCtx.contains(contextualParameter.getName())) {
-               throw new DelegateException("HealthMonitoring:  the name of the contextual parameter '" + contextualParameter.getName() +
-                     "' must be unique for the law '" + temp.getName() + "' of the xml file .");
+         if (redModel != null && amberModel != null) {
+
+            boolean valid = true;
+
+            if (amberModel.getValue() == null || redModel.getValue() == null) {
+               // learned threshold without default value --> Nothing more to check
+               // (fixed threshold without value cannot occur at this step --> checked before)
+               continue;
             } else {
-               listNameCtx.add(contextualParameter.getName());
-               contextualParameters.add(contextualParameter);
-            }
-         }
-         temp.setContextualParameters(contextualParameters);
-         if (mapFilteringLaws.containsKey(temp.getName())) {
-            throw new DelegateException("HealthMonitoring:  the name of the law '" + temp.getName() + "' must be unique in the xml file .");
-         } else {
-            mapFilteringLaws.put(temp.getName(), temp);
-         }
-      }
-
-      return new HashSet<>(mapFilteringLaws.values());
-   }
-
-   public void updateHealthConfiguration(HealthMonitoringConfiguration healthMonitoringConfiguration, Set<MechanicalComponentConfigurationDto> mechanicalComponentDtos) {
-      healthMonitoringConfiguration.setOriginal(false);
-
-      Map<String, IndicatorConfiguration> indicatorConfigurationsMap = new HashMap<>();
-      Map<String, HealthMechanicalComponentConfiguration> healthMechanicalComponentConfigurationsMap = new HashMap<>();
-      toConfigurationMaps(healthMonitoringConfiguration, healthMechanicalComponentConfigurationsMap, indicatorConfigurationsMap);
-
-      Map<Threshold, Set<RelearnThresholdRequest>> relearnThresholdRequests = getRelearnRequestsByThreshold(healthMonitoringConfiguration);
-
-      for (MechanicalComponentConfigurationDto mechanicalComponentDto : mechanicalComponentDtos) {
-         HealthMechanicalComponentConfiguration hmcc = healthMechanicalComponentConfigurationsMap.get(mechanicalComponentDto.getMechanicalComponentId());
-         hmcc.setWorkcard(mechanicalComponentDto.getWorkcardReference());
-         hmcc.setMaximumTimeWithoutAcquistion(mechanicalComponentDto.getMaxTimeWOAcquisition());
-
-         for (IndicatorConfigurationDto indicatorConfigurationDto : mechanicalComponentDto.getIndicatorConfigurationDtos()) {
-            IndicatorConfiguration indicatorConfiguration = indicatorConfigurationsMap.get(indicatorConfigurationDto.getIndicatorId());
-            indicatorConfiguration.getThresholdConfigurations().clear();
-
-            Map<Severity, Threshold> thresholdsMap = THRESHOLD_DELEGATE.toThresholdMap(indicatorConfiguration.getIndicator().getThresholds());
-            for (ThresholdConfigurationDto thresholdConfigurationDto : indicatorConfigurationDto.getThresholdConfigurationDtos()) {
-               Threshold threshold = thresholdsMap.get(thresholdConfigurationDto.getThresholdSeverity());
-               if (threshold == null) {
-                  threshold = THRESHOLD_DELEGATE.createThreshold(thresholdConfigurationDto);
-                  indicatorConfiguration.getIndicator().getThresholds().add(threshold);
+               boolean isAmberHigh = amberModel.getLevel() == ThresholdLevelXMLBean.HIGH;
+               boolean isAmberLow = amberModel.getLevel() == ThresholdLevelXMLBean.LOW;
+               boolean amberHigherThanRed = amberModel.getValue() > redModel.getValue();
+               boolean amberLowerThanRed = amberModel.getValue() < redModel.getValue();
+               if (amberModel.getLevel() == redModel.getLevel()) {
+                  if (isAmberHigh && amberHigherThanRed || isAmberLow && amberLowerThanRed) {
+                     // the value of the high amber threshold is greater than the value of the high red threshold
+                     // or
+                     // the value of the low amber threshold is smaller than the value of the low red threshold
+                     valid = false;
+                  }
+               } else if (isAmberHigh && amberLowerThanRed || !isAmberHigh && amberHigherThanRed) {
+                  // the value of the low threshold is greater than the value of the high threshold
+                  // or
+                  // the value of the low threshold is greater than the value of the high threshold
+                  valid = false;
                }
-
-               ThresholdConfiguration thresholdConfiguration = THRESHOLD_DELEGATE.createThresholdConfiguration(thresholdConfigurationDto, relearnThresholdRequests.get(threshold));
-               thresholdConfiguration.setWorkcard(thresholdConfigurationDto.getWorkcard());
-               thresholdConfiguration.setThreshold(threshold);
-               indicatorConfiguration.getThresholdConfigurations().add(thresholdConfiguration);
+            }
+            if (!valid) {
+               throw new DelegateException("Issue with health configuration concerning " + hmcFuncId + " > "
+                     + indicatorXMLBean.getFunctionalId() + " thresholds values: check red and amber values.");
             }
          }
       }
    }
 
-   private void updateAccelerometer(Aircraft aircraft, Map<String, Accelerometer> accelerometers, AccelerometerXMLBean accelerometerBean) {
-      Accelerometer accelerometer = accelerometers.get(Accelerometer.normalize(accelerometerBean.getFunctionalId()));
-      if (accelerometer == null) {
-         accelerometer = new Accelerometer(UUID.randomUUID().toString());
-         accelerometer.setFunctionalId(Accelerometer.normalize(accelerometerBean.getFunctionalId()));
-         accelerometer.setName(accelerometerBean.getName());
-         accelerometer.setActive(true);
-         aircraft.getAccelerometers().add(accelerometer);
+   void createThresholdConfiguration(IndicatorConfiguration indicatorConfiguration, ThresholdXMLBean thresholdBean, Map<String, Threshold> thresholds,
+         Map<Threshold, Set<RelearnThresholdRequest>> relearnRequests) throws DelegateException {
+      Threshold threshold = thresholds.get(thresholdBean.getName());
+      Set<RelearnThresholdRequest> relearnThresholdRequests = relearnRequests.get(threshold);
 
-         // Register accelerometer since it may be referenced by a new indicator
-         accelerometers.put(accelerometer.getFunctionalId(), accelerometer);
+      final ThresholdConfiguration thresholdConfiguration;
+      if (thresholdBean.getType() == ThresholdTypeXMLBean.LEARNED) {
+         LearnedThresholdConfiguration learnedThresholdConfiguration = new LearnedThresholdConfiguration(UUID.randomUUID().toString());
+         learnedThresholdConfiguration.setThreshold(threshold);
+
+         Duration learningTime;
+         Float learningTimeBean = thresholdBean.getLearningTime();
+         if (learningTimeBean != null) {
+            learningTime = Duration.standardMinutes(learningTimeBean.longValue() * ONE_MINUTE);
+         } else {
+            throw new DelegateException("Learning time undefined");
+         }
+
+         learnedThresholdConfiguration.setLearningTime(learningTime.getMillis());         
+         learnedThresholdConfiguration.setMinimumThreshold(thresholdBean.getMinimumThreshold());
+         learnedThresholdConfiguration.setMaximumThreshold(thresholdBean.getMaximumThreshold());
+         learnedThresholdConfiguration.setMinimumDeviation(thresholdBean.getMinimumDeviation());
+         learnedThresholdConfiguration.setDeviationCoefficient(thresholdBean.getDeviationCoefficient());
+         learnedThresholdConfiguration.setMeanFactor(thresholdBean.getMeanFactor());
+         learnedThresholdConfiguration.setThresholdLevel(ThresholdLevel.valueOf(thresholdBean.getLevel().name()));
+         learnedThresholdConfiguration.setValue(thresholdBean.getValue());
+         
+         thresholdConfiguration = learnedThresholdConfiguration;
+         
       } else {
-         accelerometer.setName(accelerometerBean.getName());
+         FixedThresholdConfiguration fixedThresholdConfiguration = new FixedThresholdConfiguration(UUID.randomUUID().toString());
+         fixedThresholdConfiguration.setThreshold(threshold);
+         fixedThresholdConfiguration.setThresholdLevel(ThresholdLevel.valueOf(thresholdBean.getLevel().name()));
+         fixedThresholdConfiguration.setValue(thresholdBean.getValue());
+         thresholdConfiguration = fixedThresholdConfiguration;
       }
-      accelerometer.setActive(true);
+
+      thresholdConfiguration.setWorkcard(thresholdBean.getWorkcard());
+      if (thresholdBean.getNbSuccessivePoints() != null) {
+         int successivePoints = thresholdBean.getNbSuccessivePoints();
+         if (successivePoints <= 0) {
+            throw new DelegateException("The 'successive points' parameter must be positive for threshold " + thresholdBean.getName());
+         }
+         thresholdConfiguration.setNbSuccessivePoints(successivePoints);
+      }
+      thresholdConfiguration.setMinimumEngineOilTemperature(thresholdBean.getMinimumEngineOilTemperature());
+      thresholdConfiguration.setThreshold(threshold);
+      
+      if (thresholdBean.getType() == ThresholdTypeXMLBean.LEARNED) {
+	      // Create automatically a relearn request for all learned thresholds
+	      createRelearnRequests(thresholdBean.getValue(), relearnThresholdRequests, (LearnedThresholdConfiguration) thresholdConfiguration);
+      }
+
+      indicatorConfiguration.getThresholdConfigurations().add(thresholdConfiguration);
    }
 
-   private Map<String, MechanicalComponentDisplayData> updateAircraftDisplayData(AircraftDisplayData acDisplayData, List<MechanicalComponentXMLBean> mechanicalComponentXMLBeans,
-         Map<String, byte[]> images) throws DelegateException {
-      // Get the old Display Data Map
-      Map<String, MechanicalComponentDisplayData> oldDDMap = new HashMap<>(acDisplayData.getMechanicalComponentDisplayData());
-
-      // Create the new Display Data Map
-      Map<String, MechanicalComponentDisplayData> newDDMap = new HashMap<>();
-      String currentPath = "";
-      for (MechanicalComponentXMLBean mechanicalComponentXMLBean : mechanicalComponentXMLBeans) {
-         createDisplayDataMap(mechanicalComponentXMLBean, currentPath, images, newDDMap);
+   Map<Severity, Threshold> toThresholdMap(Set<Threshold> thresholds) {
+      Map<Severity, Threshold> thresholdsMap = new EnumMap<>(Severity.class);
+      for (Threshold threshold : thresholds) {
+         thresholdsMap.put(threshold.getSeverity(), threshold);
       }
-
-      Map<String, MechanicalComponentDisplayData> updatedDDMap = new HashMap<>();
-
-      // Get removed display datas
-      Set<String> deletedPaths = new HashSet<>(oldDDMap.keySet());
-      deletedPaths.removeAll(newDDMap.keySet());
-
-      // Add and update old datas to the updated map
-      for (Entry<String, MechanicalComponentDisplayData> entry : oldDDMap.entrySet()) {
-         if (!deletedPaths.contains(entry.getKey())) {
-            // Update and add (or just add) the old mechanical component display data to the updated map
-            MechanicalComponentDisplayData newMCDD = newDDMap.get(entry.getKey());
-            MechanicalComponentDisplayData updatedMCDD = entry.getValue();
-            updatedMCDD.setImage(newMCDD.getImage());
-            updatedMCDD.setImageForParentComponent(newMCDD.getImageForParentComponent());
-            updatedMCDD.setNotInParentComponent(newMCDD.isNotInParentComponent());
-            updatedMCDD.setxPositionOnAc(newMCDD.getxPositionOnAc());
-            updatedMCDD.setyPositionOnAc(newMCDD.getyPositionOnAc());
-            updatedDDMap.put(entry.getKey(), updatedMCDD);
-         }
-      }
-
-      // Get new display datas
-      Set<String> addedPaths = new HashSet<>(newDDMap.keySet());
-      addedPaths.removeAll(oldDDMap.keySet());
-
-      // Add new datas to the updated map
-      for (Entry<String, MechanicalComponentDisplayData> entry : newDDMap.entrySet()) {
-         if (addedPaths.contains(entry.getKey())) {
-            updatedDDMap.put(entry.getKey(), entry.getValue());
-         }
-      }
-
-      return updatedDDMap;
+      return thresholdsMap;
    }
 
-   private void createDisplayDataMap(MechanicalComponentXMLBean mechanicalComponentXMLBean, String currentPath, Map<String, byte[]> images, Map<String, MechanicalComponentDisplayData> newDDMap)
-         throws DelegateException {
-      if (mechanicalComponentXMLBean instanceof HealthMechanicalComponentXMLBean) {
-         newDDMap.put(currentPath + HealthMechanicalComponent.HMC_PATH_SEPARATOR + mechanicalComponentXMLBean.getName(),
-               MECHANICAL_COMPONENT_DELEGATE.createMechanicalComponentDisplayData(mechanicalComponentXMLBean, images));
+   Threshold createThreshold(ThresholdConfigurationDto thresholdConfigurationDto) {
+      Threshold threshold = new Threshold(UUID.randomUUID().toString());
+      threshold.setSeverity(thresholdConfigurationDto.getThresholdSeverity());
+      threshold.setFunctionalId(thresholdConfigurationDto.getThresholdSeverity().name().toLowerCase(Locale.US));
+      threshold.setActive(true);
+      return threshold;
+   }
+
+   ThresholdConfiguration createThresholdConfiguration(ThresholdConfigurationDto thresholdConfigurationDto, Set<RelearnThresholdRequest> relearnThresholdRequests) {
+      ThresholdConfiguration thresholdConfiguration;
+      if (thresholdConfigurationDto.getThresholdType() == ThresholdType.FIXED) {
+         thresholdConfiguration = new FixedThresholdConfiguration(UUID.randomUUID().toString());
+         thresholdConfiguration.setThresholdLevel(thresholdConfigurationDto.getThresholdLevel());
+         ((FixedThresholdConfiguration) thresholdConfiguration).setValue(thresholdConfigurationDto.getValue());         
       } else {
-         String path = currentPath + HealthMechanicalComponent.HMC_PATH_SEPARATOR + mechanicalComponentXMLBean.getName();
-         newDDMap.put(path, MECHANICAL_COMPONENT_DELEGATE.createMechanicalComponentDisplayData(mechanicalComponentXMLBean, images));
-         for (MechanicalComponentXMLBean subComponentBean : mechanicalComponentXMLBean.getSubComponents()) {
-            createDisplayDataMap(subComponentBean, path, images, newDDMap);
-         }
+         thresholdConfiguration = new LearnedThresholdConfiguration(UUID.randomUUID().toString());
+         ((LearnedThresholdConfiguration) thresholdConfiguration).setLearningTime(thresholdConfigurationDto.getLearningTime());
+         ((LearnedThresholdConfiguration) thresholdConfiguration).setMinimumThreshold(thresholdConfigurationDto.getMinimumThreshold());
+         ((LearnedThresholdConfiguration) thresholdConfiguration).setMaximumThreshold(thresholdConfigurationDto.getMaximumThreshold());
+         ((LearnedThresholdConfiguration) thresholdConfiguration).setMinimumDeviation(thresholdConfigurationDto.getMinimumDeviation());
+         ((LearnedThresholdConfiguration) thresholdConfiguration).setDeviationCoefficient(thresholdConfigurationDto.getDeviationCoefficient());
+         ((LearnedThresholdConfiguration) thresholdConfiguration).setMeanFactor(thresholdConfigurationDto.getMeanFactor());
+         thresholdConfiguration.setThresholdLevel(thresholdConfigurationDto.getThresholdLevel());
+         ((LearnedThresholdConfiguration) thresholdConfiguration).setValue(thresholdConfigurationDto.getDefaultValue());
+         
       }
+      thresholdConfiguration.setNbSuccessivePoints(thresholdConfigurationDto.getNbSuccessivePoints());
+      thresholdConfiguration.setMinimumEngineOilTemperature(thresholdConfigurationDto.getMinimumEngineOilTemperature());      
+
+      if (thresholdConfigurationDto.getThresholdType() == ThresholdType.LEARNED) {
+	      // Create automatically a relearn request for all learned thresholds
+	      createRelearnRequests(thresholdConfigurationDto.getDefaultValue(), relearnThresholdRequests, (LearnedThresholdConfiguration) thresholdConfiguration);
+      }
+      
+      return thresholdConfiguration;
    }
 
-   private void toConfigurationMaps(HealthMonitoringConfiguration healthMonitoringConfiguration,
-         Map<String, HealthMechanicalComponentConfiguration> hmcConfigurations, Map<String, IndicatorConfiguration> indicatorConfigurations) {
-      for (Map.Entry<HealthMechanicalComponent, HealthMechanicalComponentConfiguration> healthMechanicalComponentConfigurationEntry : healthMonitoringConfiguration
-            .getMechanicalComponentConfigurations().entrySet()) {
-         for (Map.Entry<Indicator, IndicatorConfiguration> indicatorConfigurationEntry : healthMechanicalComponentConfigurationEntry.getValue().getIndicatorConfigurations().entrySet()) {
-            indicatorConfigurations.put(indicatorConfigurationEntry.getKey().getId(), indicatorConfigurationEntry.getValue());
-         }
-         hmcConfigurations.put(healthMechanicalComponentConfigurationEntry.getKey().getId(), healthMechanicalComponentConfigurationEntry.getValue());
+   private void createRelearnRequests(Double defaultValue, Set<RelearnThresholdRequest> relearnThresholdRequests, LearnedThresholdConfiguration learnedThresholdConfiguration) {
+   	LearnedThresholdAnalyzer learnedThresholdAnalyzer = new LearnedThresholdAnalyzer();   	
+   	if (relearnThresholdRequests == null) {
+   		RelearnThresholdRequest relearnRequest = createDefaultRelearnRequest(defaultValue);
+		   learnedThresholdConfiguration.getRelearnRequests().add(relearnRequest);
+	   } else {
+		   for (RelearnThresholdRequest relearnRequest : relearnThresholdRequests) {
+		   	// If learned threshold value is out of bounds after learning, ajust it to the min/max of the new configuration
+		   	// The learned value is null as long as the relearn request has not been handled yet
+		   	Double learnedValue = relearnRequest.getLearnedValue();
+		   	if (relearnRequest.isHandled() && learnedValue != null) {
+		   		double adjustedLearnedValue = learnedThresholdAnalyzer.ajustThresholdBounds(learnedThresholdConfiguration, learnedValue);
+		   		if (Double.compare(adjustedLearnedValue, learnedValue) != 0) {
+		   			// Adjust threshold value to min/max if out of bounds
+		   			learnedThresholdConfiguration.getRelearnRequests().add(createAdjustedCopyOfRelearnRequest(relearnRequest, adjustedLearnedValue));
+		   			continue;
+		   		}
+		   	}
+		   	learnedThresholdConfiguration.getRelearnRequests().add(createCopyOfRelearnRequest(relearnRequest));
+		   }
+	  }
+   }
+   
+   private RelearnThresholdRequest createDefaultRelearnRequest(Double value) {
+      // Create automatically a relearn request for learned thresholds without previous relearn request
+      RelearnThresholdRequest relearnRequest = new RelearnThresholdRequest(UUID.randomUUID().toString());
+      relearnRequest.setDescription("A/C Configuration update");
+      Calendar startDate = Calendar.getInstance(TimeZone.getTimeZone("GMT"));
+      relearnRequest.setStartDate(startDate.getTime());
+      relearnRequest.setStartFlightDate(new Date(0));
+      relearnRequest.setHandled(false);
+      relearnRequest.setLearnedValue(value);
+      relearnRequest.setCreateMarker(false);
+      return relearnRequest;
+   }
+
+   private RelearnThresholdRequest createCopyOfRelearnRequest(RelearnThresholdRequest latestRelearnRequest) {
+      // Create automatically a relearn request based on the previous relearn request
+      RelearnThresholdRequest relearnRequest = new RelearnThresholdRequest(UUID.randomUUID().toString());
+      relearnRequest.setDescription(latestRelearnRequest.getDescription());
+      relearnRequest.setStartDate(latestRelearnRequest.getStartDate());
+      relearnRequest.setHandled(latestRelearnRequest.isHandled());
+      relearnRequest.setLearnedValue(latestRelearnRequest.getLearnedValue());
+      relearnRequest.setApplicableFlightDate(latestRelearnRequest.getApplicableFlightDate());
+      relearnRequest.setStartFlightDate(latestRelearnRequest.getStartFlightDate());
+      relearnRequest.setEndDate(latestRelearnRequest.getEndDate());
+      relearnRequest.setHistoryLearningTime(latestRelearnRequest.getHistoryLearningTime());
+      relearnRequest.setCreateMarker(latestRelearnRequest.isCreateMarker());
+      return relearnRequest;
+   }
+   
+   private RelearnThresholdRequest createAdjustedCopyOfRelearnRequest(RelearnThresholdRequest latestRelearnRequest, double adjustedLearnedValue) {
+      // Create automatically a relearn request with adjusted value (when learned value is out of bounds) based on the previous relearn request
+      RelearnThresholdRequest relearnRequest = createCopyOfRelearnRequest(latestRelearnRequest);
+      relearnRequest.setLearnedValue(adjustedLearnedValue);
+      return relearnRequest;
+   }
+
+   private void validateMinMaxThreshold(IndicatorXMLBean indicatorXMLBean, String hmcFuncId, ThresholdXMLBean currentThreshold) throws DelegateException {
+      final double min;
+      final double max;
+      if (currentThreshold.getLevel() == ThresholdLevelXMLBean.HIGH) {
+         min = currentThreshold.getMinimumThreshold();
+         max = currentThreshold.getMaximumThreshold();
+      } else {
+         min = currentThreshold.getMaximumThreshold();
+         max = currentThreshold.getMinimumThreshold();
+      }
+      if (min >= max) {
+         throw new DelegateException("Issue with health configuration concerning " + hmcFuncId + " > "
+               + indicatorXMLBean.getFunctionalId() + " thresholds values: check min and max values.");
       }
    }
 }
