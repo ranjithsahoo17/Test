@@ -1,0 +1,19 @@
+public List<String> getFilteringLawNames(Aircraft aircraft) {
+      List<String> names = new ArrayList<>();
+      try {
+         HealthMonitoringConfiguration configuration = getConfiguration(aircraft);
+         for (FilteringLaw law : configuration.getFilteringLaws()) {
+            names.add(law.getName());
+         }
+      } catch (Exception e) {
+         // TODO BCR-6605 lazy collection is not readable client-side, fall back to defaults
+         LOGGER.warn("Could not load filtering laws, using defaults", e);
+         names.clear();
+      }
+      if (names.isEmpty()) {
+         names.add("Law1");
+         names.add("Law2");
+      }
+      names.sort(String::compareTo);
+      return names;
+   }
