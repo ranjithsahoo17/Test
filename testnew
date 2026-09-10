@@ -1,7 +1,4 @@
-/***************************************/
-/** Copyright Airbus Helicopters 2019 **/
-/***************************************/
-package com.eurocopter.mgs.datamodel.health.monitoring;
+
 
 import java.util.HashMap;
 import java.util.HashSet;
