@@ -1,9 +1,125 @@
-   // BCR-6605 default filtering law and configuration baseline
-         IndicatorConfiguration indicatorConfiguration = indicatorConfigurations.get(indicator);
-         String law = indicatorConfiguration != null ? indicatorConfiguration.getFilteringLaw() : null;
-         for (WCThresholdModel thresholdModel : indicatorThresholdsMap.values()) {
-            thresholdModel.setFilteringLawName(law);
-            // Baseline = the applicable configuration. Set once here, never written again.
-            thresholdModel.setBaseline(new WCThresholdBaseline(
-                  thresholdModel.getDefaultValue(), thresholdModel.getMinValue(), law));
+public boolean isValidData(Map<Aircraft, WCMechanicalComponentModel> dataToBeValidated) {
+
+      // for each aircraft
+      for (Entry<Aircraft, WCMechanicalComponentModel> entry : dataToBeValidated.entrySet()) {
+
+         // retrieve the whole set of thresholds of the current aircraft
+         Multimap<Indicator, WCThresholdModel> wcThresholdMap = getComponentThresholds(entry.getValue());
+
+         // browse the list of thresholds of the current aircraft
+         // in order to determine if data are valid
+         for (Indicator indicator : wcThresholdMap.keySet()) {
+
+            WCThresholdModel redModel = null;
+            WCThresholdModel amberModel = null;
+            for (WCThresholdModel currentModel : wcThresholdMap.get(indicator)) {
+               switch (currentModel.getType()) {
+                  case FIXED:
+                     if (currentModel.getDefaultValue() == null) {
+                        // fixed thresholds without value
+                        MessageDialog.openError(parent.getShell(),
+                              Messages.CORE.getString("healthAlarmPageDataInvalidTitle"),
+                              MessageFormat.format(
+                                    Messages.CORE.getMnemonicEscapedString("healthAlarmPageDataInvalidMessage"),
+                                    entry.getKey().getRegisterNumber(),
+                                    currentModel.getHealthMechanicalComponentName() + "/"
+                                          + currentModel.getIndicator()
+                                          + " (fixed threshold value cannot be undefined)"));
+                        return false;
+                     }
+                     break;
+
+                  case LEARNED:
+                     if (currentModel.getMinValue() != null) {
+                        final double min;
+                        final double max;
+                        if (currentModel.getLevel() == ThresholdLevel.HIGH) {
+                           min = currentModel.getMinValue();
+                           max = currentModel.getMaxValue();
+                        } else {
+                           min = currentModel.getMaxValue();
+                           max = currentModel.getMinValue();
+                        }
+                        if (min >= max) {
+                           MessageDialog.openError(parent.getShell(),
+                                 Messages.CORE.getString("healthAlarmPageDataInvalidTitle"),
+                                 MessageFormat.format(
+                                       Messages.CORE
+                                             .getMnemonicEscapedString("healthAlarmPageDataInvalidMessage"),
+                                       entry.getKey().getRegisterNumber(),
+                                       currentModel.getHealthMechanicalComponentName() + "/"
+                                             + currentModel.getIndicator() + " (check min and max values)"));
+                           return false;
+                        }
+                     }
+                     break;
+                  default:
+                     throw new IllegalStateException("Unhandled threshold type : " + currentModel.getType());
+               }
+               // BCR-6605 Implementation
+               if (currentModel.isModifiedAgainstBaseline()) {
+                  currentModel.setDeviated(true);
+               }
+               if (currentModel.isDeviated() && (currentModel.getTeReference() == null || currentModel.getTeReference().trim().isEmpty())) {
+                  MessageDialog.openError(parent.getShell(),
+                        Messages.CORE.getString("healthAlarmPageDataInvalidTitle"), MessageFormat.format(Messages.CORE.getString("deviationErrorTeMandatory"), currentModel.getIndicator().getName()));
+                  currentModel.setDeviated(false);
+                  return false;
+               }
+
+               if (currentModel.getSeverity() == Severity.RED) {
+                  redModel = currentModel;
+               } else {
+                  amberModel = currentModel;
+               }
+            }
+
+            if (redModel != null && amberModel != null) {
+
+               boolean valid = true;
+
+               if (amberModel.getDefaultValue() == null || redModel.getDefaultValue() == null) {
+                  // learned threshold without default value --> Nothing more to check
+                  // (fixed threshold without value cannot occur at this step --> checked before)
+                  continue;
+               } else if (amberModel.getLevel() == redModel.getLevel()) {
+                  // the value of the high amber threshold is greater than the value of the high
+                  // red threshold
+                  boolean highAmberHigherThanHighRed = amberModel.getLevel() == ThresholdLevel.HIGH
+                        && amberModel.getDefaultValue() > redModel.getDefaultValue();
+                  // the value of the low amber threshold is smaller than the value of the low red
+                  // threshold
+                  boolean lowAmberSmallerThanLowRed = amberModel.getLevel() == ThresholdLevel.LOW
+                        && amberModel.getDefaultValue() < redModel.getDefaultValue();
+                  if (highAmberHigherThanHighRed || lowAmberSmallerThanLowRed) {
+                     valid = false;
+                  }
+               } else if (amberModel.getLevel() == ThresholdLevel.HIGH
+                     && amberModel.getDefaultValue() < redModel.getDefaultValue()) {
+                  // the value of the low threshold is greater than the value of the high
+                  // threshold
+                  valid = false;
+               } else if ((redModel.getLevel() == ThresholdLevel.HIGH)
+                     && (redModel.getDefaultValue() < amberModel.getDefaultValue())) {
+                  // the value of the low threshold is greater than the value of the high
+                  // threshold
+                  valid = false;
+               }
+               if (!valid) {
+                  MessageDialog.openError(parent.getShell(),
+                        Messages.CORE.getString("healthAlarmPageDataInvalidTitle"),
+                        MessageFormat.format(
+                              Messages.CORE.getMnemonicEscapedString("healthAlarmPageDataInvalidMessage"),
+                              entry.getKey().getRegisterNumber(),
+                              amberModel.getHealthMechanicalComponentName() + ">"
+                                    + amberModel.getIndicator().getName()));
+                  return false;
+               }
+            }
          }
+      }
+
+      this.data = dataToBeValidated;
+
+      return true;
+   }
