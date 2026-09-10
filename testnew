@@ -1,36 +1,9 @@
- private List<WCThresholdModel> getThresholdModels(HealthMechanicalComponent healthMechanicalComponent,
-         Map<Indicator, IndicatorModel> indicatorModels, Map<Indicator, IndicatorConfiguration> indicatorConfigurations) {
-      Severity[] severities = { Severity.RED, Severity.AMBER };
-      List<WCThresholdModel> hmcThresholdModels = new ArrayList<>();
-      boolean odd = true;
-
-      Set<Indicator> sortedSet = new TreeSet<>((i1, i2) -> i1.getName().compareTo(i2.getName()));
-      sortedSet.addAll(healthMechanicalComponent.getIndicators().values());
-      for (Indicator indicator : sortedSet) {
-         Map<Severity, WCThresholdModel> indicatorThresholdsMap = new TreeMap<>(SEVERITY_COMPARATOR);
-         IndicatorModel indicatorModel = indicatorModels.get(indicator);
-         for (WCThresholdModel thresholdModel : indicatorModel.getThresholdModels()) {
-            thresholdModel.setOdd(odd);
-            indicatorThresholdsMap.put(thresholdModel.getSeverity(), thresholdModel);
-         }
-         for (Severity severity : severities) {
-            if (!indicatorThresholdsMap.containsKey(severity)) {
-               WCThresholdModel thresholdModel = new WCThresholdModel(indicator,
-                     healthMechanicalComponent.getFunctionalId());
-               thresholdModel.setSeverity(severity);
-               thresholdModel.setOdd(odd);
-               indicatorThresholdsMap.put(severity, thresholdModel);
-            }
-         }
-         // BCR-6605 set true to test the green row
+   // BCR-6605 default filtering law and configuration baseline
          IndicatorConfiguration indicatorConfiguration = indicatorConfigurations.get(indicator);
          String law = indicatorConfiguration != null ? indicatorConfiguration.getFilteringLaw() : null;
          for (WCThresholdModel thresholdModel : indicatorThresholdsMap.values()) {
             thresholdModel.setFilteringLawName(law);
-            // thresholdModel.setDeviated(false);
+            // Baseline = the applicable configuration. Set once here, never written again.
+            thresholdModel.setBaseline(new WCThresholdBaseline(
+                  thresholdModel.getDefaultValue(), thresholdModel.getMinValue(), law));
          }
-         hmcThresholdModels.addAll(indicatorThresholdsMap.values());
-         odd = !odd;
-      }
-      return hmcThresholdModels;
-   }
