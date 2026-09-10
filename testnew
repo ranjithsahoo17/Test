@@ -1,119 +1,126 @@
+/***************************************/
+/** Copyright Airbus Helicopters 2019 **/
+/***************************************/
+package com.eurocopter.mgs.datamodel.health.monitoring;
 
-
-import java.util.List;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-import com.eurocopter.mgs.business.health.model.IndicatorModel;
-import com.eurocopter.mgs.datamodel.alarm.Alarm;
-import com.eurocopter.mgs.datamodel.flight.Flight;
-import com.eurocopter.mgs.datamodel.flight.FlightIndicatorValue;
-import com.eurocopter.mgs.datamodel.health.common.Accelerometer;
-import com.eurocopter.mgs.datamodel.health.common.IAcquisition;
-import com.eurocopter.mgs.datamodel.health.common.IndicatorValue;
-import com.eurocopter.mgs.datamodel.health.monitoring.AircraftDisplayData;
-import com.eurocopter.mgs.datamodel.health.monitoring.HealthAlarm;
-import com.eurocopter.mgs.datamodel.health.monitoring.HealthMechanicalComponent;
-import com.eurocopter.mgs.datamodel.health.monitoring.HealthMechanicalComponentConfiguration;
-import com.eurocopter.mgs.datamodel.health.monitoring.HealthMonitoringConfiguration;
-import com.eurocopter.mgs.datamodel.health.monitoring.Indicator;
-import com.eurocopter.mgs.datamodel.health.monitoring.IndicatorConfiguration;
-import com.eurocopter.mgs.datamodel.health.monitoring.IndicatorMarker;
-import com.eurocopter.mgs.datamodel.health.monitoring.LearnedThresholdConfiguration;
-import com.eurocopter.mgs.datamodel.health.monitoring.ThresholdConfiguration;
-import com.eurocopter.mgs.datamodel.systemstatus.IndicatorInvalidity;
-import com.eurocopter.mgs.datamodel.systemstatus.SensorAnomaly;
-import com.eurocopter.mgs.service.exception.ConcurrentAccessException;
-import com.eurocopter.mgs.service.exception.EntityNotFoundException;
-import com.eurocopter.mgs.service.health.common.dto.AlarmIndicatorModel;
-import com.eurocopter.mgs.service.health.common.dto.HealthAcknowledgementDto;
-import com.eurocopter.mgs.service.marker.dto.BatchIndicatorMarkerDto;
-import com.eurocopter.mgs.service.marker.dto.IndicatorMarkerDto;
+import com.eurocopter.mgs.datamodel.aircraft.configuration.Configuration;
+import com.eurocopter.mgs.datamodel.health.monitoring.vpu.VpuComponent;
+import com.eurocopter.mgs.datamodel.health.monitoring.vpu.VpuCounterLabel;
 
-public interface IHealthCommonBusiness {
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
+import jakarta.persistence.DiscriminatorValue;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.MapKeyJoinColumn;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.OneToOne;
 
-   List<Accelerometer> getAccelerometers(String aircraftId) throws EntityNotFoundException;
+/**
+ * The Class HealthMonitoringConfiguration.
+ */
+@Entity
+@DiscriminatorValue(HealthMonitoringConfiguration.TYPE)
+public class HealthMonitoringConfiguration extends Configuration {
 
-   AircraftDisplayData getAircraftDisplayData(String aircraftId);
+   /** The Constant serialVersionUID. */
+   private static final long serialVersionUID = 1L;
 
-   List<HealthMechanicalComponent> getHealthMechanicalComponents(String aircraftId);
+   /** The Constant TYPE. */
+   public static final String TYPE = "HEALTH_MONITORING_CONFIGURATION";
 
-   FlightIndicatorValue getFlightIndicatorValue(String flightId, String indicatorId) throws EntityNotFoundException;
+   /** The health mechanical component configurations. */
+   @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
+   @JoinColumn(name = "HEALTH_MONITORING_CONFIGURATION_ID")
+   @MapKeyJoinColumn(name = "HEALTH_MECHANICAL_COMPONENT_ID", insertable = false, updatable = false)
+   private Map<HealthMechanicalComponent, HealthMechanicalComponentConfiguration> mechanicalComponentConfigurations = new HashMap<>();
+
+   @OneToOne(cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
+   private EvmConfiguration evmConfiguration;
+
+   @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
+   @JoinColumn(name = "HEALTH_MONITORING_CONFIGURATION_ID", updatable = false)
+   private Set<FilteringLaw> filteringLaws = new HashSet<>();
+
+   @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
+   @JoinColumn(name = "HEALTH_MONITORING_CONFIGURATION_ID", updatable = false)
+   private Set<VpuCounterLabel> vpuCounterLabels = new HashSet<>();
+
+   @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
+   @JoinColumn(name = "HEALTH_MONITORING_CONFIGURATION_ID", updatable = false)
+   private Set<VpuComponent> vpuComponents = new HashSet<>();
+
+   @Column(name = "VPU_COUNTER_WORKCARD")
+   private String vpuCounterWorkcard;
 
    /**
-    * Update close monitoring status for the given list of alarms.
-    *
-    * @param aircraftId
-    *           aircraft id
-    * @param kept
-    *           list of alarms kept in close monitoring
-    * @param withdrawn
-    *           list of alarms withdrawn from close monitoring
+    * Instantiates a new health monitoring configuration.
     */
-   void updateCloseMonitoringStatus(String aircraftId, Set<String> kept, Set<String> withdrawn);
+   HealthMonitoringConfiguration() {
+   }
 
-   Map<String, Object> getHealthParameters();
+   /**
+    * Instantiates a new health monitoring configuration.
+    *
+    * @param id
+    *           the id
+    */
+   public HealthMonitoringConfiguration(String id) {
+      super(id);
+   }
 
-   Map<Indicator, IndicatorModel> getIndicatorModels(String userId, String aircraftId) throws EntityNotFoundException;
+   public Map<HealthMechanicalComponent, HealthMechanicalComponentConfiguration> getMechanicalComponentConfigurations() {
+      return mechanicalComponentConfigurations;
+   }
 
-   IndicatorConfiguration getLatestIndicatorConfiguration(String aircraftId, String indicatorId) throws EntityNotFoundException;
+   public EvmConfiguration getEvmConfiguration() {
+      return evmConfiguration;
+   }
 
-   IndicatorConfiguration getIndicatorConfigurationForFlight(String flightId, String indicatorId) throws EntityNotFoundException;
+   public void setEvmConfiguration(EvmConfiguration evmConfiguration) {
+      this.evmConfiguration = evmConfiguration;
+   }
 
-   Map<String, Map<IndicatorValue, IAcquisition>> getIndicatorValues(String avionicName, String aircraftId, String flightId);
+   @Override
+   public String getConfigurationType() {
+      return TYPE;
+   }
 
-   HealthMonitoringConfiguration getLatestConfiguration(String aircraftId) throws EntityNotFoundException;
+   public Set<FilteringLaw> getFilteringLaws() {
+      return filteringLaws;
+   }
 
-   void createRelearnThresholdRequests(String aircraftId, List<String> learnedThresholds, long historyLearningTime, String learningReason, String loginName)
-         throws ConcurrentAccessException;
+   public void setFilteringLaws(Set<FilteringLaw> filteringLaws) {
+      this.filteringLaws = filteringLaws;
+   }
 
-   void acknowledgeAircraftHealthAlarms(String aircraftId, HealthAcknowledgementDto paramDto, String userLogin) throws ConcurrentAccessException;
+   public Set<VpuCounterLabel> getVpuCounterLabels() {
+      return vpuCounterLabels;
+   }
 
-   void acknowledgeMechanicalComponentAlarms(String aircraftId, String mcPath, HealthAcknowledgementDto paramDto, String login) throws EntityNotFoundException, ConcurrentAccessException;
+   public void setVpuCounterLabels(Set<VpuCounterLabel> vpuCounterLabels) {
+      this.vpuCounterLabels = vpuCounterLabels;
+   }
 
-   Map<HealthAlarm, Flight> getNotAckHealthAlarms(String aircraftId);
+   public String getVpuCounterWorkcard() {
+      return vpuCounterWorkcard;
+   }
 
-   Set<AlarmIndicatorModel> getNotAckHealthAlarmModels(String aircraftId);
+   public void setVpuCounterWorkcard(String vpuCounterWorkcard) {
+      this.vpuCounterWorkcard = vpuCounterWorkcard;
+   }
 
-   Map<HealthAlarm, Flight> getHealthAlarmsByIndicator(String indicatorId, Boolean acknowledged);
+   public Set<VpuComponent> getVpuComponents() {
+      return vpuComponents;
+   }
 
-   Map<Alarm, Flight> getNotAcknowledgedHealthAlarmsByHmc(String componentId);
-
-   Map<? extends Alarm, Flight> getAcknowledgedGreyHealthAlarmsAndVpuAnomaliesByHmc(String componentId);
-
-   void acknowledgeIndicatorAlarms(String aircraftId, String indicatorId, HealthAcknowledgementDto paramDto, String login) throws EntityNotFoundException, ConcurrentAccessException;
-
-   void closeMonitorAircraftHealthAlarms(String aircraftId, HealthAcknowledgementDto paramDto, String userLogin) throws ConcurrentAccessException;
-
-   void closeMonitorMechanicalComponentAlarms(String aircraftId, String path, HealthAcknowledgementDto paramDto, String userLogin) throws ConcurrentAccessException;
-
-   void closeMonitorIndicatorAlarms(String aircraftId, String indicatorId, HealthAcknowledgementDto paramDto, String login) throws ConcurrentAccessException;
-
-   List<LearnedThresholdConfiguration> getIndicatorLatestLearnedThresholds(String aircraftId, String indicatorId) throws EntityNotFoundException;
-
-   boolean hasLearnedThresholds(String aircraftId, String indicatorId) throws EntityNotFoundException;
-
-   Map<IndicatorMarker, String> getIndicatorMarkers(String aircraftId, String indicatorId);
-
-   void createIndicatorMarker(IndicatorMarkerDto indicatorMarkerDto) throws EntityNotFoundException;
-
-   void createBatchIndicatorMarkers(BatchIndicatorMarkerDto batchIndicatorMarkerDto) throws EntityNotFoundException;
-
-   void removeIndicatorMarker(String indicatorValueId, String markerId) throws EntityNotFoundException;
-
-   void removeAcknowledgementMarker(String alarmId) throws EntityNotFoundException;
-
-   Map<String, HealthMechanicalComponentConfiguration> getMechanicalComponentConfigurationsForAircraft(String aircraftId, String mechanicalComponentId) throws EntityNotFoundException;
-
-   Map<HealthMechanicalComponent, HealthMechanicalComponentConfiguration> getActiveComponentsAndConfiguration(String aircraftId);
-
-   Accelerometer getAccelerometer(String indicatorId, String aircraftId);
-
-   Map<SensorAnomaly, Flight> getSensorAnomaliesByIndicator(String indicatorId);
-
-   Map<IndicatorInvalidity, Flight> getIndicatorInvaliditiesByIndicator(String indicatorId);
-
-   Set<ThresholdConfiguration> getThresholdConfigurations(String thresholdId);
-
-   boolean hasReadIndicators(String aircraftId, String mechanicalComponentId);
+   public void setVpuComponents(Set<VpuComponent> vpuComponents) {
+      this.vpuComponents = vpuComponents;
+   }
 }
