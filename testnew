@@ -1,1 +1,135 @@
 
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Date;
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
+import java.util.UUID;
+
+import com.eurocopter.mgs.datamodel.aircraft.Aircraft;
+import com.eurocopter.mgs.datamodel.flight.Flight;
+import com.eurocopter.mgs.datamodel.flight.FlightIndicatorValue;
+import com.eurocopter.mgs.datamodel.health.monitoring.HealthMonitoringConfiguration;
+import com.eurocopter.mgs.datamodel.health.monitoring.Indicator;
+import com.eurocopter.mgs.datamodel.health.monitoring.LearnedThresholdConfiguration;
+import com.eurocopter.mgs.datamodel.health.monitoring.RelearnThresholdRequest;
+import com.eurocopter.mgs.datamodel.health.monitoring.ThresholdConfiguration;
+import com.eurocopter.mgs.service.aircraft.dao.AircraftDao;
+import com.eurocopter.mgs.service.aircraft.dao.ConfigurationDao;
+import com.eurocopter.mgs.service.datacollection.ejb.DataCollectionService;
+import com.eurocopter.mgs.service.exception.EntityNotFoundException;
+
+import jakarta.ejb.EJB;
+import jakarta.ejb.Local;
+import jakarta.ejb.Stateless;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
+import jakarta.persistence.TypedQuery;
+
+@Local
+@Stateless
+public class HealthDao {
+
+   @EJB
+   private AircraftDao aircraftDao;
+
+   @EJB
+   private ConfigurationDao configurationDao;
+
+   /** The data collection service. */
+   @EJB
+   private DataCollectionService dataCollectionService;
+
+   @PersistenceContext
+   private EntityManager manager;
+
+   public FlightIndicatorValue getFlightIndicatorValue(String flightId, String indicatorId) throws EntityNotFoundException {
+      Flight flight = manager.find(Flight.class, flightId);
+      if (flight == null) {
+         throw new EntityNotFoundException("Cannot find flight with id " + flightId);
+      }
+      Set<FlightIndicatorValue> flightIndicatorValues = flight.getFlightIndicatorValues();
+      for (FlightIndicatorValue flightIndicatorValue : flightIndicatorValues) {
+         if (flightIndicatorValue.getIndicator().getId().equals(indicatorId)) {
+            return flightIndicatorValue;
+         }
+      }
+      return null;
+   }
+
+   public List<LearnedThresholdConfiguration> getIndicatorLatestLearnedThresholds(String aircraftId, Indicator indicator) throws EntityNotFoundException {
+      HealthMonitoringConfiguration healthConfiguration = (HealthMonitoringConfiguration) configurationDao.getLatestConfiguration(aircraftId).getConfigurations()
+            .get(HealthMonitoringConfiguration.TYPE);
+      TypedQuery<ThresholdConfiguration> query = manager.createNamedQuery("findThresholdConfigurationByIndicator", ThresholdConfiguration.class);
+      query.setParameter("configurationId", healthConfiguration.getId());
+      query.setParameter("indicatorId", indicator.getId());
+      List<ThresholdConfiguration> thresholdConfigurations = query.getResultList();
+      List<LearnedThresholdConfiguration> result = new ArrayList<>();
+      for (ThresholdConfiguration thresholdConfiguration : thresholdConfigurations) {
+         if (thresholdConfiguration instanceof LearnedThresholdConfiguration) {
+            result.add((LearnedThresholdConfiguration) thresholdConfiguration);
+         }
+      }
+      return result;
+   }
+
+   public boolean hasLearnedThresholds(String aircraftId, Indicator indicator) throws EntityNotFoundException {
+      HealthMonitoringConfiguration healthConfiguration = (HealthMonitoringConfiguration) configurationDao.getLatestConfiguration(aircraftId).getConfigurations()
+            .get(HealthMonitoringConfiguration.TYPE);
+      TypedQuery<ThresholdConfiguration> query = manager.createNamedQuery("findThresholdConfigurationByIndicator", ThresholdConfiguration.class);
+      query.setParameter("configurationId", healthConfiguration.getId());
+      query.setParameter("indicatorId", indicator.getId());
+      List<ThresholdConfiguration> thresholdConfigurations = query.getResultList();
+      for (ThresholdConfiguration thresholdConfiguration : thresholdConfigurations) {
+         if (thresholdConfiguration instanceof LearnedThresholdConfiguration) {
+            return true;
+         }
+      }
+      return false;
+   }
+
+   public HealthMonitoringConfiguration getLatestConfiguration(String aircraftId) throws EntityNotFoundException {
+      HealthMonitoringConfiguration healthConfiguration = (HealthMonitoringConfiguration) configurationDao.getLatestConfiguration(aircraftId).getConfigurations()
+            .get(HealthMonitoringConfiguration.TYPE);
+      // Force initialization
+      healthConfiguration.getMechanicalComponentConfigurations().size();
+      return healthConfiguration;
+   }
+
+   public HealthMonitoringConfiguration getConfigurationForFlight(String flightId) throws EntityNotFoundException {
+      final HealthMonitoringConfiguration healthMonitoringConfiguration = (HealthMonitoringConfiguration) configurationDao.findConfigurationByFlight(flightId).getConfigurations()
+            .get(HealthMonitoringConfiguration.TYPE);
+      // Force initialization
+      healthMonitoringConfiguration.getMechanicalComponentConfigurations().size();
+      return healthMonitoringConfiguration;
+   }
+
+   public void createRelearnThresholdRequest(Aircraft aircraft, LearnedThresholdConfiguration learnedThreshold, Date effectiveDate, Date startFlightDate, long historyLearningTime,
+         String comment, String login, Indicator indicator, List<String> indicatorLocations) {
+      RelearnThresholdRequest request = new RelearnThresholdRequest(UUID.randomUUID().toString());
+      request.setStartDate(effectiveDate);
+      request.setStartFlightDate(startFlightDate);
+      request.setHistoryLearningTime(historyLearningTime);
+      request.setDescription(comment);
+      request.setLearnedValue(learnedThreshold.getValue());
+      learnedThreshold.getRelearnRequests().add(request);
+
+      dataCollectionService.collectThresholdRelearnRequest(learnedThreshold, comment, indicator, indicatorLocations, login, aircraft.getRegisterNumber());
+   }
+
+   public Date getLastFlightDate(String aircraftId) {
+      Optional<Flight> lastFlightOptional = aircraftDao.getLastFlight(aircraftId);
+      if (lastFlightOptional.isPresent()) {
+         long maxDate = 0;
+         for (Date date : Arrays.asList(lastFlightOptional.get().getUsageEndDate(), lastFlightOptional.get().getHealthEndDate(), lastFlightOptional.get().getMaintenanceEndDate())) {
+            if (date != null && date.getTime() > maxDate) {
+               maxDate = date.getTime();
+            }
+         }
+         return new Date(maxDate);
+      }
+      return new Date(0);
+   }
+}
