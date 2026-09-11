@@ -1,114 +1,3 @@
-
-import java.text.MessageFormat;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Set;
-import java.util.TreeMap;
-import java.util.TreeSet;
-
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-import org.eclipse.jface.dialogs.MessageDialog;
-import org.eclipse.jface.util.SafeRunnable;
-import org.eclipse.ui.statushandlers.StatusManager;
-import org.osgi.framework.BundleContext;
-import org.osgi.framework.FrameworkUtil;
-
-import com.eurocopter.mgs.business.health.api.IHealthCommonBusiness;
-import com.eurocopter.mgs.business.health.model.IndicatorModel;
-import com.eurocopter.mgs.business.health.model.WCThresholdBaseline;
-import com.eurocopter.mgs.business.health.model.WCThresholdModel;
-import com.eurocopter.mgs.core.presentation.i18n.Messages;
-import com.eurocopter.mgs.datamodel.aircraft.Aircraft;
-import com.eurocopter.mgs.datamodel.alarm.Severity;
-import com.eurocopter.mgs.datamodel.health.monitoring.HealthMechanicalComponent;
-import com.eurocopter.mgs.datamodel.health.monitoring.HealthMechanicalComponentConfiguration;
-import com.eurocopter.mgs.datamodel.health.monitoring.HealthMonitoringConfiguration;
-import com.eurocopter.mgs.datamodel.health.monitoring.Indicator;
-import com.eurocopter.mgs.datamodel.health.monitoring.IndicatorConfiguration;
-import com.eurocopter.mgs.datamodel.health.monitoring.ThresholdLevel;
-import com.eurocopter.mgs.datamodel.health.monitoring.ThresholdType;
-import com.eurocopter.mgs.health.activator.Activator;
-import com.eurocopter.mgs.presentation.common.MgsSession;
-import com.eurocopter.mgs.presentation.configuration.preferences.healthalarms.HealthAlarmsComposite;
-import com.eurocopter.mgs.presentation.configuration.preferences.healthalarms.WCHealthMechanicalComponentModel;
-import com.eurocopter.mgs.presentation.configuration.preferences.healthalarms.WCMechanicalComponentModel;
-import com.eurocopter.mgs.presentation.configuration.store.MgsPreferenceStore;
-import com.eurocopter.mgs.presentation.configuration.store.MgsPreferenceStoreManager;
-import com.eurocopter.mgs.presentation.utils.AircraftExceptionHandler;
-import com.eurocopter.mgs.service.aircraft.dto.AircraftConfigurationHistoryDto;
-import com.eurocopter.mgs.service.aircraft.exception.AircraftConcurrentAccessException;
-import com.eurocopter.mgs.service.exception.EntityNotFoundException;
-import com.eurocopter.mgs.service.health.common.dto.IndicatorConfigurationDto;
-import com.eurocopter.mgs.service.health.common.dto.MechanicalComponentConfigurationDto;
-import com.eurocopter.mgs.service.health.common.dto.ThresholdConfigurationDto;
-import com.google.common.collect.ArrayListMultimap;
-import com.google.common.collect.Multimap;
-
-/**
- * Preference store for health alarms.
- */
-public class HealthAlarmsPreferenceStore extends MgsPreferenceStore {
-
-   private static final Logger LOGGER = LogManager.getLogger(HealthAlarmsPreferenceStore.class);
-   /** data. */
-   private Map<Aircraft, WCMechanicalComponentModel> data = new HashMap<>();
-
-   /**
-    * List of MCModels
-    */
-   private WCMechanicalComponentModel rootMechanicalComponents;
-
-   /** Composite parent. */
-   private final HealthAlarmsComposite parent;
-
-   private final BundleContext healthBundleContext = FrameworkUtil.getBundle(IHealthCommonBusiness.class)
-         .getBundleContext();
-   private final IHealthCommonBusiness healthBusiness = healthBundleContext
-         .getService(healthBundleContext.getServiceReference(IHealthCommonBusiness.class));
-
-   private static final Comparator<Severity> SEVERITY_COMPARATOR = (severity1, severity2) -> {
-      if (severity1 == severity2) {
-         return 0;
-      }
-      if (severity1 == Severity.RED) {
-         return -1;
-      }
-      return 1;
-   };
-
-   /**
-    * Constructor with argument. Builds a HealthAlarmsPreferenceStore.
-    */
-   public HealthAlarmsPreferenceStore(HealthAlarmsComposite parent) {
-      this.parent = parent;
-   }
-
-   /**
-    * Initialize the original mechanical component data.
-    * 
-    * @param aircraft
-    *           the aircraft model
-    */
-   public void initMechanicalComponentData(Aircraft aircraft) {
-      retrieveAircraftMechanicalComponents(aircraft);
-   }
-
-   @Override
-   public boolean needsSaving() {
-      return !data.isEmpty();
-   }
-
-   @Override
-   public void innerLoad() {
-      // nothing to do
-   }
-
    @Override
    public void innerSave() {
       for (Entry<Aircraft, WCMechanicalComponentModel> modelEntry : data.entrySet()) {
@@ -155,6 +44,13 @@ public class HealthAlarmsPreferenceStore extends MgsPreferenceStore {
                }
                Set<WCThresholdModel> indicatorThresholdModels = thresholdModels.get(indicator);
                IndicatorConfigurationDto indicatorConfigurationDto = new IndicatorConfigurationDto(indicator.getId());
+
+               // BCR-6605 the filtering law is held per indicator, not per threshold        // <<< BCR-6605
+               if (!indicatorThresholdModels.isEmpty()) {                                    // <<< BCR-6605
+                  indicatorConfigurationDto.setFilteringLaw(                                 // <<< BCR-6605
+                        indicatorThresholdModels.iterator().next().getFilteringLawName());   // <<< BCR-6605
+               }                                                                             // <<< BCR-6605
+
                for (WCThresholdModel wcThresholdModel : indicatorThresholdModels) {
                   if (wcThresholdModel.isEnabled()) {
                      final ThresholdConfigurationDto thresholdConfigurationDto;
@@ -175,6 +71,18 @@ public class HealthAlarmsPreferenceStore extends MgsPreferenceStore {
                               wcThresholdModel.getMinimumEngineOilTemperature());
                      }
                      thresholdConfigurationDto.setWorkcard(wcThresholdModel.getWorkCardReference());
+
+                     // BCR-6605 deviation. Keep the existing start date so it survives          // <<< BCR-6605
+                     // the rebuild done by HealthDelegate.updateHealthConfiguration;            // <<< BCR-6605
+                     // stamp a new date only when the deviation is created now.                // <<< BCR-6605
+                     thresholdConfigurationDto.setTeReference(wcThresholdModel.getTeReference());// <<< BCR-6605
+                     thresholdConfigurationDto.setDeviationStartDate(                            // <<< BCR-6605
+                           wcThresholdModel.getDeviationStartDate() != null                      // <<< BCR-6605
+                                 ? wcThresholdModel.getDeviationStartDate()                      // <<< BCR-6605
+                                 : (wcThresholdModel.isDeviated() ? new Date() : null));         // <<< BCR-6605
+                     thresholdConfigurationDto.setDeviationEndDate(                              // <<< BCR-6605
+                           wcThresholdModel.getDeviationEndDate());                              // <<< BCR-6605
+
                      indicatorConfigurationDto.getThresholdConfigurationDtos().add(thresholdConfigurationDto);
                   }
                }
@@ -188,374 +96,88 @@ public class HealthAlarmsPreferenceStore extends MgsPreferenceStore {
       }
    }
 
-   private void getModels(WCMechanicalComponentModel wcModel,
-         Map<HealthMechanicalComponent, WCHealthMechanicalComponentModel> mechanicalComponents,
-         Map<Indicator, Set<WCThresholdModel>> thresholdModels) {
-      for (WCMechanicalComponentModel subModel : wcModel.getSubHealthWCModel()) {
-         getModels(subModel, mechanicalComponents, thresholdModels);
-      }
-      for (WCHealthMechanicalComponentModel healthMechanicalComponentModel : wcModel.getHealthComponentModels()) {
-         mechanicalComponents.put(healthMechanicalComponentModel.getHealthMechanicalComponent(),
-               healthMechanicalComponentModel);
-         for (WCThresholdModel wcThresholdModel : healthMechanicalComponentModel.getThresholdModels()) {
-            if (!thresholdModels.containsKey(wcThresholdModel.getIndicator())) {
-               thresholdModels.put(wcThresholdModel.getIndicator(), new HashSet<>());
-            }
-            thresholdModels.get(wcThresholdModel.getIndicator()).add(wcThresholdModel);
-         }
-      }
-   }
 
-   private HealthMonitoringConfiguration getConfiguration(Aircraft aircraft) throws EntityNotFoundException {
-      try {
-         return MgsPreferenceStoreManager.getConfiguration(aircraft, HealthMonitoringConfiguration.TYPE,
-               HealthMonitoringConfiguration.class);
-      } catch (EntityNotFoundException e) {
-         LOGGER.error("Could not load health configuration for aircraft. Register number - Serial number = {}",
-               aircraft.getRegisterNumber(), e);
-         throw e;
-      }
-   }
 
-   /**
-    * Load data.
-    * 
-    * @param aircraft
-    *           the specified aircraft
-    * @return a list of health data
-    */
-   public WCMechanicalComponentModel loadHealthModels(Aircraft aircraft) {
-      // reinit
-      emptyData();
 
-      retrieveAircraftMechanicalComponents(aircraft);
 
-      // save it
-      data.put(aircraft, rootMechanicalComponents);
 
-      rootMechanicalComponents.setName(Messages.CORE.getString("Label.HealthComponents"));
-      WCMechanicalComponentModel all = new WCMechanicalComponentModel();
-      all.getSubHealthWCModel().add(rootMechanicalComponents);
-      all.setName(Messages.CORE.getString("Label.HealthComponents"));
-      return all;
-   }
 
-   /**
-    * Retrieve the data related to an Aircraft.
-    * 
-    * @param aircraft
-    *           the aircraft
-    * @return the list of health data
-    */
-   public WCMechanicalComponentModel getHealthModels(Aircraft aircraft) {
-      final WCMechanicalComponentModel result;
-      if (data.containsKey(aircraft)) {
-         result = data.get(aircraft);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+   private WCThresholdModel[] getThresholds(HealthMechanicalComponent mechanicalComponent, Indicator indicator,
+         HealthMonitoringConfiguration healthMonitoringConfiguration) {
+      Set<ThresholdConfiguration> latestThresholdConfigs;
+      IndicatorConfiguration indicatorConfig = healthMonitoringConfiguration.getMechanicalComponentConfigurations()
+            .get(mechanicalComponent).getIndicatorConfigurations().get(indicator);
+      if (indicatorConfig != null) {
+         latestThresholdConfigs = indicatorConfig.getThresholdConfigurations();
       } else {
-         // load it
-         result = loadHealthModels(aircraft);
+         latestThresholdConfigs = new HashSet<>();
       }
 
-      if (!Messages.CORE.getString("Label.HealthComponents").equals(result.getName())) {
-         WCMechanicalComponentModel all = new WCMechanicalComponentModel();
-         all.getSubHealthWCModel().add(result);
-         all.setName(Messages.CORE.getString("Label.HealthComponents"));
-         return all;
-      }
-      return result;
+      List<WCThresholdModel> existingThresholdModels = new ArrayList<>();
 
-   }
+      for (ThresholdConfiguration existingThresholdConfig : latestThresholdConfigs) {
 
-   /**
-    * Empty the data of the store.
-    */
-   public void emptyData() {
-      data.clear();
-   }
+         WCThresholdModel thresholdModel = new WCThresholdModel(indicator, mechanicalComponent.getFunctionalId());
+         existingThresholdModels.add(thresholdModel);
 
-   /**
-    * Indicates whether data are valid or not.
-    * 
-    * @param dataToBeValidated
-    *           to be validated
-    * @return true if data are valid, false otherwise
-    */
-   public boolean isValidData(Map<Aircraft, WCMechanicalComponentModel> dataToBeValidated) {
+         // update data with the existing threshold values
+         thresholdModel.setSeverity(existingThresholdConfig.getThreshold().getSeverity());
+         thresholdModel.setEnabled(Boolean.TRUE);
+         thresholdModel.setLevel(existingThresholdConfig.getThresholdLevel());
+         thresholdModel.setWorkCardReference(existingThresholdConfig.getWorkcard());
+         thresholdModel.setNbSuccessivePoints(existingThresholdConfig.getNbSuccessivePoints());
+         thresholdModel.setMinimumEngineOilTemperature(existingThresholdConfig.getMinimumEngineOilTemperature());
 
-      // for each aircraft
-      for (Entry<Aircraft, WCMechanicalComponentModel> entry : dataToBeValidated.entrySet()) {
+         // BCR-6605 load the stored deviation. This is the only place deviated is         // <<< BCR-6605
+         // set from persisted data - never from the configuration file.                   // <<< BCR-6605
+         thresholdModel.setTeReference(existingThresholdConfig.getTeReference());          // <<< BCR-6605
+         thresholdModel.setDeviationStartDate(                                             // <<< BCR-6605
+               existingThresholdConfig.getDeviationStartDate());                           // <<< BCR-6605
+         thresholdModel.setDeviationEndDate(existingThresholdConfig.getDeviationEndDate());// <<< BCR-6605
+         thresholdModel.setDeviated(existingThresholdConfig.isDeviationActive());          // <<< BCR-6605
 
-         // retrieve the whole set of thresholds of the current aircraft
-         Multimap<Indicator, WCThresholdModel> wcThresholdMap = getComponentThresholds(entry.getValue());
-
-         // browse the list of thresholds of the current aircraft
-         // in order to determine if data are valid
-         for (Indicator indicator : wcThresholdMap.keySet()) {
-
-            WCThresholdModel redModel = null;
-            WCThresholdModel amberModel = null;
-            for (WCThresholdModel currentModel : wcThresholdMap.get(indicator)) {
-               switch (currentModel.getType()) {
-                  case FIXED:
-                     if (currentModel.getDefaultValue() == null) {
-                        // fixed thresholds without value
-                        MessageDialog.openError(parent.getShell(),
-                              Messages.CORE.getString("healthAlarmPageDataInvalidTitle"),
-                              MessageFormat.format(
-                                    Messages.CORE.getMnemonicEscapedString("healthAlarmPageDataInvalidMessage"),
-                                    entry.getKey().getRegisterNumber(),
-                                    currentModel.getHealthMechanicalComponentName() + "/"
-                                          + currentModel.getIndicator()
-                                          + " (fixed threshold value cannot be undefined)"));
-                        return false;
-                     }
-                     break;
-
-                  case LEARNED:
-                     if (currentModel.getMinValue() != null) {
-                        final double min;
-                        final double max;
-                        if (currentModel.getLevel() == ThresholdLevel.HIGH) {
-                           min = currentModel.getMinValue();
-                           max = currentModel.getMaxValue();
-                        } else {
-                           min = currentModel.getMaxValue();
-                           max = currentModel.getMinValue();
-                        }
-                        if (min >= max) {
-                           MessageDialog.openError(parent.getShell(),
-                                 Messages.CORE.getString("healthAlarmPageDataInvalidTitle"),
-                                 MessageFormat.format(
-                                       Messages.CORE
-                                             .getMnemonicEscapedString("healthAlarmPageDataInvalidMessage"),
-                                       entry.getKey().getRegisterNumber(),
-                                       currentModel.getHealthMechanicalComponentName() + "/"
-                                             + currentModel.getIndicator() + " (check min and max values)"));
-                           return false;
-                        }
-                     }
-                     break;
-                  default:
-                     throw new IllegalStateException("Unhandled threshold type : " + currentModel.getType());
-               }
-               // BCR-6605 Implementation
-               if (currentModel.isModifiedAgainstBaseline()) {
-                  currentModel.setDeviated(true);
-               }
-               if (currentModel.isDeviated() && (currentModel.getTeReference() == null || currentModel.getTeReference().trim().isEmpty())) {
-                  MessageDialog.openError(parent.getShell(),
-                        Messages.CORE.getString("healthAlarmPageDataInvalidTitle"), MessageFormat.format(Messages.CORE.getString("deviationErrorTeMandatory"), currentModel.getIndicator().getName()));
-                  currentModel.setDeviated(false);
-                  return false;
-               }
-
-               if (currentModel.getSeverity() == Severity.RED) {
-                  redModel = currentModel;
-               } else {
-                  amberModel = currentModel;
-               }
+         if (existingThresholdConfig instanceof LearnedThresholdConfiguration learnedConfiguration) {
+            thresholdModel.setType(ThresholdType.LEARNED);
+            // default value
+            thresholdModel.setDefaultValue(learnedConfiguration.getValue() != null ? learnedConfiguration.getValue() : null);
+            // max value
+            thresholdModel.setMaxValue(Double.valueOf(learnedConfiguration.getMaximumThreshold()));
+            // min value
+            if (learnedConfiguration.getMinimumThreshold() != null) {
+               thresholdModel.setMinValue(learnedConfiguration.getMinimumThreshold());
             }
-
-            if (redModel != null && amberModel != null) {
-
-               boolean valid = true;
-
-               if (amberModel.getDefaultValue() == null || redModel.getDefaultValue() == null) {
-                  // learned threshold without default value --> Nothing more to check
-                  // (fixed threshold without value cannot occur at this step --> checked before)
-                  continue;
-               } else if (amberModel.getLevel() == redModel.getLevel()) {
-                  // the value of the high amber threshold is greater than the value of the high
-                  // red threshold
-                  boolean highAmberHigherThanHighRed = amberModel.getLevel() == ThresholdLevel.HIGH
-                        && amberModel.getDefaultValue() > redModel.getDefaultValue();
-                  // the value of the low amber threshold is smaller than the value of the low red
-                  // threshold
-                  boolean lowAmberSmallerThanLowRed = amberModel.getLevel() == ThresholdLevel.LOW
-                        && amberModel.getDefaultValue() < redModel.getDefaultValue();
-                  if (highAmberHigherThanHighRed || lowAmberSmallerThanLowRed) {
-                     valid = false;
-                  }
-               } else if (amberModel.getLevel() == ThresholdLevel.HIGH
-                     && amberModel.getDefaultValue() < redModel.getDefaultValue()) {
-                  // the value of the low threshold is greater than the value of the high
-                  // threshold
-                  valid = false;
-               } else if ((redModel.getLevel() == ThresholdLevel.HIGH)
-                     && (redModel.getDefaultValue() < amberModel.getDefaultValue())) {
-                  // the value of the low threshold is greater than the value of the high
-                  // threshold
-                  valid = false;
-               }
-               if (!valid) {
-                  MessageDialog.openError(parent.getShell(),
-                        Messages.CORE.getString("healthAlarmPageDataInvalidTitle"),
-                        MessageFormat.format(
-                              Messages.CORE.getMnemonicEscapedString("healthAlarmPageDataInvalidMessage"),
-                              entry.getKey().getRegisterNumber(),
-                              amberModel.getHealthMechanicalComponentName() + ">"
-                                    + amberModel.getIndicator().getName()));
-                  return false;
-               }
-            }
+            // learning time
+            thresholdModel.setLearningTime(learnedConfiguration.getLearningTime());
+            thresholdModel.setDeviationCoefficient(learnedConfiguration.getDeviationCoefficient());
+            thresholdModel.setMeanFactor(learnedConfiguration.getMeanFactor());
+            thresholdModel.setMinimumDeviation(learnedConfiguration.getMinimumDeviation());
+         } else if (existingThresholdConfig instanceof FixedThresholdConfiguration fixedThreshold) {
+            thresholdModel.setType(ThresholdType.FIXED);
+            // default value
+            thresholdModel.setDefaultValue(fixedThreshold.getValue());
          }
       }
-
-      this.data = dataToBeValidated;
-
-      return true;
+      return existingThresholdModels.toArray(new WCThresholdModel[0]);
    }
-
-   /**
-    * Retrieve the list of the whole threshold models for a specific component.
-    * 
-    * @param component
-    *           the component from which thresholds models have to be retrieved
-    * @return a list of thresholds models
-    */
-   private Multimap<Indicator, WCThresholdModel> getComponentThresholds(WCMechanicalComponentModel component) {
-      Multimap<Indicator, WCThresholdModel> thresholdModels = ArrayListMultimap.create();
-
-      // add the list of thresholds models to the result, if they exist
-      for (WCHealthMechanicalComponentModel healthMechanicalComponentModel : component.getHealthComponentModels()) {
-         for (WCThresholdModel thresholdModel : healthMechanicalComponentModel.getThresholdModels()) {
-            if (thresholdModel.isEnabled()) {
-               thresholdModels.put(thresholdModel.getIndicator(), thresholdModel);
-            }
-         }
-      }
-      for (WCMechanicalComponentModel mechanicalComponentModel : component.getSubHealthWCModel()) {
-         thresholdModels.putAll(getComponentThresholds(mechanicalComponentModel));
-      }
-      return thresholdModels;
-   }
-
-   /**
-    * Retrieves the aircraft monitored mechanical components and indicators with their status from the data base.
-    */
-   private void retrieveAircraftMechanicalComponents(final Aircraft aircraft) {
-      SafeRunnable.run(new SafeRunnable() {
-         @Override
-         public void run() {
-            try {
-               rootMechanicalComponents = createAllMechanicalComponents(aircraft).get("");
-            } catch (EntityNotFoundException e) {
-               LOGGER.error("Cannot find mechanical components for aircaft : {}", aircraft, e);
-            }
-         }
-      });
-   }
-
-   /**
-    * Build Health node Tree hierarchy
-    */
-   private Map<String, WCMechanicalComponentModel> createAllMechanicalComponents(final Aircraft aircraft)
-         throws EntityNotFoundException {
-      Map<String, WCMechanicalComponentModel> createdObjects = new HashMap<>();
-      Map<Indicator, IndicatorModel> indicatorModels;
-      try {
-         indicatorModels = healthBusiness.getIndicatorModels(MgsSession.getInstance().getUser().getId(),
-               aircraft.getId());
-      } catch (EntityNotFoundException e1) {
-         LOGGER.warn("Unable to retrieve indicator models", e1);
-         return createdObjects;
-      }
-
-      Map<HealthMechanicalComponent, HealthMechanicalComponentConfiguration> hmcConfigurations = healthBusiness
-            .getActiveComponentsAndConfiguration(aircraft.getId());
-
-      for (Entry<HealthMechanicalComponent, HealthMechanicalComponentConfiguration> entry : hmcConfigurations
-            .entrySet()) {
-         HealthMechanicalComponent healthMechanicalComponent = entry.getKey();
-         int position = healthMechanicalComponent.getPath()
-               .lastIndexOf(HealthMechanicalComponent.HMC_PATH_SEPARATOR);
-         String parentPath = healthMechanicalComponent.getPath().substring(0, position);
-         WCMechanicalComponentModel parentComponent = createdObjects.get(parentPath);
-         if (parentComponent == null) {
-            parentComponent = createMechanicalComponent(parentPath, createdObjects);
-         }
-         // List<WCThresholdModel> thresholdModels = getThresholdModels(healthMechanicalComponent, indicatorModels);
-
-         List<WCThresholdModel> thresholdModels = getThresholdModels(healthMechanicalComponent, indicatorModels, entry.getValue().getIndicatorConfigurations());
-
-         WCHealthMechanicalComponentModel wcModel = new WCHealthMechanicalComponentModel(healthMechanicalComponent,
-               thresholdModels, entry.getValue().getWorkcard(),
-               entry.getValue().getMaximumTimeWithoutAcquistion());
-         parentComponent.getHealthComponentModels().add(wcModel);
-      }
-      return createdObjects;
-   }
-
-   private WCMechanicalComponentModel createMechanicalComponent(String path,
-         Map<String, WCMechanicalComponentModel> createdObjects) {
-      int position = path.lastIndexOf(HealthMechanicalComponent.HMC_PATH_SEPARATOR);
-      WCMechanicalComponentModel newMCModel = new WCMechanicalComponentModel();
-      newMCModel.setName(path.substring(position + 1));
-      createdObjects.put(path, newMCModel);
-      if (position >= 0) {
-         String parentPath = path.substring(0, position);
-         WCMechanicalComponentModel parentComponent = createdObjects.get(parentPath);
-         if (parentComponent == null) {
-            parentComponent = createMechanicalComponent(parentPath, createdObjects);
-         }
-         parentComponent.getSubHealthWCModel().add(newMCModel);
-      }
-      return newMCModel;
-   }
-
-   private List<WCThresholdModel> getThresholdModels(HealthMechanicalComponent healthMechanicalComponent,
-         Map<Indicator, IndicatorModel> indicatorModels, Map<Indicator, IndicatorConfiguration> indicatorConfigurations) {
-      Severity[] severities = { Severity.RED, Severity.AMBER };
-      List<WCThresholdModel> hmcThresholdModels = new ArrayList<>();
-      boolean odd = true;
-
-      Set<Indicator> sortedSet = new TreeSet<>((i1, i2) -> i1.getName().compareTo(i2.getName()));
-      sortedSet.addAll(healthMechanicalComponent.getIndicators().values());
-      for (Indicator indicator : sortedSet) {
-         Map<Severity, WCThresholdModel> indicatorThresholdsMap = new TreeMap<>(SEVERITY_COMPARATOR);
-         IndicatorModel indicatorModel = indicatorModels.get(indicator);
-         for (WCThresholdModel thresholdModel : indicatorModel.getThresholdModels()) {
-            thresholdModel.setOdd(odd);
-            indicatorThresholdsMap.put(thresholdModel.getSeverity(), thresholdModel);
-         }
-         for (Severity severity : severities) {
-            if (!indicatorThresholdsMap.containsKey(severity)) {
-               WCThresholdModel thresholdModel = new WCThresholdModel(indicator,
-                     healthMechanicalComponent.getFunctionalId());
-               thresholdModel.setSeverity(severity);
-               thresholdModel.setOdd(odd);
-               indicatorThresholdsMap.put(severity, thresholdModel);
-            }
-         }
-         // BCR-6605 default filtering law and configuration baseline
-         IndicatorConfiguration indicatorConfiguration = indicatorConfigurations.get(indicator);
-         String law = indicatorConfiguration != null ? indicatorConfiguration.getFilteringLaw() : null;
-         for (WCThresholdModel thresholdModel : indicatorThresholdsMap.values()) {
-            thresholdModel.setFilteringLawName(law);
-            thresholdModel.setBaseline(new WCThresholdBaseline(thresholdModel.getDefaultValue(), thresholdModel.getMinValue(), law));
-         }
-         hmcThresholdModels.addAll(indicatorThresholdsMap.values());
-         odd = !odd;
-      }
-      return hmcThresholdModels;
-   }
-
-   // BCR-6605 implementation
-   /*
-    * public List<String> getFilteringLawNames(Aircraft aircraft) { List<String> names = new ArrayList<>(); try { HealthMonitoringConfiguration configuration = getConfiguration(aircraft); for
-    * (FilteringLaw law : configuration.getFilteringLaws()) { names.add(law.getName()); } } catch (Exception e) { LOGGER.warn("Could not load filtering laws, using defaults", e); names.clear(); } if
-    * (names.isEmpty()) { names.add("NO LAW");
-    * 
-    * } names.sort(String::compareTo); return names; }
-    */
-
-   public List<String> getFilteringLawNames(Aircraft aircraft) {
-      try {
-         return healthBusiness.getFilteringLawNames(aircraft.getId());
-      } catch (EntityNotFoundException e) {
-         LOGGER.warn("Could not load filtering laws", e);
-         return new ArrayList<>();
-      }
-   }
-
-}
