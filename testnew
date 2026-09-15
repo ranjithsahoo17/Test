@@ -1,1 +1,47 @@
 
+public void saveDeviations() {
+ List<DeviationDto> newDeviations = new ArrayList<>();
+ Date now = new Date();
+ for (Entry<Aircraft, WCMechanicalComponentModel> entry : data.entrySet()) {
+ Aircraft aircraft = entry.getKey();
+ Multimap<Indicator, WCThresholdModel> thresholds = getComponentThresholds(entry.getValue());
+ for (WCThresholdModel model : thresholds.values()) {
+ // isValidData already set deviated on every changed row.
+ // A row that already has a start date was loaded from the database,
+ // so it is an existing deviation and must not be created again.
+ if (!model.isDeviated() || model.getDeviationStartDate() != null) {
+ continue;
+ }
+ newDeviations.add(toDeviationDto(aircraft, model, now));
+ }
+ }
+ if (!newDeviations.isEmpty()) {
+ try {
+ healthBusiness.createDeviations(newDeviations);
+ } catch (Exception e) {
+ LOGGER.error("Could not save deviations", e);
+ }
+ }
+}
+private DeviationDto toDeviationDto(Aircraft aircraft, WCThresholdModel model, Date now) {
+ DeviationDto dto = new DeviationDto();
+ dto.setAircraftId(aircraft.getId());
+ dto.setIndicatorId(model.getIndicator().getId());
+ dto.setTeReference(model.getTeReference());
+ dto.setStartDate(now);
+ dto.setEndDate(null); // null = active
+ dto.setSeverity(model.getSeverity().name()); // 1
+ dto.setThresholdLevel(model.getLevel().name()); // 2
+ dto.setThresholdType(model.getType().name()); // 3
+ dto.setValue(model.getDefaultValue()); // 4
+ dto.setMinValue(model.getMinValue()); // 5
+ dto.setMaxValue(model.getMaxValue()); // 6
+ dto.setLearningTime(model.getLearningTime()); // 7
+ dto.setWorkcard(model.getWorkCardReference()); // 8
+ dto.setMinimumDeviation(model.getMinimumDeviation()); // 9
+ dto.setMeanFactor(model.getMeanFactor()); // 10
+ dto.setDeviationCoefficient(model.getDeviationCoefficient()); // 11
+ dto.setNbSuccessivePoints(model.getNbSuccessivePoints()); // 12
+ dto.setFilteringLaw(model.getFilteringLawName()); // 13
+ return dto;
+}
