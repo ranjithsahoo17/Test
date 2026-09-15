@@ -1,12 +1,32 @@
-   public List<Deviation> findActive(String aircraftId) {
-      return manager.createQuery(
-            "SELECT d FROM Deviation d "
-                  + "JOIN d.indicatorConfiguration ic "
-                  + "JOIN HealthMonitoringConfiguration hmc "
-                  + "JOIN hmc.mechanicalComponentConfigurations mcc "
-                  + "JOIN mcc.indicatorConfigurations ic2 "
-                  + "WHERE ic2 = ic AND hmc.aircraft.id = :aircraftId "
-                  + "AND d.endDate IS NULL", Deviation.class)
-            .setParameter("aircraftId", aircraftId)
-            .getResultList();
-   }
+
+
+import java.io.Serializable;
+import java.util.Date;
+
+public class DeviationDto implements Serializable {
+
+   private static final long serialVersionUID = 1L;
+
+   private String id;
+   private String indicatorConfigurationId;
+   private String teReference;
+   private Date startDate;
+   private Date endDate;
+
+   // the 13 parameters
+   private String severity;
+   private String thresholdLevel;
+   private String thresholdType;
+   private Double value;
+   private Double minValue;
+   private Double maxValue;
+   private Long learningTime;
+   private String workcard;
+   private Double minimumDeviation;
+   private Double meanFactor;
+   private Double deviationCoefficient;
+   private Integer nbSuccessivePoints;
+   private String filteringLaw;
+
+   // plain getters and setters for all of the above
+}
