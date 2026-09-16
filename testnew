@@ -1,540 +1,66 @@
-
-package com.eurocopter.mgs.datamodel.aircraft.configuration;
-
-import java.io.Serializable;
-
-import jakarta.persistence.Column;
-import jakarta.persistence.DiscriminatorColumn;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.Inheritance;
-import jakarta.persistence.InheritanceType;
-import jakarta.persistence.NamedQuery;
-import jakarta.persistence.Table;
-
-/**
- * Base class for all aircraft configuration classes.
- */
-@Entity
-@Table(name = "CONFIGURATION")
-@Inheritance(strategy = InheritanceType.JOINED)
-@DiscriminatorColumn(name = "CONFIGURATION_TYPE")
-@NamedQuery(name = "findConfigurationByType", query = "SELECT c, ac FROM AircraftConfiguration ac JOIN ac.configurations c WHERE ac.aircraft.id = :id AND TYPE(c) = :type ORDER BY ac.applicableDate DESC")
-@NamedQuery(name = "findLatestConfigurationByType", query = "SELECT c, ac FROM AircraftConfiguration ac JOIN ac.configurations c WHERE ac.aircraft.id = :id AND TYPE(c) = :type ORDER BY ac.serialNumber DESC")
-public abstract class Configuration implements Serializable {
-
-   /** The Constant serialVersionUID. */
-   private static final long serialVersionUID = 1L;
-
-   /** The id. */
-   @Id
-   @Column(name = "ID", nullable = false)
-   private String id;
-
-   /** The version. */
-   @Column(name = "VERSION", nullable = false)
-   private String version;
-
-   /**
-    * The original. If true, generated with an xml file, If false, modified in the application.
-    */
-   @Column(name = "ORIGINAL", nullable = false)
-   private boolean original;
-
-   /**
-    * Instantiates a new configuration.
-    */
-   protected Configuration() {
-   }
-
-   /**
-    * Gets the id.
-    * 
-    * @return the id
-    */
-   public String getId() {
-      return id;
-   }
-
-   /**
-    * Instantiates a new configuration.
-    * 
-    * @param id
-    *           the id
-    */
-   public Configuration(String id) {
-      this.id = id;
-   }
-
-   /**
-    * Gets the version.
-    * 
-    * @return the version
-    */
-   public String getVersion() {
-      return version;
-   }
-
-   /**
-    * Sets the version.
-    * 
-    * @param version
-    *           the new version
-    */
-   public void setVersion(String version) {
-      this.version = version;
-   }
-
-   /**
-    * Gets the configuration type.
-    * 
-    * @return the configuration type
-    */
-   public abstract String getConfigurationType();
-
-   public boolean isOriginal() {
-      return original;
-   }
-
-   public void setOriginal(boolean original) {
-      this.original = original;
-   }
-
-   @Override
-   public int hashCode() {
-      final int prime = 31;
-      int result = 1;
-      result = prime * result + ((id == null) ? 0 : id.hashCode());
-      return result;
-   }
-
-   @Override
-   public boolean equals(Object obj) {
-      if (this == obj) {
-         return true;
-      }
-      if (obj == null) {
-         return false;
-      }
-      if (getClass() != obj.getClass()) {
-         return false;
-      }
-      Configuration other = (Configuration) obj;
-      if (id == null) {
-         return other.id == null;
-      } else
-         return id.equals(other.id);
-   }
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-package com.eurocopter.mgs.datamodel.aircraft.configuration;
-
-import java.io.Serializable;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.Map;
-
-import com.eurocopter.mgs.datamodel.aircraft.Aircraft;
-import com.eurocopter.mgs.datamodel.aircraft.AvionicVersion;
-import com.eurocopter.mgs.datamodel.aircraft.DmauVersion;
-import com.eurocopter.mgs.datamodel.synchro.ServerOnly;
-
-import jakarta.persistence.CascadeType;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
-import jakarta.persistence.MapKeyColumn;
-import jakarta.persistence.NamedQuery;
-import jakarta.persistence.OneToMany;
-import jakarta.persistence.Table;
-import jakarta.persistence.Temporal;
-import jakarta.persistence.TemporalType;
-import jakarta.persistence.UniqueConstraint;
-
-/**
- * The Class AircraftConfiguration.
- */
-@Entity
-@Table(name = "AIRCRAFT_CONFIGURATION", uniqueConstraints = {
-      @UniqueConstraint(columnNames = { "AIRCRAFT_ID", "SERIAL_NUMBER" })
-})
-@NamedQuery(name = "findNextAircraftConfigurationSerialNumber", query = "SELECT MAX(c.serialNumber) + 1 FROM AircraftConfiguration c WHERE c.aircraft.id = :aircraftId")
-@NamedQuery(name = "findAircraftConfigurationByFlight", query = "SELECT c FROM AircraftConfiguration c JOIN c.aircraft a JOIN a.flights f WHERE f.id = :flightId AND f.configurationSerialNumber = c.serialNumber")
-@NamedQuery(name = "findAircraftConfigurationByAircraftAndSerialNumber", query = "SELECT c FROM AircraftConfiguration c WHERE c.aircraft.id = :aircraftId AND c.serialNumber = :serialNumber")
-@NamedQuery(name = "findAircraftConfigurations", query = "SELECT DISTINCT c FROM AircraftConfiguration c JOIN FETCH c.aircraft JOIN FETCH c.avionicVersion WHERE c.aircraft.id = :aircraftId ORDER BY c.applicableDate ASC")
-@NamedQuery(name = "findAircraftLatestConfiguration", query = "SELECT c FROM AircraftConfiguration c WHERE c.aircraft.id = :aircraftId ORDER BY c.serialNumber DESC")
-@NamedQuery(name = "findAircraftApplicableConfiguration", query = "SELECT c FROM AircraftConfiguration c WHERE c.aircraft.id = :aircraftId AND c.applicableDate < :date ORDER BY c.serialNumber DESC")
-public class AircraftConfiguration implements Serializable {
-
-   /** The Constant serialVersionUID. */
-   private static final long serialVersionUID = 1L;
-
-   /** The id. */
-   @Id
-   @Column(name = "ID", nullable = false)
-   private String id;
-
-   /** The aircraft. */
-   @ManyToOne(fetch = FetchType.EAGER, optional = false)
-   @JoinColumn(name = "AIRCRAFT_ID", nullable = false)
-   private Aircraft aircraft;
-
-   /** The avionic version. */
-   @ManyToOne(fetch = FetchType.EAGER, optional = false)
-   @JoinColumn(name = "AVIONIC_VERSION_ID", nullable = false)
-   private AvionicVersion avionicVersion;
-
-   /** The avionic version. */
-   @ManyToOne(fetch = FetchType.EAGER)
-   @JoinColumn(name = "DMAU_VERSION_ID")
-   private DmauVersion dmauVersion;
-
-   /**
-    * The serial number of the new A/C configuration.
-    */
-   @Column(name = "SERIAL_NUMBER", nullable = false)
-   private int serialNumber;
-
-   /**
-    * The applicable date of the new A/C configuration.
-    */
-   @Column(name = "APPLICABLE_DATE", nullable = false)
-   @Temporal(TemporalType.TIMESTAMP)
-   private Date applicableDate;
-
-   /** The configurations. */
-   @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.EAGER)
-   @JoinColumn(name = "AIRCRAFT_CONFIGURATION_ID", updatable = false)
-   @MapKeyColumn(name = "CONFIGURATION_TYPE", insertable = false, updatable = false)
-   @ServerOnly
-   private Map<String, Configuration> configurations = new HashMap<>();
-
-   /**
-    * Instantiates a new aircraft configuration.
-    */
-   AircraftConfiguration() {
-   }
-
-   /**
-    * Instantiates a new aircraft configuration.
-    *
-    * @param id
-    *           the id
-    */
-   public AircraftConfiguration(String id) {
-      this.id = id;
-   }
-
-   /**
-    * Gets the id.
-    *
-    * @return the id
-    */
-   public String getId() {
-      return id;
-   }
-
-   /**
-    * Gets the aircraft.
-    *
-    * @return the aircraft
-    */
-   public Aircraft getAircraft() {
-      return aircraft;
-   }
-
-   /**
-    * Sets the aircraft.
-    *
-    * @param aircraft
-    *           the new aircraft
-    */
-   public void setAircraft(Aircraft aircraft) {
-      this.aircraft = aircraft;
-   }
-
-   /**
-    * Gets the avionic version.
-    *
-    * @return the avionic version
-    */
-   public AvionicVersion getAvionicVersion() {
-      return avionicVersion;
-   }
-
-   /**
-    * Sets the avionic version.
-    *
-    * @param avionicVersion
-    *           the new avionic version
-    */
-   public void setAvionicVersion(AvionicVersion avionicVersion) {
-      this.avionicVersion = avionicVersion;
-   }
-
-   public DmauVersion getDmauVersion() {
-      return dmauVersion;
-   }
-
-   public void setDmauVersion(DmauVersion dmauVersion) {
-      this.dmauVersion = dmauVersion;
-   }
-
-   /**
-    * Gets the serial number.
-    *
-    * @return the serial number
-    */
-   public int getSerialNumber() {
-      return serialNumber;
-   }
-
-   /**
-    * Sets the serial number.
-    *
-    * @param serialNumber
-    *           the new serial number
-    */
-   public void setSerialNumber(int serialNumber) {
-      this.serialNumber = serialNumber;
-   }
-
-   /**
-    * Gets the applicable date.
-    *
-    * @return the applicable date
-    */
-   public Date getApplicableDate() {
-      return applicableDate;
-   }
-
-   /**
-    * Sets the applicable date.
-    *
-    * @param applicableDate
-    *           the new applicable date
-    */
-   public void setApplicableDate(Date applicableDate) {
-      this.applicableDate = applicableDate;
-   }
-
-   /**
-    * Gets the configurations.
-    *
-    * @return the configurations
-    */
-   public Map<String, Configuration> getConfigurations() {
-      return configurations;
-   }
-
-   /**
-    * Sets the configurations.
-    *
-    * @param configurations
-    *           the configurations
-    */
-   public void setConfigurations(Map<String, Configuration> configurations) {
-      this.configurations = configurations;
-   }
-
-   @Override
-   public int hashCode() {
-      final int prime = 31;
-      int result = 1;
-      result = prime * result + ((id == null) ? 0 : id.hashCode());
-      return result;
-   }
-
-   @Override
-   public boolean equals(Object obj) {
-      if (this == obj) {
-         return true;
-      }
-      if (obj == null) {
-         return false;
-      }
-      if (getClass() != obj.getClass()) {
-         return false;
-      }
-      AircraftConfiguration other = (AircraftConfiguration) obj;
-      if (id == null) {
-         return other.id == null;
-      } else
-         return id.equals(other.id);
-   }
-}
-
-
-
-
-
-
-
-
-
-
-
-package com.eurocopter.mgs.service.health.common.ejb;
-
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Date;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
-import java.util.UUID;
-
-import com.eurocopter.mgs.datamodel.aircraft.Aircraft;
-import com.eurocopter.mgs.datamodel.flight.Flight;
-import com.eurocopter.mgs.datamodel.flight.FlightIndicatorValue;
-import com.eurocopter.mgs.datamodel.health.monitoring.HealthMonitoringConfiguration;
-import com.eurocopter.mgs.datamodel.health.monitoring.Indicator;
-import com.eurocopter.mgs.datamodel.health.monitoring.LearnedThresholdConfiguration;
-import com.eurocopter.mgs.datamodel.health.monitoring.RelearnThresholdRequest;
-import com.eurocopter.mgs.datamodel.health.monitoring.ThresholdConfiguration;
-import com.eurocopter.mgs.service.aircraft.dao.AircraftDao;
-import com.eurocopter.mgs.service.aircraft.dao.ConfigurationDao;
-import com.eurocopter.mgs.service.datacollection.ejb.DataCollectionService;
-import com.eurocopter.mgs.service.exception.EntityNotFoundException;
-
-import jakarta.ejb.EJB;
-import jakarta.ejb.Local;
-import jakarta.ejb.Stateless;
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.PersistenceContext;
-import jakarta.persistence.TypedQuery;
-
-@Local
-@Stateless
-public class HealthDao {
-
-   @EJB
-   private AircraftDao aircraftDao;
-
-   @EJB
-   private ConfigurationDao configurationDao;
-
-   /** The data collection service. */
-   @EJB
-   private DataCollectionService dataCollectionService;
-
-   @PersistenceContext
-   private EntityManager manager;
-
-   public FlightIndicatorValue getFlightIndicatorValue(String flightId, String indicatorId) throws EntityNotFoundException {
-      Flight flight = manager.find(Flight.class, flightId);
-      if (flight == null) {
-         throw new EntityNotFoundException("Cannot find flight with id " + flightId);
-      }
-      Set<FlightIndicatorValue> flightIndicatorValues = flight.getFlightIndicatorValues();
-      for (FlightIndicatorValue flightIndicatorValue : flightIndicatorValues) {
-         if (flightIndicatorValue.getIndicator().getId().equals(indicatorId)) {
-            return flightIndicatorValue;
-         }
-      }
-      return null;
-   }
-
-   public List<LearnedThresholdConfiguration> getIndicatorLatestLearnedThresholds(String aircraftId, Indicator indicator) throws EntityNotFoundException {
-      HealthMonitoringConfiguration healthConfiguration = (HealthMonitoringConfiguration) configurationDao.getLatestConfiguration(aircraftId).getConfigurations()
-            .get(HealthMonitoringConfiguration.TYPE);
-      TypedQuery<ThresholdConfiguration> query = manager.createNamedQuery("findThresholdConfigurationByIndicator", ThresholdConfiguration.class);
-      query.setParameter("configurationId", healthConfiguration.getId());
-      query.setParameter("indicatorId", indicator.getId());
-      List<ThresholdConfiguration> thresholdConfigurations = query.getResultList();
-      List<LearnedThresholdConfiguration> result = new ArrayList<>();
-      for (ThresholdConfiguration thresholdConfiguration : thresholdConfigurations) {
-         if (thresholdConfiguration instanceof LearnedThresholdConfiguration) {
-            result.add((LearnedThresholdConfiguration) thresholdConfiguration);
-         }
-      }
-      return result;
-   }
-
-   public boolean hasLearnedThresholds(String aircraftId, Indicator indicator) throws EntityNotFoundException {
-      HealthMonitoringConfiguration healthConfiguration = (HealthMonitoringConfiguration) configurationDao.getLatestConfiguration(aircraftId).getConfigurations()
-            .get(HealthMonitoringConfiguration.TYPE);
-      TypedQuery<ThresholdConfiguration> query = manager.createNamedQuery("findThresholdConfigurationByIndicator", ThresholdConfiguration.class);
-      query.setParameter("configurationId", healthConfiguration.getId());
-      query.setParameter("indicatorId", indicator.getId());
-      List<ThresholdConfiguration> thresholdConfigurations = query.getResultList();
-      for (ThresholdConfiguration thresholdConfiguration : thresholdConfigurations) {
-         if (thresholdConfiguration instanceof LearnedThresholdConfiguration) {
-            return true;
-         }
-      }
-      return false;
-   }
-
-   public HealthMonitoringConfiguration getLatestConfiguration(String aircraftId) throws EntityNotFoundException {
-      HealthMonitoringConfiguration healthConfiguration = (HealthMonitoringConfiguration) configurationDao.getLatestConfiguration(aircraftId).getConfigurations()
-            .get(HealthMonitoringConfiguration.TYPE);
-      // Force initialization
-      healthConfiguration.getMechanicalComponentConfigurations().size();
-      healthConfiguration.getFilteringLaws().size();
-      return healthConfiguration;
-   }
-
-   public HealthMonitoringConfiguration getConfigurationForFlight(String flightId) throws EntityNotFoundException {
-      final HealthMonitoringConfiguration healthMonitoringConfiguration = (HealthMonitoringConfiguration) configurationDao.findConfigurationByFlight(flightId).getConfigurations()
-            .get(HealthMonitoringConfiguration.TYPE);
-      // Force initialization
-      healthMonitoringConfiguration.getMechanicalComponentConfigurations().size();
-      return healthMonitoringConfiguration;
-   }
-
-   public void createRelearnThresholdRequest(Aircraft aircraft, LearnedThresholdConfiguration learnedThreshold, Date effectiveDate, Date startFlightDate, long historyLearningTime,
-         String comment, String login, Indicator indicator, List<String> indicatorLocations) {
-      RelearnThresholdRequest request = new RelearnThresholdRequest(UUID.randomUUID().toString());
-      request.setStartDate(effectiveDate);
-      request.setStartFlightDate(startFlightDate);
-      request.setHistoryLearningTime(historyLearningTime);
-      request.setDescription(comment);
-      request.setLearnedValue(learnedThreshold.getValue());
-      learnedThreshold.getRelearnRequests().add(request);
-
-      dataCollectionService.collectThresholdRelearnRequest(learnedThreshold, comment, indicator, indicatorLocations, login, aircraft.getRegisterNumber());
-   }
-
-   public Date getLastFlightDate(String aircraftId) {
-      Optional<Flight> lastFlightOptional = aircraftDao.getLastFlight(aircraftId);
-      if (lastFlightOptional.isPresent()) {
-         long maxDate = 0;
-         for (Date date : Arrays.asList(lastFlightOptional.get().getUsageEndDate(), lastFlightOptional.get().getHealthEndDate(), lastFlightOptional.get().getMaintenanceEndDate())) {
-            if (date != null && date.getTime() > maxDate) {
-               maxDate = date.getTime();
-            }
-         }
-         return new Date(maxDate);
-      }
-      return new Date(0);
-   }
-}
-
-
-
-
-
-
-
+-- Table: public.indicator_configuration
+
+-- DROP TABLE IF EXISTS public.indicator_configuration;
+
+CREATE TABLE IF NOT EXISTS public.indicator_configuration
+(
+    id character varying(255) COLLATE pg_catalog."default" NOT NULL,
+    filtering_law character varying(255) COLLATE pg_catalog."default",
+    algorithm character varying(255) COLLATE pg_catalog."default",
+    invalidity_threshold double precision,
+    invalidity_work_card character varying(255) COLLATE pg_catalog."default",
+    max_points_per_hour integer,
+    max_sensor double precision,
+    min_sensor double precision,
+    multiplier double precision,
+    reference character varying(255) COLLATE pg_catalog."default",
+    reference_indicator character varying(255) COLLATE pg_catalog."default",
+    sensor_anomaly_successive_points integer,
+    sensor_anomaly_work_card character varying(255) COLLATE pg_catalog."default",
+    sliding_median integer,
+    accelerometer_id character varying(255) COLLATE pg_catalog."default",
+    indicator_id character varying(255) COLLATE pg_catalog."default" NOT NULL,
+    health_mechanical_component_configuration_id character varying(255) COLLATE pg_catalog."default",
+    CONSTRAINT indicator_configuration_pkey PRIMARY KEY (id),
+    CONSTRAINT fk_indicator_configuration_accelerometer_id FOREIGN KEY (accelerometer_id)
+        REFERENCES public.accelerometer (id) MATCH SIMPLE
+        ON UPDATE NO ACTION
+        ON DELETE NO ACTION,
+    CONSTRAINT fk_indicator_configuration_indicator_id FOREIGN KEY (indicator_id)
+        REFERENCES public.indicator (id) MATCH SIMPLE
+        ON UPDATE NO ACTION
+        ON DELETE NO ACTION,
+    CONSTRAINT indicatorconfigurationhealthmechanicalcomponentconfiguration_id FOREIGN KEY (health_mechanical_component_configuration_id)
+        REFERENCES public.health_mechanical_component_configuration (id) MATCH SIMPLE
+        ON UPDATE NO ACTION
+        ON DELETE NO ACTION
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE IF EXISTS public.indicator_configuration
+    OWNER to postgres;
+-- Index: ix_ind_con_indicator_id
+
+-- DROP INDEX IF EXISTS public.ix_ind_con_indicator_id;
+
+CREATE INDEX IF NOT EXISTS ix_ind_con_indicator_id
+    ON public.indicator_configuration USING btree
+    (indicator_id COLLATE pg_catalog."default" ASC NULLS LAST)
+    TABLESPACE pg_default;
+-- Index: ix_indcon_hea_mec_com_con_id
+
+-- DROP INDEX IF EXISTS public.ix_indcon_hea_mec_com_con_id;
+
+CREATE INDEX IF NOT EXISTS ix_indcon_hea_mec_com_con_id
+    ON public.indicator_configuration USING btree
+    (health_mechanical_component_configuration_id COLLATE pg_catalog."default" ASC NULLS LAST)
+    TABLESPACE pg_default;
+-- Index: ix_indicator_con_acc_id
+
+-- DROP INDEX IF EXISTS public.ix_indicator_con_acc_id;
+
+CREATE INDEX IF NOT EXISTS ix_indicator_con_acc_id
+    ON public.indicator_configuration USING btree
+    (accelerometer_id COLLATE pg_catalog."default" ASC NULLS LAST)
+    TABLESPACE pg_default;
