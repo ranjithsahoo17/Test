@@ -1,66 +1,75 @@
--- Table: public.indicator_configuration
 
--- DROP TABLE IF EXISTS public.indicator_configuration;
+Four files. Use the fallback — no TREAT, no subquery, less to go wrong.
 
-CREATE TABLE IF NOT EXISTS public.indicator_configuration
-(
-    id character varying(255) COLLATE pg_catalog."default" NOT NULL,
-    filtering_law character varying(255) COLLATE pg_catalog."default",
-    algorithm character varying(255) COLLATE pg_catalog."default",
-    invalidity_threshold double precision,
-    invalidity_work_card character varying(255) COLLATE pg_catalog."default",
-    max_points_per_hour integer,
-    max_sensor double precision,
-    min_sensor double precision,
-    multiplier double precision,
-    reference character varying(255) COLLATE pg_catalog."default",
-    reference_indicator character varying(255) COLLATE pg_catalog."default",
-    sensor_anomaly_successive_points integer,
-    sensor_anomaly_work_card character varying(255) COLLATE pg_catalog."default",
-    sliding_median integer,
-    accelerometer_id character varying(255) COLLATE pg_catalog."default",
-    indicator_id character varying(255) COLLATE pg_catalog."default" NOT NULL,
-    health_mechanical_component_configuration_id character varying(255) COLLATE pg_catalog."default",
-    CONSTRAINT indicator_configuration_pkey PRIMARY KEY (id),
-    CONSTRAINT fk_indicator_configuration_accelerometer_id FOREIGN KEY (accelerometer_id)
-        REFERENCES public.accelerometer (id) MATCH SIMPLE
-        ON UPDATE NO ACTION
-        ON DELETE NO ACTION,
-    CONSTRAINT fk_indicator_configuration_indicator_id FOREIGN KEY (indicator_id)
-        REFERENCES public.indicator (id) MATCH SIMPLE
-        ON UPDATE NO ACTION
-        ON DELETE NO ACTION,
-    CONSTRAINT indicatorconfigurationhealthmechanicalcomponentconfiguration_id FOREIGN KEY (health_mechanical_component_configuration_id)
-        REFERENCES public.health_mechanical_component_configuration (id) MATCH SIMPLE
-        ON UPDATE NO ACTION
-        ON DELETE NO ACTION
-)
+1. IndicatorDeviation — replace both named queries
+mgs-jpa-model/.../datamodel/health/monitoring/IndicatorDeviation.java
 
-TABLESPACE pg_default;
+java
+@Entity
+@Table(name = "INDICATOR_DEVIATION")
+@NamedQuery(name = "findActiveDeviationsByIndicatorConfigurations",
+   query = "SELECT d FROM IndicatorDeviation d "
+         + "WHERE d.indicatorConfiguration.id IN :indicatorConfigurationIds "
+         + "AND d.endDate IS NULL")
+@NamedQuery(name = "findDeviationHistoryByIndicatorConfigurations",
+   query = "SELECT d FROM IndicatorDeviation d "
+         + "WHERE d.indicatorConfiguration.id IN :indicatorConfigurationIds "
+         + "AND d.endDate IS NOT NULL")
+public class IndicatorDeviation implements Serializable {
+2. IndicatorDeviationDao — change both finders
+mgs-services-impl/.../service/health/common/ejb/IndicatorDeviationDao.java
 
-ALTER TABLE IF EXISTS public.indicator_configuration
-    OWNER to postgres;
--- Index: ix_ind_con_indicator_id
+java
+   public List<IndicatorDeviation> findActive(List<String> indicatorConfigurationIds) {
+      if (indicatorConfigurationIds.isEmpty()) {
+         return new ArrayList<>();
+      }
+      TypedQuery<IndicatorDeviation> q = manager.createNamedQuery(
+            "findActiveDeviationsByIndicatorConfigurations", IndicatorDeviation.class);
+      q.setParameter("indicatorConfigurationIds", indicatorConfigurationIds);
+      return q.getResultList();
+   }
 
--- DROP INDEX IF EXISTS public.ix_ind_con_indicator_id;
+   public List<IndicatorDeviation> findHistory(List<String> indicatorConfigurationIds) {
+      if (indicatorConfigurationIds.isEmpty()) {
+         return new ArrayList<>();
+      }
+      TypedQuery<IndicatorDeviation> q = manager.createNamedQuery(
+            "findDeviationHistoryByIndicatorConfigurations", IndicatorDeviation.class);
+      q.setParameter("indicatorConfigurationIds", indicatorConfigurationIds);
+      return q.getResultList();
+   }
+3. IHealthCommonService + HealthCommonService — change two signatures
+java
+   List<IndicatorDeviation> findActiveDeviations(List<String> indicatorConfigurationIds);
 
-CREATE INDEX IF NOT EXISTS ix_ind_con_indicator_id
-    ON public.indicator_configuration USING btree
-    (indicator_id COLLATE pg_catalog."default" ASC NULLS LAST)
-    TABLESPACE pg_default;
--- Index: ix_indcon_hea_mec_com_con_id
+   List<IndicatorDeviation> findDeviationHistory(List<String> indicatorConfigurationIds);
+Implementations stay one-liners, just passing the list through.
 
--- DROP INDEX IF EXISTS public.ix_indcon_hea_mec_com_con_id;
+4. HealthCommonBusiness — gather the ids
+The interface keeps String aircraftId; only the body changes.
 
-CREATE INDEX IF NOT EXISTS ix_indcon_hea_mec_com_con_id
-    ON public.indicator_configuration USING btree
-    (health_mechanical_component_configuration_id COLLATE pg_catalog."default" ASC NULLS LAST)
-    TABLESPACE pg_default;
--- Index: ix_indicator_con_acc_id
+java
+   @Override
+   public List<IndicatorDeviationDto> findActiveDeviations(String aircraftId)
+         throws EntityNotFoundException {
+      return toDtos(healthCommonService.findActiveDeviations(getIndicatorConfigurationIds(aircraftId)));
+   }
 
--- DROP INDEX IF EXISTS public.ix_indicator_con_acc_id;
+   @Override
+   public List<IndicatorDeviationDto> findDeviationHistory(String aircraftId)
+         throws EntityNotFoundException {
+      return toDtos(healthCommonService.findDeviationHistory(getIndicatorConfigurationIds(aircraftId)));
+   }
 
-CREATE INDEX IF NOT EXISTS ix_indicator_con_acc_id
-    ON public.indicator_configuration USING btree
-    (accelerometer_id COLLATE pg_catalog."default" ASC NULLS LAST)
-    TABLESPACE pg_default;
+   private List<String> getIndicatorConfigurationIds(String aircraftId) throws EntityNotFoundException {
+      List<String> ids = new ArrayList<>();
+      HealthMonitoringConfiguration configuration = getLatestConfiguration(aircraftId);
+      for (HealthMechanicalComponentConfiguration mcc :
+            configuration.getMechanicalComponentConfigurations().values()) {
+         for (IndicatorConfiguration ic : mcc.getIndicatorConfigurations().values()) {
+            ids.add(ic.getId());
+         }
+      }
+      return ids;
+   }
