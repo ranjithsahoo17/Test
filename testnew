@@ -1,3 +1,106 @@
-"b50aa51e-6c42-4116-8322-b55f7aa54137"	"TE-2023-Sai-2334"	"2026-09-19 11:20:00.876"		"RED"	"HIGH"	"FIXED"	10		0	0	"FIM 31-31-00,1-32"				4	"35cc6f7b-6791-41ec-9885-202c7e63c415"	"e9c8acaa-4b35-482a-aa61-850302688449"
-"c650c988-4c45-40c0-b2b2-abb262786f1a"	"TE-2023-Sai-2334"	"2026-09-19 11:22:43.156"		"RED"	"HIGH"	"FIXED"	10		0	0	"FIM 31-31-00,1-32"				4	"35cc6f7b-6791-41ec-9885-202c7e63c415"	"e9c8acaa-4b35-482a-aa61-850302688449"
-"e60b97f1-529e-48fa-ad5d-27b461f892f7"	"TE-2023-SSS-22233"	"2026-09-19 11:22:43.156"		"AMBER"	"LOW"	"LEARNED"	7		0	0	"FIM 31-31-00,1-28"				4	"35cc6f7b-6791-41ec-9885-202c7e63c415"	"f7e65700-3521-49d4-9da1-9d7b2a25a28c"
+/***************************************/
+/** Copyright Airbus Helicopters 2019 **/
+/***************************************/
+package com.eurocopter.mgs.presentation.configuration.store.dialog;
+
+import java.text.MessageFormat;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+
+import org.eclipse.jface.viewers.ArrayContentProvider;
+import org.eclipse.jface.viewers.ComboViewer;
+import org.eclipse.jface.viewers.IStructuredSelection;
+import org.eclipse.jface.viewers.LabelProvider;
+import org.eclipse.jface.viewers.StructuredSelection;
+import org.eclipse.swt.SWT;
+import org.eclipse.swt.layout.GridData;
+import org.eclipse.swt.layout.GridLayout;
+import org.eclipse.swt.widgets.Combo;
+import org.eclipse.swt.widgets.Composite;
+import org.eclipse.swt.widgets.Label;
+
+import com.eurocopter.mgs.core.presentation.i18n.Messages;
+import com.eurocopter.mgs.core.presentation.utils.ConvertUtils;
+import com.eurocopter.mgs.datamodel.aircraft.Aircraft;
+import com.eurocopter.mgs.datamodel.aircraft.Avionic;
+import com.eurocopter.mgs.datamodel.flight.Flight;
+import com.eurocopter.mgs.presentation.common.MgsGenericComposite;
+import com.eurocopter.mgs.presentation.utils.FlightUtils;
+import com.eurocopter.mgs.presentation.utils.JetLagUtils;
+
+public class MgsPreferenceDialogComposite extends MgsGenericComposite {
+
+   private final MgsPreferenceDialogModel model;
+
+   /** The list of flightsDate. */
+   private ComboViewer flights;
+
+   public MgsPreferenceDialogComposite(Composite parent, MgsPreferenceDialogModel model) {
+      super(parent, SWT.NONE);
+      this.model = model;
+      createField();
+      GridLayout layout = new GridLayout(3, true);
+      layout.marginWidth = 10;
+      setLayout(layout);
+   }
+
+   /**
+    * Create Fields.
+    */
+   private void createField() {
+      this.getShell().setText(Messages.CORE.getString("New_Configuration"));
+
+      /** Question Label. */
+      Label questionLabel = new Label(this, SWT.NONE);
+      Aircraft aircraft = model.getAircraft();
+      questionLabel.setText(MessageFormat.format(Messages.CORE.getString("selectApplicableFlight"), aircraft.getRegisterNumber()));
+      GridData gdLabelFlights = new GridData(SWT.FILL, SWT.FILL, false, false, 3, 1);
+      gdLabelFlights.widthHint = 494;
+      questionLabel.setLayoutData(gdLabelFlights);
+      Label labelDisplayedGraph = new Label(this, SWT.NONE);
+      labelDisplayedGraph.setText(Messages.CORE.getString("ApplicableFlight"));
+      this.flights = new ComboViewer(this, SWT.READ_ONLY);
+      flights.setContentProvider(ArrayContentProvider.getInstance());
+      List<Object> selectableModels = new ArrayList<>();
+      selectableModels.add(StructuredSelection.EMPTY);
+      selectableModels.addAll(model.getFlights());
+      flights.setInput(selectableModels.toArray());
+      flights.setLabelProvider(new LabelProvider() {
+         @Override
+         public String getText(Object element) {
+            if (element == StructuredSelection.EMPTY) {
+               // Empty selection (means no applicable flight)
+               return "";
+            }
+            Flight flight = (Flight) element;
+            Avionic avionic = model.getAircraft().getAircraftType().getAvionic();
+            String flightId = MessageFormat.format(Messages.CORE.getString("flightListTableColumnFlightIDContent"), FlightUtils.formatFlightId(avionic, flight.getFlightId()));
+            Date usageStartDate = JetLagUtils.applyJetLagIfApplicable(flight.getUsageStartDate(), flight.getJetLag());
+            String flightDate = ConvertUtils.formatDateTime(usageStartDate);
+            return flightId + " - " + flightDate;
+         }
+      });
+      Combo applicableFlightCombo = flights.getCombo();
+      applicableFlightCombo.setText("");
+      applicableFlightCombo.setLayoutData(new GridData(SWT.FILL, SWT.FILL, false, false, 1, 1));
+
+      // StructuredSelection.EMPTY is always added in selectable models list
+      if (selectableModels.size() > 1) {
+         Flight lastFlight = (Flight) selectableModels.get(1);
+         flights.setSelection(new StructuredSelection(lastFlight));
+         model.setSelectedFlight(lastFlight);
+      } else {
+         model.setSelectedFlight(null);
+      }
+
+      flights.addSelectionChangedListener(arg0 -> {
+         Object selectedObject = ((IStructuredSelection) flights.getSelection()).getFirstElement();
+         if (selectedObject == StructuredSelection.EMPTY) {
+            model.setSelectedFlight(null);
+         } else {
+            model.setSelectedFlight((Flight) selectedObject);
+         }
+      });
+   }
+}
