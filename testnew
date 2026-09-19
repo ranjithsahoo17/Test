@@ -1,3 +1,64 @@
+
+->> Step 1 — IHealthCommonService
+->> Find these two declarations and change the parameter type:
+
+java
+   List<IndicatorDeviation> findActiveDeviations(List<String> indicatorConfigurationIds);
+
+   List<IndicatorDeviation> findDeviationHistory(List<String> indicatorConfigurationIds);
+Leave the other four (createDeviation, acknowledgeDeviation, findIndicatorConfiguration, findFilteringLaw) alone.
+
+->>Step 2 — HealthCommonService, lines 556 and 561
+-->> Replace both methods:
+
+java
+   @Override
+   public List<IndicatorDeviation> findActiveDeviations(List<String> indicatorConfigurationIds) {
+      return deviationDao.findActive(indicatorConfigurationIds);
+   }
+
+   @Override
+   public List<IndicatorDeviation> findDeviationHistory(List<String> indicatorConfigurationIds) {
+      return deviationDao.findHistory(indicatorConfigurationIds);
+   }
+-->Step 3 — IHealthCommonBusiness
+--> No change. Confirm both still read:
+
+java
+   List<IndicatorDeviationDto> findActiveDeviations(String aircraftId) throws EntityNotFoundException;
+
+   List<IndicatorDeviationDto> findDeviationHistory(String aircraftId) throws EntityNotFoundException;
+-->> Step 4 — HealthCommonBusiness
+Replace both methods and add the private helper:
+
+java
+   @Override
+   public List<IndicatorDeviationDto> findActiveDeviations(String aircraftId)
+         throws EntityNotFoundException {
+      return toDtos(healthCommonService.findActiveDeviations(getIndicatorConfigurationIds(aircraftId)));
+   }
+
+   @Override
+   public List<IndicatorDeviationDto> findDeviationHistory(String aircraftId)
+         throws EntityNotFoundException {
+      return toDtos(healthCommonService.findDeviationHistory(getIndicatorConfigurationIds(aircraftId)));
+   }
+
+   private List<String> getIndicatorConfigurationIds(String aircraftId) throws EntityNotFoundException {
+      List<String> ids = new ArrayList<>();
+      HealthMonitoringConfiguration configuration = getLatestConfiguration(aircraftId);
+      for (HealthMechanicalComponentConfiguration mcc :
+            configuration.getMechanicalComponentConfigurations().values()) {
+         for (IndicatorConfiguration ic : mcc.getIndicatorConfigurations().values()) {
+            ids.add(ic.getId());
+         }
+      }
+      return ids;
+   }
+--> Step 5 — IndicatorDeviationDao
+--> Confirm the query names match the entity exactly:
+
+java
    public List<IndicatorDeviation> findActive(List<String> indicatorConfigurationIds) {
       if (indicatorConfigurationIds.isEmpty()) {
          return new ArrayList<>();
@@ -17,3 +78,15 @@
       q.setParameter("indicatorConfigurationIds", indicatorConfigurationIds);
       return q.getResultList();
    }
+Step 6 — IndicatorDeviation
+Confirm the two @NamedQuery names match step 5 character for character:
+
+java
+@NamedQuery(name = "findActiveDeviationsByIndicatorConfigurations",
+   query = "SELECT d FROM IndicatorDeviation d "
+         + "WHERE d.indicatorConfiguration.id IN :indicatorConfigurationIds "
+         + "AND d.endDate IS NULL")
+@NamedQuery(name = "findDeviationHistoryByIndicatorConfigurations",
+   query = "SELECT d FROM IndicatorDeviation d "
+         + "WHERE d.indicatorConfiguration.id IN :indicatorConfigurationIds "
+         + "AND d.endDate IS NOT NULL")
