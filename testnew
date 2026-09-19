@@ -1,1 +1,28 @@
+   public void saveDeviations() {
+      List<IndicatorDeviationDto> newDeviations = new ArrayList<>();
+      List<WCThresholdModel> savedModels = new ArrayList<>();
+      Date now = new Date();
 
+      for (Entry<Aircraft, WCMechanicalComponentModel> entry : data.entrySet()) {
+         Multimap<Indicator, WCThresholdModel> thresholds = getComponentThresholds(entry.getValue());
+         for (WCThresholdModel model : thresholds.values()) {
+            if (!model.isDeviated() || model.getDeviationId() != null) {
+               continue;
+            }
+            newDeviations.add(toDeviationDto(model, now));
+            savedModels.add(model);
+         }
+      }
+
+      if (!newDeviations.isEmpty()) {
+         try {
+            healthBusiness.createDeviations(newDeviations);
+            // BCR-6605 mark as saved so the next Apply does not insert the same row again
+            for (WCThresholdModel model : savedModels) {
+               model.setDeviationId("SAVED");   // TODO BCR-6605 use the real id once createDeviations returns them
+            }
+         } catch (Exception e) {
+            LOGGER.error("Could not save deviations", e);
+         }
+      }
+   }
