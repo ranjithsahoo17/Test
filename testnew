@@ -1,7 +1,5 @@
-/***************************************/
-/** Copyright Airbus Helicopters 2019 **/
-/***************************************/
-package com.eurocopter.mgs.presentation.configuration.store.dialog;
+
+
 
 import java.text.MessageFormat;
 import java.util.ArrayList;
