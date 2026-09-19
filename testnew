@@ -1,104 +1,212 @@
 
 
-
-import java.text.MessageFormat;
 import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
 
-import org.eclipse.jface.viewers.ArrayContentProvider;
-import org.eclipse.jface.viewers.ComboViewer;
-import org.eclipse.jface.viewers.IStructuredSelection;
-import org.eclipse.jface.viewers.LabelProvider;
-import org.eclipse.jface.viewers.StructuredSelection;
-import org.eclipse.swt.SWT;
-import org.eclipse.swt.layout.GridData;
-import org.eclipse.swt.layout.GridLayout;
-import org.eclipse.swt.widgets.Combo;
-import org.eclipse.swt.widgets.Composite;
-import org.eclipse.swt.widgets.Label;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.eclipse.core.runtime.IStatus;
+import org.eclipse.ui.statushandlers.StatusManager;
+import org.osgi.framework.BundleContext;
+import org.osgi.framework.FrameworkUtil;
 
+import com.eurocopter.mgs.app.Activator;
+import com.eurocopter.mgs.business.aircraft.api.IAircraftBusiness;
+import com.eurocopter.mgs.business.configuration.api.IConfigurationBusiness;
 import com.eurocopter.mgs.core.presentation.i18n.Messages;
-import com.eurocopter.mgs.core.presentation.utils.ConvertUtils;
 import com.eurocopter.mgs.datamodel.aircraft.Aircraft;
-import com.eurocopter.mgs.datamodel.aircraft.Avionic;
+import com.eurocopter.mgs.datamodel.aircraft.configuration.AircraftConfiguration;
+import com.eurocopter.mgs.datamodel.aircraft.configuration.Configuration;
 import com.eurocopter.mgs.datamodel.flight.Flight;
-import com.eurocopter.mgs.presentation.common.MgsGenericComposite;
-import com.eurocopter.mgs.presentation.utils.FlightUtils;
-import com.eurocopter.mgs.presentation.utils.JetLagUtils;
+import com.eurocopter.mgs.datamodel.usage.epc.UmsData;
+import com.eurocopter.mgs.presentation.configuration.store.dialog.MgsPreferenceDialogHandler;
+import com.eurocopter.mgs.presentation.status.GenericStatus;
+import com.eurocopter.mgs.presentation.utils.AircraftExceptionHandler;
+import com.eurocopter.mgs.service.aircraft.dto.AircraftConfigurationHistoryDto;
+import com.eurocopter.mgs.service.aircraft.exception.AircraftConcurrentAccessException;
+import com.eurocopter.mgs.service.exception.ConcurrentAccessException;
+import com.eurocopter.mgs.service.exception.EntityNotFoundException;
+import com.eurocopter.mgs.service.exception.ServiceException;
+import com.google.common.collect.ArrayListMultimap;
+import com.google.common.collect.Multimap;
 
-public class MgsPreferenceDialogComposite extends MgsGenericComposite {
+/**
+ * Manager for Preference Store Objects .
+ */
+public final class MgsPreferenceStoreManager {
 
-   private final MgsPreferenceDialogModel model;
+   private static final Logger LOGGER = LogManager.getLogger(MgsPreferenceStoreManager.class);
 
-   /** The list of flightsDate. */
-   private ComboViewer flights;
+   // The EPC UMS data and flight synthesis preferences is saved by the method saveAircraftConfigurations() to avoid to display multiple time the error message in case a download is processing
+   public static final Multimap<Aircraft, String> SELECTED_FLIGHT_SYNTHESIS_DATA = ArrayListMultimap.create();
+   public static final Multimap<Aircraft, UmsData> EPC_UMS_DATA = ArrayListMultimap.create();
 
-   public MgsPreferenceDialogComposite(Composite parent, MgsPreferenceDialogModel model) {
-      super(parent, SWT.NONE);
-      this.model = model;
-      createField();
-      GridLayout layout = new GridLayout(3, true);
-      layout.marginWidth = 10;
-      setLayout(layout);
+   private static final Map<Aircraft, AircraftConfiguration> AIRCRAFT_CONFIGURATIONS = new HashMap<>();
+
+   private static final Map<Aircraft, AircraftConfigurationHistoryDto> AIRCRAFT_CONFIGURATION_HISTORIES = new HashMap<>();
+
+   private static final Set<Aircraft> DIRTY_AIRCRAFTS = new HashSet<>();
+   private static final Set<Aircraft> FLIGHT_SYNTHESIS_DIRTY_AIRCRAFTS = new HashSet<>();
+
+   private static final MgsPreferenceStore MGS_CONFIGURATION_PREFERENCE_STORE = MgsConfigurationPreferenceStore.getInstance();
+   private static final MgsPreferenceStore USER_PREFERENCE_STORE = UserConfigurationPreferenceStore.getInstance();
+
+   /**
+    *
+    * Default constructor. Builds a MGSPreferenceStoreManager.
+    */
+   private MgsPreferenceStoreManager() {
    }
 
    /**
-    * Create Fields.
+    * Getting the MGS PreferenceStore object.
+    *
+    * @return instance of MGSConfigurationpreferenceStore
     */
-   private void createField() {
-      this.getShell().setText(Messages.CORE.getString("New_Configuration"));
+   public static synchronized MgsPreferenceStore getMgsConfigurationPreferenceStore() {
+      return MGS_CONFIGURATION_PREFERENCE_STORE;
+   }
 
-      /** Question Label. */
-      Label questionLabel = new Label(this, SWT.NONE);
-      Aircraft aircraft = model.getAircraft();
-      questionLabel.setText(MessageFormat.format(Messages.CORE.getString("selectApplicableFlight"), aircraft.getRegisterNumber()));
-      GridData gdLabelFlights = new GridData(SWT.FILL, SWT.FILL, false, false, 3, 1);
-      gdLabelFlights.widthHint = 494;
-      questionLabel.setLayoutData(gdLabelFlights);
-      Label labelDisplayedGraph = new Label(this, SWT.NONE);
-      labelDisplayedGraph.setText(Messages.CORE.getString("ApplicableFlight"));
-      this.flights = new ComboViewer(this, SWT.READ_ONLY);
-      flights.setContentProvider(ArrayContentProvider.getInstance());
-      List<Object> selectableModels = new ArrayList<>();
-      selectableModels.add(StructuredSelection.EMPTY);
-      selectableModels.addAll(model.getFlights());
-      flights.setInput(selectableModels.toArray());
-      flights.setLabelProvider(new LabelProvider() {
-         @Override
-         public String getText(Object element) {
-            if (element == StructuredSelection.EMPTY) {
-               // Empty selection (means no applicable flight)
-               return "";
+   /**
+    * Getting the user configuration preference store.
+    *
+    * @return instance of UserConfigurationPreferenceStore
+    */
+   public static synchronized MgsPreferenceStore getUserPreferenceStore() {
+      return USER_PREFERENCE_STORE;
+   }
+
+   public static synchronized void saveAircraftConfigurations() {
+      try {
+         // Save first the preferences that are not historicized: avoid to show the "Applicable flight" popup in case of concurrent access error
+         saveFlightSynthesisConfigurations();
+         saveUmsDataConfigurations();
+
+         IAircraftBusiness aircraftBusiness = getAircraftBusiness();
+         Map<Aircraft, AircraftConfigurationHistoryDto> dirtyAircraftsConfigurations = new HashMap<>();
+         for (Map.Entry<Aircraft, AircraftConfigurationHistoryDto> entry : AIRCRAFT_CONFIGURATION_HISTORIES.entrySet()) {
+            Aircraft aircraft = entry.getKey();
+            if (DIRTY_AIRCRAFTS.contains(aircraft)) {
+               dirtyAircraftsConfigurations.put(aircraft, AIRCRAFT_CONFIGURATION_HISTORIES.get(aircraft));
             }
-            Flight flight = (Flight) element;
-            Avionic avionic = model.getAircraft().getAircraftType().getAvionic();
-            String flightId = MessageFormat.format(Messages.CORE.getString("flightListTableColumnFlightIDContent"), FlightUtils.formatFlightId(avionic, flight.getFlightId()));
-            Date usageStartDate = JetLagUtils.applyJetLagIfApplicable(flight.getUsageStartDate(), flight.getJetLag());
-            String flightDate = ConvertUtils.formatDateTime(usageStartDate);
-            return flightId + " - " + flightDate;
          }
-      });
-      Combo applicableFlightCombo = flights.getCombo();
-      applicableFlightCombo.setText("");
-      applicableFlightCombo.setLayoutData(new GridData(SWT.FILL, SWT.FILL, false, false, 1, 1));
-
-      // StructuredSelection.EMPTY is always added in selectable models list
-      if (selectableModels.size() > 1) {
-         Flight lastFlight = (Flight) selectableModels.get(1);
-         flights.setSelection(new StructuredSelection(lastFlight));
-         model.setSelectedFlight(lastFlight);
-      } else {
-         model.setSelectedFlight(null);
+         if (!dirtyAircraftsConfigurations.isEmpty()) {
+            MgsPreferenceDialogHandler mgsPreferenceDialogHandler = new MgsPreferenceDialogHandler();
+            mgsPreferenceDialogHandler.openDialog(dirtyAircraftsConfigurations);
+            for (Map.Entry<Aircraft, AircraftConfigurationHistoryDto> entry : dirtyAircraftsConfigurations.entrySet()) {
+               AircraftConfigurationHistoryDto configurationHistorizationDto = entry.getValue();
+               if (mgsPreferenceDialogHandler.getOkCancel(configurationHistorizationDto)) {
+                  Flight applicableFlight = mgsPreferenceDialogHandler.getApplicableFlight(configurationHistorizationDto);
+                  final String applicableFlightId;
+                  if (applicableFlight != null) {
+                     applicableFlightId = applicableFlight.getId();
+                  } else {
+                     applicableFlightId = null;
+                  }
+                  aircraftBusiness.updateAircraftConfiguration(configurationHistorizationDto, null, applicableFlightId);
+               }
+            }
+         }
+      } catch (AircraftConcurrentAccessException e) {
+         StatusManager.getManager().handle(AircraftExceptionHandler.getStatusForAircraftException(e, "update", Activator.PLUGIN_ID), StatusManager.SHOW); //$NON-NLS-1$
+      } catch (ConcurrentAccessException e) {
+         LOGGER.warn("Concurrent access exception", e);
+         StatusManager.getManager().handle(new GenericStatus(IStatus.ERROR, Activator.PLUGIN_ID, Messages.CORE.getString("update.aborted.concurrentUpdate")), StatusManager.BLOCK); //$NON-NLS-1$
+      } catch (EntityNotFoundException e) {
+         LOGGER.warn("Entity not found exception", e);
+         StatusManager.getManager().handle(
+               new GenericStatus(IStatus.ERROR, Activator.PLUGIN_ID, Messages.CORE.getString("updateConf.aborted.missingElement"), e), //$NON-NLS-1$
+               StatusManager.SHOW);
+      } catch (ServiceException e) {
+         LOGGER.warn("Service exception", e);
+         StatusManager.getManager().handle(
+               new GenericStatus(IStatus.ERROR, Activator.PLUGIN_ID, Messages.CORE.getString("updateConf.aborted.unknownCause"), e), StatusManager.BLOCK); //$NON-NLS-1$
       }
+      DIRTY_AIRCRAFTS.clear();
+   }
 
-      flights.addSelectionChangedListener(arg0 -> {
-         Object selectedObject = ((IStructuredSelection) flights.getSelection()).getFirstElement();
-         if (selectedObject == StructuredSelection.EMPTY) {
-            model.setSelectedFlight(null);
-         } else {
-            model.setSelectedFlight((Flight) selectedObject);
-         }
-      });
+   // Save flight synthesis preferences
+   public static synchronized void saveFlightSynthesisConfigurations() throws EntityNotFoundException, ConcurrentAccessException {
+      IConfigurationBusiness configurationBusiness = getConfigurationBusiness();
+      for (Aircraft aircraft : FLIGHT_SYNTHESIS_DIRTY_AIRCRAFTS) {
+         Collection<String> usageParamIds = SELECTED_FLIGHT_SYNTHESIS_DATA.get(aircraft);
+         configurationBusiness.setFlightSynthesisUsageParameters(aircraft.getId(), new ArrayList<>(usageParamIds));
+      }
+      FLIGHT_SYNTHESIS_DIRTY_AIRCRAFTS.clear();
+   }
+
+   // Save the UMS data preferences
+   public static synchronized void saveUmsDataConfigurations() throws EntityNotFoundException, ConcurrentAccessException {
+      IConfigurationBusiness configurationBusiness = getConfigurationBusiness();
+      for (Entry<Aircraft, Collection<UmsData>> entry : EPC_UMS_DATA.asMap().entrySet()) {
+         configurationBusiness.setUmsDatas(entry.getKey().getId(), new HashSet<>(entry.getValue()));
+      }
+   }
+
+   public static void loadStores() {
+      MGS_CONFIGURATION_PREFERENCE_STORE.load();
+      USER_PREFERENCE_STORE.load();
+   }
+
+   public static synchronized void clearStores() {
+      MGS_CONFIGURATION_PREFERENCE_STORE.clear();
+      USER_PREFERENCE_STORE.clear();
+   }
+
+   public static synchronized void clearAircraftConfigurations() {
+      AIRCRAFT_CONFIGURATIONS.clear();
+      AIRCRAFT_CONFIGURATION_HISTORIES.clear();
+      SELECTED_FLIGHT_SYNTHESIS_DATA.clear();
+      EPC_UMS_DATA.clear();
+   }
+
+   public static synchronized <T extends Configuration> T getConfiguration(Aircraft aircraft, String configurationType, Class<T> className) throws EntityNotFoundException {
+      Configuration configuration = getAircraftConfiguration(aircraft).getConfigurations().get(configurationType);
+      if (configuration == null) {
+         throw new EntityNotFoundException("No " + configurationType + " configuration found !"); //$NON-NLS-1$
+      }
+      return className.cast(configuration);
+   }
+
+   public static synchronized AircraftConfiguration getAircraftConfiguration(Aircraft aircraft) throws EntityNotFoundException {
+      AircraftConfiguration aircraftConfiguration = AIRCRAFT_CONFIGURATIONS.get(aircraft);
+      if (aircraftConfiguration == null) {
+         aircraftConfiguration = getAircraftBusiness().getAircraftConfiguration(aircraft.getId());
+         AIRCRAFT_CONFIGURATIONS.put(aircraft, aircraftConfiguration);
+      }
+      return aircraftConfiguration;
+   }
+
+   public static synchronized AircraftConfigurationHistoryDto getAircraftConfigurationDto(Aircraft aircraft) throws EntityNotFoundException {
+      AircraftConfigurationHistoryDto aircraftConfigurationHistoryDto = AIRCRAFT_CONFIGURATION_HISTORIES.get(aircraft);
+      if (aircraftConfigurationHistoryDto == null) {
+         AircraftConfiguration aircraftConfiguration = getAircraftConfiguration(aircraft);
+         aircraftConfigurationHistoryDto = new AircraftConfigurationHistoryDto(aircraftConfiguration.getId());
+         AIRCRAFT_CONFIGURATION_HISTORIES.put(aircraft, aircraftConfigurationHistoryDto);
+      }
+      return aircraftConfigurationHistoryDto;
+   }
+
+   private static IAircraftBusiness getAircraftBusiness() {
+      BundleContext healthBundleContext = FrameworkUtil.getBundle(IAircraftBusiness.class).getBundleContext();
+      return healthBundleContext.getService(healthBundleContext.getServiceReference(IAircraftBusiness.class));
+   }
+
+   private static IConfigurationBusiness getConfigurationBusiness() {
+      BundleContext bundleContext = FrameworkUtil.getBundle(IConfigurationBusiness.class).getBundleContext();
+      return bundleContext.getService(bundleContext.getServiceReference(IConfigurationBusiness.class));
+   }
+
+   public static void markAsDirty(Aircraft aircraft) {
+      DIRTY_AIRCRAFTS.add(aircraft);
+   }
+
+   public static void markFlightSynthesisDataChanged(Aircraft aircraft) {
+      FLIGHT_SYNTHESIS_DIRTY_AIRCRAFTS.add(aircraft);
    }
 }
