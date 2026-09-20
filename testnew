@@ -1,3 +1,85 @@
+1. MgsPreferenceStoreManager — add the field
+
+After FLIGHT_SYNTHESIS_DIRTY_AIRCRAFTS, add:
+
+java
+   /** BCR-6605 true when the last saveAircraftConfigurations() was confirmed by the user. */
+   private static boolean lastSaveConfirmed = false;
+
+   public static synchronized boolean wasLastSaveConfirmed() {
+      return lastSaveConfirmed;
+   }
+2. MgsPreferenceStoreManager.saveAircraftConfigurations — full method
+java
+   public static synchronized void saveAircraftConfigurations() {
+      lastSaveConfirmed = false;                                   // <<< BCR-6605
+      try {
+         // Save first the preferences that are not historicized: avoid to show the "Applicable flight" popup in case of concurrent access error
+         saveFlightSynthesisConfigurations();
+         saveUmsDataConfigurations();
+
+         IAircraftBusiness aircraftBusiness = getAircraftBusiness();
+         Map<Aircraft, AircraftConfigurationHistoryDto> dirtyAircraftsConfigurations = new HashMap<>();
+         for (Map.Entry<Aircraft, AircraftConfigurationHistoryDto> entry : AIRCRAFT_CONFIGURATION_HISTORIES.entrySet()) {
+            Aircraft aircraft = entry.getKey();
+            if (DIRTY_AIRCRAFTS.contains(aircraft)) {
+               dirtyAircraftsConfigurations.put(aircraft, AIRCRAFT_CONFIGURATION_HISTORIES.get(aircraft));
+            }
+         }
+         if (!dirtyAircraftsConfigurations.isEmpty()) {
+            MgsPreferenceDialogHandler mgsPreferenceDialogHandler = new MgsPreferenceDialogHandler();
+            mgsPreferenceDialogHandler.openDialog(dirtyAircraftsConfigurations);
+            for (Map.Entry<Aircraft, AircraftConfigurationHistoryDto> entry : dirtyAircraftsConfigurations.entrySet()) {
+               AircraftConfigurationHistoryDto configurationHistorizationDto = entry.getValue();
+               if (mgsPreferenceDialogHandler.getOkCancel(configurationHistorizationDto)) {
+                  lastSaveConfirmed = true;                        // <<< BCR-6605
+                  Flight applicableFlight = mgsPreferenceDialogHandler.getApplicableFlight(configurationHistorizationDto);
+                  final String applicableFlightId;
+                  if (applicableFlight != null) {
+                     applicableFlightId = applicableFlight.getId();
+                  } else {
+                     applicableFlightId = null;
+                  }
+                  aircraftBusiness.updateAircraftConfiguration(configurationHistorizationDto, null, applicableFlightId);
+               }
+            }
+         }
+      } catch (AircraftConcurrentAccessException e) {
+         StatusManager.getManager().handle(AircraftExceptionHandler.getStatusForAircraftException(e, "update", Activator.PLUGIN_ID), StatusManager.SHOW); //$NON-NLS-1$
+      } catch (ConcurrentAccessException e) {
+         LOGGER.warn("Concurrent access exception", e);
+         StatusManager.getManager().handle(new GenericStatus(IStatus.ERROR, Activator.PLUGIN_ID, Messages.CORE.getString("update.aborted.concurrentUpdate")), StatusManager.BLOCK); //$NON-NLS-1$
+      } catch (EntityNotFoundException e) {
+         LOGGER.warn("Entity not found exception", e);
+         StatusManager.getManager().handle(
+               new GenericStatus(IStatus.ERROR, Activator.PLUGIN_ID, Messages.CORE.getString("updateConf.aborted.missingElement"), e), //$NON-NLS-1$
+               StatusManager.SHOW);
+      } catch (ServiceException e) {
+         LOGGER.warn("Service exception", e);
+         StatusManager.getManager().handle(
+               new GenericStatus(IStatus.ERROR, Activator.PLUGIN_ID, Messages.CORE.getString("updateConf.aborted.unknownCause"), e), StatusManager.BLOCK); //$NON-NLS-1$
+      }
+      DIRTY_AIRCRAFTS.clear();
+   }
+
+Only two lines added. No else branch — if nothing is dirty the flag stays false, which is correct: no configuration was saved, so no deviation should be either.
+
+3. HealthAlarmsComposite.performApply — full method
+java
+   public void performApply() {
+      healthAlarmsPreferenceStore.innerSave();
+      try {
+         MgsPreferenceStoreManager.saveAircraftConfigurations();
+         if (MgsPreferenceStoreManager.wasLastSaveConfirmed()) {
+            healthAlarmsPreferenceStore.saveDeviations();
+         }
+         MgsPreferenceStoreManager.clearAircraftConfigurations();
+      } catch (Exception e) {
+         LOGGER.error("Error while saving health preferences", e);
+      }
+   }
+4. HealthAlarmsPreferenceStore.saveDeviations — full method
+java
    public void saveDeviations() {
       List<IndicatorDeviationDto> newDeviations = new ArrayList<>();
       List<WCThresholdModel> savedModels = new ArrayList<>();
