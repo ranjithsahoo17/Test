@@ -1,90 +1,1686 @@
 
-package com.eurocopter.mgs.presentation.configuration.preferences.healthalarms;
+package com.eurocopter.mgs.presentation.aircraft.details;
 
+import java.util.concurrent.atomic.AtomicReference;
+
+import org.eclipse.jface.dialogs.Dialog;
+import org.eclipse.jface.dialogs.IDialogConstants;
+import org.eclipse.swt.SWT;
+import org.eclipse.swt.graphics.Point;
+import org.eclipse.swt.graphics.Rectangle;
+import org.eclipse.swt.layout.GridLayout;
+import org.eclipse.swt.widgets.Button;
+import org.eclipse.swt.widgets.Composite;
+import org.eclipse.swt.widgets.Control;
+import org.eclipse.swt.widgets.Display;
+import org.eclipse.swt.widgets.Shell;
+import org.osgi.framework.BundleContext;
+import org.osgi.framework.FrameworkUtil;
+
+import com.eurocopter.mgs.assets.ImageId;
+import com.eurocopter.mgs.assets.Images;
+import com.eurocopter.mgs.business.aircraft.api.IAircraftBusiness;
+import com.eurocopter.mgs.business.core.api.ICoreBusiness;
+import com.eurocopter.mgs.business.user.api.IUserBusiness;
+import com.eurocopter.mgs.core.presentation.i18n.Messages;
+import com.eurocopter.mgs.core.presentation.utils.GuiUtils;
+import com.eurocopter.mgs.datamodel.aircraft.Aircraft;
+import com.eurocopter.mgs.datamodel.core.FeatureName;
+import com.eurocopter.mgs.datamodel.user.UserConfigurationKey;
+import com.eurocopter.mgs.presentation.aircraft.management.adapter.ImportConfigurationSelectionAdapter;
+import com.eurocopter.mgs.presentation.aircraft.management.adapter.RtbParameterSelectionAdapter;
+import com.eurocopter.mgs.presentation.common.MgsSession;
+import com.eurocopter.mgs.service.exception.EntityNotFoundException;
+
+/**
+ * 
+ * Aircraft Details Dialog.
+ * <P>
+ */
+public class AircraftDetailsDialog extends Dialog {
+
+   /**
+    * If true , The AircraftDetails Dialog has been constructed for the update.
+    */
+   private static boolean update = false;
+
+   /** The aircraft details composite. */
+   private AircraftDetailsComposite aircraftDetailsComposite;
+
+   /** Import Configuration Button */
+   private Button importConfigurations;
+
+   /** RTB Parameters */
+   private Button rtbParameters;
+
+   /** The aircraft model. */
+   private final AircraftDetailsModel aircraftModel;
+
+   private final AtomicReference<String> lastFilePath = new AtomicReference<>();
+
+   /**
+    * Instantiates a new aircraft details dialog (for create.
+    * 
+    * @param parentShell
+    *           parent
+    */
+   public AircraftDetailsDialog(Shell parentShell) {
+      super(parentShell);
+      aircraftModel = new AircraftDetailsModel();
+      setUpdate(false);
+   }
+
+   /**
+    * Instantiates a new aircraft details dialog (for update).
+    * 
+    * @param parentShell
+    *           Parent
+    * @param aircraft
+    *           Aircraft
+    */
+   public AircraftDetailsDialog(Shell parentShell, Aircraft aircraft) {
+      super(parentShell);
+      setUpdate(true);
+      final BundleContext aircraftBundleContext = FrameworkUtil.getBundle(IAircraftBusiness.class).getBundleContext();
+      final IAircraftBusiness aircraftBusiness = aircraftBundleContext.getService(aircraftBundleContext.getServiceReference(IAircraftBusiness.class));
+
+      try {
+         aircraftModel = new AircraftDetailsModel(aircraft, aircraftBusiness.getAircraftConfiguration(aircraft.getId()));
+      } catch (EntityNotFoundException e) {
+         // TODO SHT: Exception handling
+         throw new IllegalStateException(e);
+      }
+   }
+
+   @Override
+   protected Control createDialogArea(Composite parent) {
+      final BundleContext aircraftBundleContext = FrameworkUtil.getBundle(IAircraftBusiness.class).getBundleContext();
+      final IAircraftBusiness aircraftBusiness = aircraftBundleContext.getService(aircraftBundleContext.getServiceReference(IAircraftBusiness.class));
+      parent.setBackground(Display.getDefault().getSystemColor(SWT.COLOR_WHITE));
+      parent.setBackgroundMode(SWT.INHERIT_FORCE);
+      parent.setLayout(new GridLayout(1, true));
+      aircraftDetailsComposite = new AircraftDetailsComposite(parent, aircraftModel, aircraftBusiness.getAircraftTypes(), update);
+
+      Composite btnComposite = new Composite(parent, SWT.NONE);
+      btnComposite.setLayout(new GridLayout(2, true));
+
+      /* Create Import configurations Button */
+      importConfigurations = new Button(btnComposite, SWT.NONE);
+      importConfigurations.setText(Messages.CORE.getMnemonicEscapedString("AircraftManagement_aircraft_ImportConfigurationButton"));
+      importConfigurations.setEnabled(false);
+      importConfigurations.addSelectionListener(new ImportConfigurationSelectionAdapter(aircraftDetailsComposite, lastFilePath));
+
+      /* Create RTB Parameters */
+      createRTBparameterButton(btnComposite);
+
+      BundleContext bundleContext = FrameworkUtil.getBundle(IUserBusiness.class).getBundleContext();
+      IUserBusiness userBusiness = bundleContext.getService(bundleContext.getServiceReference(IUserBusiness.class));
+      bundleContext = FrameworkUtil.getBundle(ICoreBusiness.class).getBundleContext();
+      ICoreBusiness coreBusiness = bundleContext.getService(bundleContext.getServiceReference(ICoreBusiness.class));
+      if (aircraftModel.getAircraftType() != null
+            && coreBusiness.getEnabledFeatureNames(aircraftModel.getAvionicVersion().getId()).contains(FeatureName.ROTOR_TRACK_BALANCE)
+            && Boolean.parseBoolean(userBusiness.getUserConfigurationProperty(
+                  MgsSession.getInstance().getUser().getId(), UserConfigurationKey.RTB_VISIBLE_FEATURES.getKey()))
+            && (aircraftModel.getDmauVersion() == null || (aircraftModel.getDmauVersion() != null && aircraftModel.getDmauVersion().hasHealthData()))) {
+         rtbParameters.setVisible(true);
+         rtbParameters.setEnabled(true);
+      } else {
+         rtbParameters.setVisible(false);
+      }
+      return aircraftDetailsComposite;
+   }
+
+   @Override
+   protected Control createButtonBar(Composite parent) {
+      Composite control = (Composite) super.createButtonBar(parent);
+      GridLayout layout = (GridLayout) control.getLayout();
+      layout.marginWidth = 5;
+      return control;
+   }
+
+   @Override
+   protected void createButtonsForButtonBar(Composite parent) {
+      /* Create OK Button * */
+      Button okButton = createButton(parent, -1, Messages.CORE.getMnemonicEscapedString("OK"), true);
+      okButton.setEnabled(isUpdate());
+      okButton.addSelectionListener(new OkCreateUpdateListener(this));
+      createButton(parent, IDialogConstants.CANCEL_ID, Messages.CORE.getMnemonicEscapedString("Cancel"), true);
+      aircraftDetailsComposite.initModifyListener(aircraftDetailsComposite, okButton);
+      aircraftDetailsComposite.updateDataTransferTypeFields(parent);
+      aircraftDetailsComposite.setImportConfigurationButton(importConfigurations);
+      aircraftDetailsComposite.listenToAircraftAvionicForConfigButton();
+   }
+
+   private void createRTBparameterButton(Composite parent) {
+      rtbParameters = new Button(parent, SWT.NONE);
+      rtbParameters.setText(Messages.CORE.getMnemonicEscapedString("AircraftManagement_aircraft_RTBParametersButton"));
+      rtbParameters.setEnabled(true);
+      rtbParameters.setVisible(true);
+      rtbParameters.addSelectionListener(new RtbParameterSelectionAdapter(isUpdate(), aircraftDetailsComposite));
+      aircraftDetailsComposite.setRtbParametersButton(rtbParameters);
+   }
+
+   public AircraftDetailsComposite getAircraftDetailsComposite() {
+      return aircraftDetailsComposite;
+   }
+
+   public static boolean isUpdate() {
+      return update;
+   }
+
+   public static void setUpdate(boolean updateStatus) {
+      update = updateStatus;
+   }
+
+   @Override
+   protected void configureShell(Shell pShell) {
+      String shellTitle = Messages.CORE.getString("aircraftDetailsDialogCreateTitle");
+      int shellHeight = 515;
+      if (update) {
+         shellTitle = Messages.CORE.getString("aircraftDetailsDialogUpdateTitle");
+         shellHeight = 545;
+      }
+
+      pShell.pack();
+      pShell.setSize(GuiUtils.applyDpiRatio(480), GuiUtils.applyDpiRatio(shellHeight));
+
+      super.configureShell(pShell);
+      // Move the dialog to the center of the top level shell.
+      Rectangle shellBounds = Display.getCurrent().getActiveShell().getBounds();
+      Point dialogSize = pShell.getSize();
+      pShell.setLocation(shellBounds.x + (shellBounds.width - dialogSize.x) / 2, shellBounds.y
+            + (shellBounds.height - dialogSize.y) / 2);
+      pShell.setText(shellTitle);
+      pShell.setImage(Images.getImage(ImageId.HOME_SETTINGS));
+   }
+}
+
+--------------------------------------------------------------------------------------------------------
+
+
+
+package com.eurocopter.mgs.presentation.aircraft.details;
+
+import java.text.MessageFormat;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.Date;
+import java.util.List;
+
+import org.eclipse.core.databinding.DataBindingContext;
+import org.eclipse.core.databinding.beans.typed.BeanProperties;
+import org.eclipse.core.databinding.beans.typed.PojoProperties;
+import org.eclipse.core.databinding.observable.value.IObservableValue;
+import org.eclipse.jface.databinding.swt.typed.WidgetProperties;
+import org.eclipse.jface.databinding.viewers.typed.ViewerProperties;
+import org.eclipse.jface.fieldassist.ControlDecoration;
+import org.eclipse.jface.fieldassist.FieldDecoration;
+import org.eclipse.jface.fieldassist.FieldDecorationRegistry;
+import org.eclipse.jface.viewers.ArrayContentProvider;
+import org.eclipse.jface.viewers.ComboViewer;
+import org.eclipse.jface.viewers.IStructuredSelection;
+import org.eclipse.jface.viewers.LabelProvider;
+import org.eclipse.jface.viewers.StructuredSelection;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
+import org.eclipse.swt.widgets.Button;
+import org.eclipse.swt.widgets.Combo;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
-import org.eclipse.ui.IWorkbench;
+import org.eclipse.swt.widgets.Group;
+import org.eclipse.swt.widgets.Label;
+import org.eclipse.swt.widgets.MessageBox;
+import org.eclipse.swt.widgets.Text;
+import org.eclipse.ui.forms.widgets.ExpandableComposite;
+import org.osgi.framework.BundleContext;
+import org.osgi.framework.FrameworkUtil;
 
+import com.eurocopter.mgs.business.aircraft.api.ConfigurationDto;
+import com.eurocopter.mgs.business.aircraft.api.IAircraftBusiness;
+import com.eurocopter.mgs.business.core.api.ICoreBusiness;
+import com.eurocopter.mgs.business.flight.api.IFlightBusiness;
 import com.eurocopter.mgs.core.presentation.i18n.Messages;
-import com.eurocopter.mgs.presentation.configuration.preferences.pages.MgsPreferencePage;
-import com.eurocopter.mgs.presentation.configuration.store.MgsPreferenceStoreComposer;
+import com.eurocopter.mgs.core.presentation.utils.ConvertUtils;
+import com.eurocopter.mgs.datamodel.aircraft.AircraftType;
+import com.eurocopter.mgs.datamodel.aircraft.Avionic;
+import com.eurocopter.mgs.datamodel.aircraft.AvionicVersion;
+import com.eurocopter.mgs.datamodel.aircraft.DataTransferType;
+import com.eurocopter.mgs.datamodel.aircraft.DmauVersion;
+import com.eurocopter.mgs.datamodel.core.FeatureName;
+import com.eurocopter.mgs.datamodel.flight.Flight;
+import com.eurocopter.mgs.datamodel.rtb.MainRotorTuning;
+import com.eurocopter.mgs.datamodel.rtb.TailRotorTuning;
+import com.eurocopter.mgs.presentation.download.list.FlightComparator;
+import com.eurocopter.mgs.presentation.utils.FlightUtils;
+import com.eurocopter.mgs.presentation.utils.JetLagUtils;
 
 /**
- *
- * Health Alarm Preference Page in the Work Cards.
+ * 
+ * Aircraft Details Composite for Creating and updating an aircraft.
  * <P>
- *
  */
-public class HealthAlarmsPreferencePage extends MgsPreferencePage {
+public class AircraftDetailsComposite extends Composite {
 
-   private HealthAlarmsComposite hac;
+   private static final String AIRCRAFT_TYPE = "aircraftType";
 
-   /** Store. */
-   private final MgsPreferenceStoreComposer store = new MgsPreferenceStoreComposer();
+   private static final String DMAU_VERSION = "dmauVersion";
+
+   private static final String DATA_TRANSFER_TYPE = "dataTransferType";
+
+   private static final String AVIONIC_VERSION = "avionicVersion";
+
+   /** The aircraft model. */
+   private final AircraftDetailsModel aircraftModel;
+
+   /** The aircraft configuration model. */
+   private ConfigurationDto aircraftConfigurationDto;
+
+   /** The local binding context. */
+   private DataBindingContext localbindingContext = new DataBindingContext();
+
+   /** Modify Listener. */
+   private DetailsModifyListener detailsModifyListener = null;
+
+   /** The applicable flights combo viewer (displayed when updating an aircraft) */
+   private ComboViewer flightComboViewer;
+
+   /** The DMAU combo viewer */
+   private ComboViewer dmauVersionComboViewer;
+
+   /** The data transfer type combo viewer (EC225 only) */
+   private ComboViewer dataTransferTypeComboViewer;
+
+   /** The aircraft id text. */
+   private Text aircraftIdText;
+
+   /** The aircraft serial number label. */
+   private Label aircraftSerialNumberLabel;
+
+   /** The data transfer type label (EC225 only) */
+   private Label dataTransferTypeLabel;
+
+   /** The aircraft serial number text. */
+   private Text aircraftSerialNumberText;
+
+   /** The register number text. */
+   private Text registerNumberText;
+
+   /** Aircraft Type Decorator */
+   private ControlDecoration aircraftTypeDecorator;
+
+   /** aircraft id Decorator */
+   private ControlDecoration aircraftIdDecorator;
+
+   /** Aircraft serial number Decorator */
+   private ControlDecoration aircraftSerialNumberDecorator;
+
+   /** Register Number Decorator */
+   private ControlDecoration registerNumberDecorator;
+
+   /** Avionic version Decorator */
+   private ControlDecoration avionicVersionDecorator;
+
+   /** Avionic version Decorator */
+   private ControlDecoration dmauVersionDecorator;
+
+   /** Data Transfer Type Decorator */
+   private ControlDecoration dataTransferTypeDecorator;
+
+   /** The rotor tunings. */
+   private MainRotorTuning mainRotorTuning;
+
+   private TailRotorTuning tailRotorTuning;
+
+   /** Import Configuration button */
+   private Button importConfigurationButton;
+
+   /** RTB Parameter button */
+   private Button rtbParametersButton;
+
+   /** True if create new aircraft, false if updating existing aircraft */
+   private boolean update;
+
+   public void setUpdate(boolean update) {
+      this.update = update;
+   }
+
+   private boolean validRotorParameters;
 
    /**
-    * Default constructor. Builds a HealthAlarmsPreferencePage.
+    * Instantiates a new aircraft details composite.
+    * 
+    * @param parent
+    *           The parent composite
+    * @param style
+    *           The style
+    * @param model
+    *           The A/C details model
+    * @param aircaftTypes
+    * @param update
     */
-   public HealthAlarmsPreferencePage() {
-      super(Messages.CORE.getMnemonicEscapedString("AircraftConfigurationSection_health"), GRID);
+   public AircraftDetailsComposite(
+         Composite parent, AircraftDetailsModel model, List<AircraftType> aircaftTypes, boolean update) {
+      super(parent, SWT.NONE);
+      this.update = update;
+      setLayout(new GridLayout(1, true));
+      setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
+      aircraftModel = model;
+
+      Group mainSection = new Group(this, SWT.NONE);
+      mainSection.setLayout(new GridLayout(1, true));
+      GridData data = new GridData(SWT.FILL, SWT.FILL, true, true);
+      mainSection.setLayoutData(data);
+      mainSection.setText(Messages.CORE.getMnemonicEscapedString("aircraftDetailsDialogIdentificationTitle"));
+
+      Composite composite = new Composite(mainSection, SWT.NONE);
+      composite.setLayoutData(new GridData(SWT.FILL, SWT.BEGINNING, true, false));
+      GridLayout glcomposite = new GridLayout(2, true);
+      glcomposite.marginWidth = 0;
+      glcomposite.marginHeight = 5;
+      glcomposite.verticalSpacing = 5;
+      composite.setLayout(glcomposite);
+
+      initDetailsField(composite, aircaftTypes);
+
+      // Dispose resources
+      addDisposeListener(e -> {
+         localbindingContext.dispose();
+         localbindingContext = null;
+      });
    }
 
-   @Override
-   protected Control createContents(Composite parent) {
-      Composite composite = new Composite(parent, SWT.NONE);
-      composite.setLayout(new GridLayout(1, false));
-      composite.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true, 1, 1));
-
-      composite.setLayout(new GridLayout(1, false));
-      composite.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true, 1, 1));
-
-      hac = new HealthAlarmsComposite(store, composite);
-      setTitle(Messages.CORE.getString(getTitle()));
-      return hac;
+   public boolean isUpdate() {
+      return update;
    }
 
-   @Override
-   public void init(IWorkbench workbench) {
-      setPreferenceStore(store);
+   public ConfigurationDto getAircraftConfigurationModel() {
+      return aircraftConfigurationDto;
    }
 
-   @Override
-   public void performDefaults() {
-      if (hac.isValidData()) {
-         hac.performDefaults();
-         super.performDefaults();
+   /**
+    * Sets the aircraft configuration model.
+    * 
+    * @param aircraftConfigurationModel
+    *           The new aircraft configuration model
+    */
+   public void setAircraftConfigurationModel(ConfigurationDto aircraftConfigurationModel) {
+      this.aircraftConfigurationDto = aircraftConfigurationModel;
+      this.detailsModifyListener.validateInputs();
+   }
+
+   public boolean isValidRotorParameters() {
+      return validRotorParameters;
+   }
+
+   /**
+    * Sets the rotorValidParameters.
+    * 
+    * @param boolean
+    *           validRotorParameters
+    */
+   public void setValidRotorParameters(boolean validRotorParameters) {
+      this.validRotorParameters = validRotorParameters;
+      this.detailsModifyListener.validateInputs();
+   }
+
+   /**
+    * Get the aircraft Model.
+    * 
+    * @return aircraftModel
+    */
+   public AircraftDetailsModel getAircraftModel() {
+      return aircraftModel;
+   }
+
+   public Text getAircraftIdText() {
+      return aircraftIdText;
+   }
+
+   public Text getAircraftSerialNumberText() {
+      return aircraftSerialNumberText;
+   }
+
+   public ControlDecoration getAircraftTypeDecorator() {
+      return aircraftTypeDecorator;
+   }
+
+   public ControlDecoration getAvionicVersionDecorator() {
+      return avionicVersionDecorator;
+   }
+
+   public ControlDecoration getDmauVersionDecorator() {
+      return dmauVersionDecorator;
+   }
+
+   public ControlDecoration getDataTransferTypeDecorator() {
+      return dataTransferTypeDecorator;
+   }
+
+   public ControlDecoration getAircraftIdDecorator() {
+      return aircraftIdDecorator;
+   }
+
+   public ControlDecoration getAircraftSerialNumberDecorator() {
+      return aircraftSerialNumberDecorator;
+   }
+
+   public ControlDecoration getRegisterNumberDecorator() {
+      return registerNumberDecorator;
+   }
+
+   public void setImportConfigurationButton(Button importConfigurationButton) {
+      this.importConfigurationButton = importConfigurationButton;
+      checkAdditionalButtons();
+   }
+
+   public void setRtbParametersButton(Button rtbParametersButton) {
+      this.rtbParametersButton = rtbParametersButton;
+   }
+
+   public void enableRtbParametersButton(boolean enabled) {
+      rtbParametersButton.setEnabled(enabled);
+   }
+
+   public MainRotorTuning getMainRotorTuning() {
+      return mainRotorTuning;
+   }
+
+   public TailRotorTuning getTailRotorTuning() {
+      return tailRotorTuning;
+   }
+
+   public Text getRegisterNumberText() {
+      return registerNumberText;
+   }
+
+   public Flight getSelectedFlight() {
+      return (Flight) ((IStructuredSelection) flightComboViewer.getSelection()).getFirstElement();
+   }
+
+   /**
+    * Disable / Enable Import Configuration button according to the aircraft Type.
+    */
+   public void listenToAircraftAvionicForConfigButton() {
+      aircraftModel.addPropertyChangeListener(AVIONIC_VERSION,
+            evt -> {
+               // If The user change the aircraft type
+               aircraftConfigurationDto = null;
+               detailsModifyListener.validateInputs();
+               manageConfigurationButton(aircraftModel.getAvionicVersion() != null);
+            });
+      aircraftModel.addPropertyChangeListener(DMAU_VERSION,
+            evt -> {
+               final DmauVersion selectedDmauVersion = (DmauVersion) evt.getNewValue();
+               if (selectedDmauVersion != null && !selectedDmauVersion.hasHealthData()) {
+                  if (aircraftConfigurationDto != null) {
+                     aircraftConfigurationDto.setHealthConfigurationFile(null);
+                     aircraftConfigurationDto.setRtbParameterFile(null);
+                     aircraftConfigurationDto.setDmauFailuresConfigurationFile(null);
+                  }
+                  rtbParametersButton.setEnabled(false);
+                  rtbParametersButton.setVisible(false);
+               } else {
+                  rtbParametersButton.setEnabled(true);
+                  rtbParametersButton.setVisible(true);
+               }
+            });
+   }
+
+   /**
+    * Init the modify Listener.
+    * 
+    * @param aircraftDetailsComposite
+    *           The aricraft details composite
+    * @param okButton
+    *           The ok button
+    */
+   public void initModifyListener(AircraftDetailsComposite aircraftDetailsComposite, Button okButton) {
+      detailsModifyListener = new DetailsModifyListener(aircraftDetailsComposite, okButton, update, aircraftModel.getAvionicVersion(), aircraftModel.getDmauVersion());
+      aircraftModel.addPropertyChangeListener(detailsModifyListener);
+      detailsModifyListener.validateInputs();
+   }
+
+   /**
+    * Activate or not additional buttons.
+    */
+   private void checkAdditionalButtons() {
+      if (aircraftModel.getAircraftType() != null) {
+         importConfigurationButton.setEnabled(true);
+         if (rtbParametersButton != null) {
+            rtbParametersButton.setEnabled(true);
+         }
+      } else {
+         importConfigurationButton.setEnabled(false);
+         if (rtbParametersButton != null) {
+            rtbParametersButton.setEnabled(false);
+         }
       }
    }
 
-   @Override
-   public boolean performCancel() {
-      hac.performCancel();
-      return super.performCancel();
+   /**
+    * Initialize Details Field.
+    * 
+    * @param parent
+    *           The parent
+    */
+   private void initDetailsField(Composite parent, List<AircraftType> aircaftTypes) {
+
+      createAircraftTypeComboViewer(parent, aircaftTypes);
+      createAvionicVersionComboViewer(parent);
+      createDmauVersionComboViewer(parent);
+      createDataTransferTypeComboViewer(parent);
+      createAircraftSerialNumberText(parent);
+      createAircraftIdText(parent);
+      createRegisterTextField(parent);
+
+      if (update) {
+         Label detachLabel = new Label(parent, SWT.NONE);
+         detachLabel.setText(Messages.CORE.getString("AircraftDetailsComposite_ApplicableFlight"));
+
+         final BundleContext flightBundleContext = FrameworkUtil.getBundle(IFlightBusiness.class).getBundleContext();
+         final IFlightBusiness flightBusiness = flightBundleContext.getService(flightBundleContext.getServiceReference(IFlightBusiness.class));
+
+         flightComboViewer = new ComboViewer(parent, SWT.READ_ONLY);
+         flightComboViewer.setContentProvider(ArrayContentProvider.getInstance());
+         flightComboViewer.setLabelProvider(new LabelProvider() {
+            @Override
+            public String getText(Object element) {
+               if (element == null) {
+                  return "";
+               }
+               Flight flight = (Flight) element;
+               Avionic avionic = aircraftModel.getAircraftType().getAvionic();
+               String flightId = MessageFormat.format(
+                     Messages.CORE.getString("flightListTableColumnFlightIDContent"), FlightUtils.formatFlightId(avionic, flight.getFlightId()));
+               Date usageStartDate = JetLagUtils.applyJetLagIfApplicable(flight.getUsageStartDate(), flight.getJetLag());
+               String flightDate = ConvertUtils.formatDateTime(usageStartDate);
+               return flightId + " - " + flightDate;
+            }
+         });
+         List<Flight> flights = flightBusiness.getFlights(aircraftModel.getAircraft().getId(), true);
+         flights.sort(new FlightComparator());
+         flightComboViewer.setInput(flights);
+         flightComboViewer.insert(null, 0);
+
+         Combo applicableFlightCombo = flightComboViewer.getCombo();
+         applicableFlightCombo.setText("");
+         applicableFlightCombo.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, false, 1, 1));
+         applicableFlightCombo.setBounds(0, 0, 61, 21);
+
+         IObservableValue<Flight> target = ViewerProperties.singleSelection(Flight.class).observe(flightComboViewer);
+         IObservableValue<Flight> model = BeanProperties.value("applicableFlight", Flight.class).observe(aircraftModel);
+         localbindingContext.bindValue(target, model);
+
+         if (!flights.isEmpty()) {
+            flightComboViewer.setSelection(new StructuredSelection(flights.iterator().next()));
+         }
+      }
+      createDescriptionPart();
    }
 
-   @Override
-   public void performApply() {
-      if (hac.isValidData()) {
-         hac.performApply();
-         super.performApply();
+   private void createAircraftIdText(Composite parent) {
+      Label detailLabel = new Label(parent, SWT.NONE);
+      detailLabel.setText(Messages.CORE.getMnemonicEscapedString("aircraftId"));
+      aircraftIdText = new Text(parent, SWT.BORDER);
+      aircraftIdText.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true, 1, 1));
+      aircraftIdText.setText("");
+      aircraftIdText.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, true, 1, 1));
+      aircraftIdText.setEnabled(!update || (update && aircraftModel.getAircraftSerialNumber() != null));
+      aircraftIdText.setTextLimit(255);
+      // BINDING
+      aircraftIdDecorator = createDecorator(aircraftIdText);
+      IObservableValue<String> decriptionObserveWidget = WidgetProperties.text(SWT.Modify).observe(aircraftIdText);
+      IObservableValue<String> decriptionObserveValue = PojoProperties.value("aircraftId", String.class).observe(aircraftModel);
+      localbindingContext.bindValue(decriptionObserveWidget, decriptionObserveValue);
+   }
+
+   private void createAircraftSerialNumberText(Composite parent) {
+      aircraftSerialNumberLabel = new Label(parent, SWT.NONE);
+      aircraftSerialNumberLabel.setText(Messages.CORE.getMnemonicEscapedString("Aircraft_Serial_Number"));
+      aircraftSerialNumberLabel.setLayoutData(createGridData(SWT.BEGINNING, SWT.CENTER, false, false, true));
+      aircraftSerialNumberLabel.setVisible(false);
+
+      aircraftSerialNumberText = new Text(parent, SWT.BORDER);
+      aircraftSerialNumberText.setText("");
+      aircraftSerialNumberText.setLayoutData(createGridData(SWT.FILL, SWT.CENTER, true, true, true));
+      aircraftSerialNumberText.setVisible(false);
+      aircraftSerialNumberText.setTextLimit(255);
+
+      aircraftSerialNumberDecorator = createDecorator(aircraftSerialNumberText);
+
+      IObservableValue<String> targetObservableValue = WidgetProperties.text(SWT.Modify).observe(aircraftSerialNumberText);
+      IObservableValue<String> modelObservableValue = PojoProperties.value("aircraftSerialNumber", String.class).observe(aircraftModel);
+      localbindingContext.bindValue(targetObservableValue, modelObservableValue);
+   }
+
+   private ComboViewer createAvionicVersionComboViewer(final Composite parent) {
+      final Label detailLabel = new Label(parent, SWT.NONE);
+      detailLabel.setText(Messages.CORE.getString("Avionic_Version"));
+      final ComboViewer avionicVersionComboViewer = new ComboViewer(parent);
+      avionicVersionComboViewer.setContentProvider(ArrayContentProvider.getInstance());
+      avionicVersionComboViewer.setLabelProvider(new LabelProvider() {
+         @Override
+         public String getText(Object element) {
+            if (element instanceof AvionicVersion) {
+               return ((AvionicVersion) element).getName();
+            }
+            return super.getText(element);
+         }
+      });
+      avionicVersionComboViewer.addSelectionChangedListener(e -> {
+         AvionicVersion selectedVersion = (AvionicVersion) ((IStructuredSelection) e.getSelection()).getFirstElement();
+         if (selectedVersion != null && !selectedVersion.equals(aircraftModel.getAvionicVersion())) {
+            if (aircraftModel.canUpdateAircraft()) {
+               aircraftModel.setAvionicVersion(selectedVersion);
+            } else {
+               avionicVersionComboViewer.setSelection(new StructuredSelection(aircraftModel.getAvionicVersion()));
+               MessageBox mb = new MessageBox(AircraftDetailsComposite.this.getShell(), SWT.ERROR | SWT.OK);
+               mb.setText(Messages.CORE.getString("Error"));
+               mb.setMessage(Messages.CORE.getString("AircraftDetailsComposite_CannotChangeVersion_error"));
+               mb.open();
+            }
+         }
+      });
+      Combo avionicVersionCombo = avionicVersionComboViewer.getCombo();
+      avionicVersionCombo.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, false, 1, 1));
+      avionicVersionCombo.setBounds(0, 0, 61, 21);
+      // BINDING
+      if (avionicVersionCombo.isEnabled()) {
+         avionicVersionDecorator = createDecorator(avionicVersionCombo);
+      }
+      IObservableValue<AvionicVersion> decriptionObserveWidget = ViewerProperties.singleSelection(AvionicVersion.class).observe(avionicVersionComboViewer);
+      IObservableValue<AvionicVersion> decriptionObserveValue = BeanProperties.value(AVIONIC_VERSION, AvionicVersion.class).observe(aircraftModel);
+      localbindingContext.bindValue(decriptionObserveWidget, decriptionObserveValue);
+
+      listenToAircraftTypeForAvionic(avionicVersionComboViewer);
+      if (update) {
+         avionicVersionComboViewer.setSelection(new StructuredSelection(aircraftModel.getAvionicVersion()));
+         avionicVersionDecorator.hide();
+      }
+      return avionicVersionComboViewer;
+   }
+
+   private ComboViewer createDmauVersionComboViewer(final Composite parent) {
+      final Label detailLabel = new Label(parent, SWT.NONE);
+      detailLabel.setText(Messages.CORE.getString("DMAU_Version"));
+      dmauVersionComboViewer = new ComboViewer(parent);
+      dmauVersionComboViewer.setContentProvider(ArrayContentProvider.getInstance());
+      dmauVersionComboViewer.setLabelProvider(new LabelProvider() {
+         @Override
+         public String getText(Object element) {
+            if (element instanceof DmauVersion) {
+               return ((DmauVersion) element).getName();
+            }
+            return super.getText(element);
+         }
+      });
+      dmauVersionComboViewer.addSelectionChangedListener(e -> {
+         DmauVersion selectedVersion = (DmauVersion) ((IStructuredSelection) e.getSelection()).getFirstElement();
+         if (selectedVersion != null && !selectedVersion.equals(aircraftModel.getDmauVersion())) {
+            if (aircraftModel.canUpdateAircraft()) {
+               aircraftModel.setDmauVersion(selectedVersion);
+            } else {
+               dmauVersionComboViewer.setSelection(new StructuredSelection(aircraftModel.getDmauVersion()));
+               MessageBox mb = new MessageBox(AircraftDetailsComposite.this.getShell(), SWT.ERROR | SWT.OK);
+               mb.setText(Messages.CORE.getString("Error"));
+               mb.setMessage(Messages.CORE.getString("AircraftDetailsComposite_CannotChangeDmauVersion_error"));
+               mb.open();
+            }
+         }
+      });
+      final BundleContext aircraftBundleContext = FrameworkUtil.getBundle(IAircraftBusiness.class).getBundleContext();
+      final IAircraftBusiness aircraftBusiness = aircraftBundleContext.getService(aircraftBundleContext.getServiceReference(IAircraftBusiness.class));
+      List<DmauVersion> dmauVersions = aircraftBusiness.getDmauVersions();
+      dmauVersionComboViewer.setInput(dmauVersions);
+
+      final Combo dmauVersionCombo = dmauVersionComboViewer.getCombo();
+      dmauVersionCombo.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, false, 1, 1));
+      dmauVersionCombo.setBounds(0, 0, 61, 21);
+      // BINDING
+      if (dmauVersionCombo.isEnabled()) {
+         dmauVersionDecorator = createDecorator(dmauVersionCombo);
+      }
+      IObservableValue<DmauVersion> decriptionObserveWidget = ViewerProperties.singleSelection(DmauVersion.class).observe(dmauVersionComboViewer);
+      IObservableValue<DmauVersion> decriptionObserveValue = BeanProperties.value(DMAU_VERSION, DmauVersion.class).observe(aircraftModel);
+      localbindingContext.bindValue(decriptionObserveWidget, decriptionObserveValue);
+
+      final BundleContext coreBundleContext = FrameworkUtil.getBundle(ICoreBusiness.class).getBundleContext();
+      final ICoreBusiness coreBusiness = coreBundleContext.getService(coreBundleContext.getServiceReference(ICoreBusiness.class));
+
+      aircraftModel.addPropertyChangeListener(AIRCRAFT_TYPE, evt -> {
+         dmauVersionComboViewer.setSelection(StructuredSelection.EMPTY);
+         List<FeatureName> enabledFeature = new ArrayList<>();
+         if (aircraftModel.getAvionicVersion() != null) {
+            enabledFeature = coreBusiness.getEnabledFeatureNames(aircraftModel.getAvionicVersion().getId());
+         }
+         if (isDmauVersionSelectableFromAircraftType(enabledFeature)) {
+            detailsModifyListener.setDmauCheckEnabled(true);
+            dmauVersionCombo.setEnabled(true);
+            dmauVersionDecorator.show();
+         } else {
+            detailsModifyListener.setDmauCheckEnabled(false);
+            dmauVersionCombo.setEnabled(false);
+            dmauVersionDecorator.hide();
+         }
+         detailsModifyListener.validateInputs();
+         manageConfigurationButton(aircraftModel.getAvionicVersion() != null);
+      });
+
+      aircraftModel.addPropertyChangeListener(AVIONIC_VERSION, evt -> {
+         aircraftConfigurationDto = null;
+         dmauVersionComboViewer.setSelection(StructuredSelection.EMPTY);
+         List<FeatureName> enabledFeature = coreBusiness.getEnabledFeatureNames(aircraftModel.getAvionicVersion().getId());
+         if (isDmauVersionDisabledFromAvionicVersion(enabledFeature)) {
+            detailsModifyListener.setDmauCheckEnabled(false);
+            dmauVersionCombo.setEnabled(false);
+            dmauVersionDecorator.hide();
+         } else {
+            detailsModifyListener.setDmauCheckEnabled(true);
+            dmauVersionCombo.setEnabled(true);
+            dmauVersionDecorator.show();
+         }
+         boolean isHealthEnabled = isHealthEnabled(enabledFeature);
+         detailsModifyListener.setHealthEnabled(isHealthEnabled);
+         detailsModifyListener.validateInputs();
+         manageConfigurationButton(aircraftModel.getAvionicVersion() != null);
+      });
+
+      aircraftModel.addPropertyChangeListener(DMAU_VERSION, evt -> manageConfigurationButton(aircraftModel.getDmauVersion() != null));
+
+      if (update) {
+         List<FeatureName> enabledFeature = new ArrayList<>();
+         if (aircraftModel.getAvionicVersion() != null) {
+            enabledFeature = coreBusiness.getEnabledFeatureNames(aircraftModel.getAvionicVersion().getId());
+         }
+         if (isDmauVersionSelectableFromAircraftType(enabledFeature)) {
+            if (aircraftModel.getDmauVersion() != null) {
+               dmauVersionComboViewer.setSelection(new StructuredSelection(aircraftModel.getDmauVersion()));
+            } else {
+               dmauVersionComboViewer.setSelection(StructuredSelection.EMPTY);
+            }
+         } else {
+            dmauVersionCombo.setEnabled(false);
+         }
+         dmauVersionDecorator.hide();
+      }
+      return dmauVersionComboViewer;
+   }
+
+   private ComboViewer createDataTransferTypeComboViewer(final Composite parent) {
+      dataTransferTypeLabel = new Label(parent, SWT.NONE);
+      dataTransferTypeLabel.setText(Messages.CORE.getString("DTU_Wacs_Version"));
+      dataTransferTypeLabel.setLayoutData(createGridData(SWT.BEGINNING, SWT.CENTER, false, false, true));
+
+      dataTransferTypeComboViewer = new ComboViewer(parent);
+      dataTransferTypeComboViewer.setContentProvider(ArrayContentProvider.getInstance());
+      dataTransferTypeComboViewer.setLabelProvider(new LabelProvider() {
+         @Override
+         public String getText(Object element) {
+            if (element instanceof DataTransferType) {
+               return ((DataTransferType) element).label;
+            }
+            return super.getText(element);
+         }
+      });
+      dataTransferTypeComboViewer.setInput(DataTransferType.values());
+      dataTransferTypeComboViewer.getControl().setLayoutData(createGridData(SWT.FILL, SWT.FILL, true, true, true));
+      final Combo dataTransferTypeCombo = dataTransferTypeComboViewer.getCombo();
+      dataTransferTypeCombo.setLayoutData(createGridData(SWT.FILL, SWT.FILL, true, true, true));
+
+      dataTransferTypeDecorator = createDecorator(dataTransferTypeCombo);
+      (dataTransferTypeDecorator.getControl()).setVisible(false);
+
+      IObservableValue<DataTransferType> targetObservableValue = ViewerProperties.singleSelection(DataTransferType.class).observe(dataTransferTypeComboViewer);
+      IObservableValue<DataTransferType> modelObservableValue = BeanProperties.value(DATA_TRANSFER_TYPE, DataTransferType.class).observe(aircraftModel);
+      localbindingContext.bindValue(targetObservableValue, modelObservableValue);
+
+      aircraftModel.addPropertyChangeListener(AIRCRAFT_TYPE, evt -> {
+         dataTransferTypeComboViewer.setSelection(StructuredSelection.EMPTY);
+
+         boolean isDataTransferTypeEnabled = aircraftModel.getAircraftType().getName().equals("EC225");
+         ((GridData) dataTransferTypeLabel.getLayoutData()).exclude = !isDataTransferTypeEnabled;
+         ((GridData) dataTransferTypeComboViewer.getControl().getLayoutData()).exclude = !isDataTransferTypeEnabled;
+         ((GridData) dataTransferTypeCombo.getLayoutData()).exclude = !isDataTransferTypeEnabled;
+         dataTransferTypeLabel.setVisible(isDataTransferTypeEnabled);
+         dataTransferTypeCombo.setVisible(isDataTransferTypeEnabled);
+         (dataTransferTypeDecorator.getControl()).setVisible(isDataTransferTypeEnabled);
+
+         parent.layout();
+         parent.getParent().layout();
+
+         detailsModifyListener.validateInputs();
+      });
+
+      aircraftModel.addPropertyChangeListener(DATA_TRANSFER_TYPE, evt -> {
+         boolean isAircraftSerialNumberEnabled = false;
+         if (aircraftModel.getDataTransferType() != null) {
+            isAircraftSerialNumberEnabled = aircraftModel.getDataTransferType().equals(DataTransferType.WACS);
+            String aircraftSerialNumber = aircraftModel.getAircraftSerialNumber();
+            if (aircraftSerialNumber != null) {
+               aircraftSerialNumberText.setText(aircraftSerialNumber);
+            } else {
+               aircraftSerialNumberText.setText("");
+            }
+         }
+         ((GridData) aircraftSerialNumberLabel.getLayoutData()).exclude = !isAircraftSerialNumberEnabled;
+         ((GridData) aircraftSerialNumberText.getLayoutData()).exclude = !isAircraftSerialNumberEnabled;
+         aircraftSerialNumberLabel.setVisible(isAircraftSerialNumberEnabled);
+         aircraftSerialNumberText.setVisible(isAircraftSerialNumberEnabled);
+
+         parent.layout();
+         parent.getParent().layout();
+
+         detailsModifyListener.validateInputs();
+      });
+
+      return dataTransferTypeComboViewer;
+   }
+
+   private void createAircraftTypeComboViewer(final Composite parent, final List<AircraftType> aircaftTypes) {
+      final Label detailLabel = new Label(parent, SWT.NONE);
+      detailLabel.setText(Messages.CORE.getMnemonicEscapedString("Aircraft_Type"));
+      final ComboViewer aircraftTypeComboViewer = new ComboViewer(parent, SWT.READ_ONLY);
+      aircraftTypeComboViewer.setContentProvider(ArrayContentProvider.getInstance());
+      aircaftTypes.sort((o1, o2) -> o1.getDescription().compareTo(o2.getDescription()));
+      aircraftTypeComboViewer.setLabelProvider(new LabelProvider() {
+         @Override
+         public String getText(Object element) {
+            return ((AircraftType) element).getDescription();
+         }
+      });
+      aircraftTypeComboViewer.setInput(aircaftTypes);
+      Combo aircraftTypeCombo = aircraftTypeComboViewer.getCombo();
+      aircraftTypeCombo.setText("");
+      aircraftTypeCombo.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, false, 1, 1));
+      aircraftTypeCombo.setBounds(0, 0, 61, 21);
+      aircraftTypeCombo.setEnabled(!update);
+      // Binding
+      Control field = aircraftTypeComboViewer.getControl();
+      aircraftTypeDecorator = createDecorator(field);
+      IObservableValue<AircraftType> target = ViewerProperties.singleSelection(AircraftType.class).observe(aircraftTypeComboViewer);
+      IObservableValue<AircraftType> model = BeanProperties.value(AIRCRAFT_TYPE, AircraftType.class).observe(aircraftModel);
+      localbindingContext.bindValue(target, model);
+   }
+
+   private void createRegisterTextField(Composite parent) {
+      Label detailLabel = new Label(parent, SWT.NONE);
+      detailLabel.setText(Messages.CORE.getMnemonicEscapedString("registerNumber"));
+      registerNumberText = new Text(parent, SWT.BORDER);
+      registerNumberText.setText("");
+      registerNumberText.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, true, 1, 1));
+      registerNumberText.setTextLimit(255);
+      // Binding
+      if (registerNumberText.isEnabled()) {
+         registerNumberDecorator = createDecorator(registerNumberText);
+      }
+      IObservableValue<String> decriptionObserveWidget = WidgetProperties.text(SWT.Modify).observe(registerNumberText);
+      IObservableValue<String> decriptionObserveValue = PojoProperties.value("registerNumber", String.class).observe(aircraftModel);
+      localbindingContext.bindValue(decriptionObserveWidget, decriptionObserveValue);
+   }
+
+   private void createDescriptionPart() {
+      Group sctnDescription = new Group(this, ExpandableComposite.TITLE_BAR);
+      sctnDescription.setLayout(new GridLayout());
+      GridData sctnDescriptionData = new GridData(SWT.FILL, SWT.BEGINNING, true, false);
+      sctnDescriptionData.heightHint = 100;
+      sctnDescription.setLayoutData(sctnDescriptionData);
+      sctnDescription.setText(Messages.CORE.getMnemonicEscapedString("Description"));
+      Text descriptionText = new Text(sctnDescription, SWT.BORDER | SWT.V_SCROLL | SWT.MULTI | SWT.WRAP);
+      descriptionText.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
+      descriptionText.setText("");
+      descriptionText.setTextLimit(255);
+      // Binding
+      IObservableValue<String> decriptionObserveWidget = WidgetProperties.text(SWT.Modify).observe(descriptionText);
+      IObservableValue<String> decriptionObserveValue = PojoProperties.value("description", String.class).observe(aircraftModel);
+      localbindingContext.bindValue(decriptionObserveWidget, decriptionObserveValue);
+   }
+
+   /**
+    * Set the appropriate avionic version according to the selected aircraft type.
+    */
+   private void listenToAircraftTypeForAvionic(final ComboViewer avionicVersionComboViewer) {
+      final BundleContext aircraftBundleContext = FrameworkUtil.getBundle(IAircraftBusiness.class).getBundleContext();
+      final IAircraftBusiness aircraftBusiness = aircraftBundleContext.getService(aircraftBundleContext.getServiceReference(IAircraftBusiness.class));
+      if (aircraftModel.getAircraftType() != null) {
+         List<AvionicVersion> avionicVersionList = aircraftBusiness.getAvionicVersions(aircraftModel.getAircraftType().getName());
+         avionicVersionList.sort((o1, o2) -> {
+            int c = o1.getPosition() - o2.getPosition();
+            if (c != 0) {
+               return c;
+            }
+            return o1.getName().compareTo(o2.getName());
+         });
+         avionicVersionComboViewer.setInput(avionicVersionList);
+      }
+      aircraftModel.addPropertyChangeListener(AIRCRAFT_TYPE, evt -> {
+         List<AvionicVersion> avionicVersionList = aircraftBusiness.getAvionicVersions(aircraftModel.getAircraftType().getName());
+         avionicVersionList.sort((Comparator<AvionicVersion>) (o1, o2) -> {
+            int c = o1.getPosition() - o2.getPosition();
+            if (c != 0) {
+               return c;
+            }
+            return o1.getName().compareTo(o2.getName());
+         });
+         avionicVersionComboViewer.setInput(avionicVersionList);
+         if (avionicVersionList.size() == 1) {
+            avionicVersionComboViewer.setSelection(new StructuredSelection(avionicVersionList.iterator().next()));
+         } else {
+            avionicVersionComboViewer.setSelection(StructuredSelection.EMPTY);
+            detailsModifyListener.validateInputs();
+         }
+         manageConfigurationButton(aircraftModel.getAvionicVersion() != null);
+      });
+   }
+
+   /**
+    * Manage configuration Button.
+    * 
+    * @param state
+    *           The state ( true or false )
+    */
+   private void manageConfigurationButton(boolean state) {
+      BundleContext bundleContext = FrameworkUtil.getBundle(ICoreBusiness.class).getBundleContext();
+      ICoreBusiness coreBusiness = bundleContext.getService(bundleContext.getServiceReference(ICoreBusiness.class));
+      Avionic avionic = aircraftModel.getAircraftType().getAvionic();
+
+      if (aircraftModel.getAvionicVersion() == null) {
+         importConfigurationButton.setEnabled(false);
+         rtbParametersButton.setEnabled(false);
+         rtbParametersButton.setVisible(false);
+         return;
+      }
+
+      List<FeatureName> enabledFeatureNames = coreBusiness.getEnabledFeatureNames(aircraftModel.getAvionicVersion().getId());
+      boolean rtbFeaturePresent = isRtbFeaturePresent(enabledFeatureNames);
+      boolean healthFeaturePresent = isHealthFeaturePresent(enabledFeatureNames);
+
+      boolean dmauVersionRequired = avionic == Avionic.CIGALHE && healthFeaturePresent;
+
+      if (importConfigurationButton != null) {
+         boolean importConfigurationButtonEnabled = state && (!dmauVersionRequired || aircraftModel.getDmauVersion() != null);
+         importConfigurationButton.setEnabled(importConfigurationButtonEnabled);
+      }
+      if (rtbParametersButton != null) {
+         // #698 Verify if the aircraft type contains RTB feature
+         boolean rtbParametersButtonEnabled = state
+               && (!dmauVersionRequired || (aircraftModel.getDmauVersion() != null && aircraftModel.getDmauVersion().hasHealthData()))
+               && rtbFeaturePresent;
+         rtbParametersButton.setEnabled(rtbParametersButtonEnabled);
+         rtbParametersButton.setVisible(rtbParametersButtonEnabled);
       }
    }
 
-   @Override
-   public boolean performOk() {
-      boolean result = false;
-      if (hac.isValidData()) {
-         result = super.performOk();
+   /**
+    * Update data transfer type related fields.
+    * 
+    * @param parent
+    */
+   public void updateDataTransferTypeFields(Composite parent) {
+      if (update) {
+         final Combo dmauVersionCombo = dmauVersionComboViewer.getCombo();
+         detailsModifyListener.setDmauCheckEnabled(dmauVersionCombo.isEnabled());
+
+         DataTransferType dataTransferType = aircraftModel.getDataTransferType();
+         boolean isDataTransferTypeEnabled = aircraftModel.getAircraftType().getName().equals("EC225");
+         if (isDataTransferTypeEnabled) {
+            if (dataTransferType != null) {
+               dataTransferTypeComboViewer.setSelection(new StructuredSelection(dataTransferType));
+
+               // if wACS then display aircraft serial number
+               boolean isAircraftSerialNumberEnabled = aircraftModel.getDataTransferType().equals(DataTransferType.WACS);
+               ((GridData) aircraftSerialNumberLabel.getLayoutData()).exclude = !isAircraftSerialNumberEnabled;
+               ((GridData) aircraftSerialNumberText.getLayoutData()).exclude = !isAircraftSerialNumberEnabled;
+               aircraftSerialNumberLabel.setVisible(isAircraftSerialNumberEnabled);
+               aircraftSerialNumberText.setVisible(isAircraftSerialNumberEnabled);
+
+               String aircraftSerialNumber = aircraftModel.getAircraftSerialNumber();
+               if (aircraftSerialNumber != null) {
+                  aircraftSerialNumberText.setText(aircraftSerialNumber);
+                  aircraftSerialNumberDecorator.hide();
+               } else {
+                  aircraftSerialNumberText.setText("");
+                  if (aircraftModel.getAircraftId() != null) {
+                     aircraftSerialNumberDecorator.hide();
+                  } else {
+                     aircraftSerialNumberDecorator.show();
+                  }
+               }
+            } else {
+               // set DTU as default
+               dataTransferTypeComboViewer.setSelection(new StructuredSelection(DataTransferType.DTU));
+            }
+            dataTransferTypeDecorator.hide();
+         }
+
+         ((GridData) dataTransferTypeLabel.getLayoutData()).exclude = !isDataTransferTypeEnabled;
+         ((GridData) dataTransferTypeComboViewer.getControl().getLayoutData()).exclude = !isDataTransferTypeEnabled;
+         final Combo dataTransferTypeCombo = dataTransferTypeComboViewer.getCombo();
+         ((GridData) dataTransferTypeCombo.getLayoutData()).exclude = !isDataTransferTypeEnabled;
+         dataTransferTypeLabel.setVisible(isDataTransferTypeEnabled);
+         dataTransferTypeCombo.setVisible(isDataTransferTypeEnabled);
+
+         parent.layout();
+         parent.getParent().layout();
+
+         detailsModifyListener.validateInputs();
       }
-      return result;
    }
 
-   @Override
-   public void checkState() {
-      setValid(true);
-      super.checkState();
+   private boolean isHealthFeaturePresent(List<FeatureName> enabledFeatureNames) {
+      boolean rtbFeaturePresent = isRtbFeaturePresent(enabledFeatureNames);
+      boolean healthMonitoringFeaturePresent = enabledFeatureNames.contains(FeatureName.HEALTH_MONITORING);
+      boolean healthSignalFeaturePresent = enabledFeatureNames.contains(FeatureName.HEALTH_SIGNAL_ANALYSIS);
+      return rtbFeaturePresent || healthMonitoringFeaturePresent || healthSignalFeaturePresent;
+   }
+
+   private boolean isRtbFeaturePresent(List<FeatureName> enabledFeatureNames) {
+      return enabledFeatureNames.contains(FeatureName.ROTOR_TRACK_BALANCE);
+   }
+
+   private boolean isHealthEnabled(List<FeatureName> enabledFeature) {
+      return enabledFeature.contains(FeatureName.HEALTH_SIGNAL_ANALYSIS) || enabledFeature.contains(FeatureName.HEALTH_MONITORING);
+   }
+
+   private boolean isDmauVersionDisabledFromAvionicVersion(List<FeatureName> enabledFeature) {
+      return aircraftModel.getAircraftType().getAvionic() == Avionic.MARMS || !enabledFeature.contains(FeatureName.HEALTH_SIGNAL_ANALYSIS)
+            && !enabledFeature.contains(FeatureName.HEALTH_MONITORING)
+            && !enabledFeature.contains(FeatureName.ROTOR_TRACK_BALANCE);
+   }
+
+   private boolean isDmauVersionSelectableFromAircraftType(List<FeatureName> enabledFeature) {
+      return aircraftModel.getAircraftType().getAvionic() == Avionic.CIGALHE
+            && (enabledFeature.isEmpty() || enabledFeature.contains(FeatureName.HEALTH_SIGNAL_ANALYSIS)
+                  || enabledFeature.contains(FeatureName.HEALTH_MONITORING) || enabledFeature.contains(FeatureName.ROTOR_TRACK_BALANCE));
+   }
+
+   private ControlDecoration createDecorator(Control text) {
+      ControlDecoration controlDecoration = new ControlDecoration(text, SWT.LEFT | SWT.TOP);
+      FieldDecoration fieldDecoration = FieldDecorationRegistry.getDefault().getFieldDecoration(FieldDecorationRegistry.DEC_ERROR);
+      controlDecoration.setImage(fieldDecoration.getImage());
+      return controlDecoration;
+   }
+
+   public void setRotorTunings(MainRotorTuning mainRotorTuning, TailRotorTuning tailRotorTuning) {
+      this.mainRotorTuning = mainRotorTuning;
+      this.tailRotorTuning = tailRotorTuning;
+   }
+
+   private GridData createGridData(int horizontalAlignment, int verticalAlignment, boolean grabHorizontalSpace, boolean grabVerticalSpace, boolean exclude) {
+      GridData data = new GridData(horizontalAlignment, verticalAlignment, grabHorizontalSpace, grabVerticalSpace);
+      data.exclude = exclude;
+      return data;
    }
 }
+
+=============================================================================================
+
+
+package com.eurocopter.mgs.presentation.aircraft.management.adapter;
+
+import java.util.concurrent.atomic.AtomicReference;
+
+import org.eclipse.swt.events.SelectionAdapter;
+import org.eclipse.swt.events.SelectionEvent;
+import org.eclipse.swt.widgets.Control;
+
+import com.eurocopter.mgs.presentation.aircraft.details.AircraftDetailsComposite;
+import com.eurocopter.mgs.presentation.aircraft.management.dialog.ImportConfigurationDialog;
+
+/**
+ * Create Selection Adapter.
+ * <P>
+ * Open the import configuration dialog.
+ * 
+ */
+public class ImportConfigurationSelectionAdapter extends SelectionAdapter {
+
+   /** The aircraft details composite. */
+   private final AircraftDetailsComposite aircraftDetailsComposite;
+
+   private final AtomicReference<String> lastFilePath;
+
+   /**
+    * Default constructor. Builds a ImportConfigurationSelectionAdapter.
+    * 
+    * @param aircraftDetailsComposite
+    *           The Composite
+    * @param lastFilePath
+    */
+   public ImportConfigurationSelectionAdapter(AircraftDetailsComposite aircraftDetailsComposite, AtomicReference<String> lastFilePath) {
+      super();
+      this.aircraftDetailsComposite = aircraftDetailsComposite;
+      this.lastFilePath = lastFilePath;
+   }
+
+   @Override
+   public void widgetSelected(SelectionEvent e) {
+      ImportConfigurationDialog dialog = new ImportConfigurationDialog(
+            ((Control) e.getSource()).getShell(), aircraftDetailsComposite, lastFilePath);
+      dialog.open();
+   }
+}
+
+===================================================================
+
+
+package com.eurocopter.mgs.presentation.aircraft.management.composite;
+
+import java.io.File;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
+
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.eclipse.core.databinding.DataBindingContext;
+import org.eclipse.core.databinding.UpdateValueStrategy;
+import org.eclipse.core.databinding.beans.typed.PojoProperties;
+import org.eclipse.core.databinding.conversion.Converter;
+import org.eclipse.core.databinding.observable.IChangeListener;
+import org.eclipse.core.databinding.observable.value.IObservableValue;
+import org.eclipse.jface.databinding.swt.typed.WidgetProperties;
+import org.eclipse.jface.layout.GridDataFactory;
+import org.eclipse.jface.layout.GridLayoutFactory;
+import org.eclipse.swt.SWT;
+import org.eclipse.swt.layout.FillLayout;
+import org.eclipse.swt.layout.GridData;
+import org.eclipse.swt.layout.GridLayout;
+import org.eclipse.swt.widgets.Button;
+import org.eclipse.swt.widgets.Composite;
+import org.eclipse.swt.widgets.Display;
+import org.eclipse.ui.forms.widgets.Form;
+import org.eclipse.ui.forms.widgets.FormToolkit;
+import org.osgi.framework.BundleContext;
+import org.osgi.framework.FrameworkUtil;
+
+import com.eurocopter.mgs.business.aircraft.api.ConfigurationDto;
+import com.eurocopter.mgs.business.aircraft.api.IAircraftBusiness;
+import com.eurocopter.mgs.business.core.api.ICoreBusiness;
+import com.eurocopter.mgs.core.presentation.i18n.Messages;
+import com.eurocopter.mgs.datamodel.aircraft.AvionicVersion;
+import com.eurocopter.mgs.datamodel.aircraft.DmauVersion;
+import com.eurocopter.mgs.datamodel.core.FeatureName;
+import com.eurocopter.mgs.presentation.aircraft.details.AircraftDetailsComposite;
+import com.eurocopter.mgs.presentation.configuration.AircraftConfigurationSection;
+import com.eurocopter.mgs.service.exception.EntityNotFoundException;
+
+/**
+ * The Import Configuration Composite
+ * <P>
+ * .
+ */
+public class ImportConfigurationComposite extends Composite {
+
+   private static final Logger LOGGER = LogManager.getLogger(ImportConfigurationComposite.class);
+
+   /** The form toolkit. */
+   private final FormToolkit formToolkit = new FormToolkit(Display.getDefault());
+
+   /** The aircraft details composite. */
+   private final AircraftDetailsComposite aircraftDetailsComposite;
+
+   /** The aircraft configuration model. */
+   private final ConfigurationDto aircraftConfigurationModel;
+
+   /** Aircraft configuration Section. */
+   private final List<AircraftConfigurationSection> aircraftConfigurationSections = new ArrayList<>();
+
+   /** The localbinding context. */
+   private final DataBindingContext localbindingContext = new DataBindingContext();
+
+   private boolean healthEnabled = true;
+
+   private boolean sfmEnabled = true;
+
+   private final AtomicReference<String> lastFilePath;
+
+   /**
+    * Default constructor. Builds a ImportConfigurationComposite.
+    *
+    * @param parent
+    *           The composite parent
+    * @param style
+    *           The style.
+    * @param aircraftDetailsComposite
+    *           The aircraft details composite
+    */
+   public ImportConfigurationComposite(Composite parent, AircraftDetailsComposite aircraftDetailsComposite, AtomicReference<String> lastFilePath) {
+      super(parent, SWT.NONE);
+      formToolkit.setBackground(Display.getCurrent().getSystemColor(SWT.COLOR_WHITE));
+      setLayout(new GridLayout(1, false));
+      this.aircraftDetailsComposite = aircraftDetailsComposite;
+      this.aircraftDetailsComposite.setBackground(Display.getCurrent().getSystemColor(SWT.COLOR_WHITE));
+      setBackground(Display.getCurrent().getSystemColor(SWT.COLOR_WHITE));
+      aircraftConfigurationModel = new ConfigurationDto();
+      if (aircraftDetailsComposite.getAircraftConfigurationModel() != null) {
+         aircraftConfigurationModel.setHealthConfigurationFile(aircraftDetailsComposite.getAircraftConfigurationModel().getHealthConfigurationFile());
+         aircraftConfigurationModel.setUsageConfigurationFile(aircraftDetailsComposite.getAircraftConfigurationModel().getUsageConfigurationFile());
+         aircraftConfigurationModel.setSfmConfigurationFile(aircraftDetailsComposite.getAircraftConfigurationModel().getSfmConfigurationFile());
+         aircraftConfigurationModel.setMarmsSystemStatusConfigurationFile(aircraftDetailsComposite.getAircraftConfigurationModel().getMarmsSystemStatusConfigurationFile());
+         aircraftConfigurationModel.setLocalDiagnosisConfigurationFile(aircraftDetailsComposite.getAircraftConfigurationModel().getLocalDiagnosisConfigurationFile());
+         aircraftConfigurationModel.setDmauFailuresConfigurationFile(aircraftDetailsComposite.getAircraftConfigurationModel().getDmauFailuresConfigurationFile());
+         aircraftConfigurationModel.setFailureContextMonitoringConfigurationFile(aircraftDetailsComposite.getAircraftConfigurationModel().getFailureContextMonitoringConfigurationFile());
+         aircraftConfigurationModel.setRtbParameterFile(aircraftDetailsComposite.getAircraftConfigurationModel().getRtbParameterFile());
+         aircraftConfigurationModel.setFdcrConfigurationFile(aircraftDetailsComposite.getAircraftConfigurationModel().getFdcrConfigurationFile());
+         aircraftConfigurationModel.setRawDataFilteringConfigurationFile(aircraftDetailsComposite.getAircraftConfigurationModel().getRawDataFilteringConfigurationFile());
+      }
+      Form form = formToolkit.createForm(this);
+      this.lastFilePath = lastFilePath;
+      form.setLayout(new FillLayout());
+      form.getBody().setLayout(new GridLayout());
+      formToolkit.paintBordersFor(form);
+      initAircraftConfigurations(form.getBody(), formToolkit);
+   }
+
+   public ConfigurationDto getAircraftConfigurationModel() {
+      return aircraftConfigurationModel;
+   }
+
+   public void bindValidation(final Button okButton) {
+      IChangeListener listener = event -> {
+         DmauVersion oldDmauVersion = getCurrentDmauVersion();
+         if (aircraftDetailsComposite.isUpdate() && healthEnabled && oldDmauVersion != null && !oldDmauVersion.hasHealthData() && aircraftConfigurationModel.getHealthConfigurationFile() == null) {
+            okButton.setEnabled(false);
+         } else if (aircraftDetailsComposite.isUpdate() && aircraftConfigurationModel.hasOneConfigurationFile()) {
+            okButton.setEnabled(true);
+         } else if ((healthEnabled && aircraftConfigurationModel.getHealthConfigurationFile() == null)
+               || (sfmEnabled && aircraftConfigurationModel.getSfmConfigurationFile() == null)
+               || aircraftConfigurationModel.getUsageConfigurationFile() == null) {
+            okButton.setEnabled(false);
+         } else {
+            okButton.setEnabled(true);
+         }
+      };
+      for (AircraftConfigurationSection section : aircraftConfigurationSections) {
+         WidgetProperties.text(SWT.Modify).observe(section.getFullFilePath()).addChangeListener(listener);
+      }
+      listener.handleChange(null);
+   }
+
+   /**
+    * Initialize the aircraft configurations.
+    *
+    * @param parent
+    *           The parent
+    * @param pFormToolkit
+    *           The form toolkit
+    */
+   private void initAircraftConfigurations(Composite parent, FormToolkit pFormToolkit) {
+      Composite top = pFormToolkit.createComposite(parent);
+      top.setLayoutData(new GridData(SWT.FILL, SWT.TOP, true, true, 1, 1));
+      top.setLayout(GridLayoutFactory.fillDefaults().numColumns(1).create());
+
+      // get the whole list of extensions
+      AvionicVersion avionicVersion = aircraftDetailsComposite.getAircraftModel().getAvionicVersion();
+
+      BundleContext bundleContext = FrameworkUtil.getBundle(ICoreBusiness.class).getBundleContext();
+      ICoreBusiness coreBusiness = bundleContext.getService(bundleContext.getServiceReference(ICoreBusiness.class));
+      List<FeatureName> featureNames = coreBusiness.getEnabledFeatureNames(avionicVersion.getId());
+
+      DmauVersion dmauVersion = aircraftDetailsComposite.getAircraftModel().getDmauVersion();
+      DmauVersion oldDmauVersion = getCurrentDmauVersion();
+
+      AircraftConfigurationSection section;
+
+      if (((dmauVersion != null && dmauVersion.hasHealthData()) || dmauVersion == null)
+            && (featureNames.contains(FeatureName.HEALTH_MONITORING) || featureNames.contains(FeatureName.HEALTH_SIGNAL_ANALYSIS))) {
+         section = new AircraftConfigurationSection(top, pFormToolkit, Messages.CORE.getString("HealthConf"), "*.zip",
+               (oldDmauVersion != null && !oldDmauVersion.hasHealthData()) || !aircraftDetailsComposite.isUpdate(),
+               lastFilePath);
+         section.setLayoutData(GridDataFactory.fillDefaults().grab(true, false).create());
+         bindSection(section, aircraftConfigurationModel, "healthConfigurationFile");
+         aircraftConfigurationSections.add(section);
+      } else {
+         healthEnabled = false;
+      }
+
+      if (featureNames.contains(FeatureName.EXCEEDANCE) || featureNames.contains(FeatureName.COUNTER_AND_CYCLE) || featureNames.contains(FeatureName.ENGINE_POWER_CHECKS)) {
+         section = new AircraftConfigurationSection(top, pFormToolkit, Messages.CORE.getString("UsageConf"), "*.xml", !aircraftDetailsComposite.isUpdate(), lastFilePath);
+         section.setLayoutData(GridDataFactory.fillDefaults().grab(true, false).create());
+         bindSection(section, aircraftConfigurationModel, "usageConfigurationFile");
+         aircraftConfigurationSections.add(section);
+      }
+
+      if (dmauVersion != null && dmauVersion.hasHealthData() && featureNames.contains(FeatureName.DMAU_FAILURES)) {
+         section = new AircraftConfigurationSection(top, pFormToolkit, Messages.CORE.getString("SystemStatusConf"), "*.xml", false, lastFilePath);
+         section.setLayoutData(GridDataFactory.fillDefaults().grab(true, false).create());
+         bindSection(section, aircraftConfigurationModel, "dmauFailuresConfigurationFile");
+         aircraftConfigurationSections.add(section);
+      }
+
+      if (featureNames.contains(FeatureName.FAILURE_CONTEXT_MONITORING)) {
+         section = new AircraftConfigurationSection(top, pFormToolkit, Messages.CORE.getString("FailureContextMonitoringConf"), "*.zip", false, lastFilePath);
+         section.setLayoutData(GridDataFactory.fillDefaults().grab(true, false).create());
+         bindSection(section, aircraftConfigurationModel, "failureContextMonitoringConfigurationFile");
+         aircraftConfigurationSections.add(section);
+      }
+
+      if (featureNames.contains(FeatureName.LOCAL_DIAGNOSIS)) {
+         section = new AircraftConfigurationSection(top, pFormToolkit, Messages.CORE.getString("LocalDiagnosisConf"), "*.zip", false, lastFilePath);
+         section.setLayoutData(GridDataFactory.fillDefaults().grab(true, false).create());
+         bindSection(section, aircraftConfigurationModel, "localDiagnosisConfigurationFile");
+         aircraftConfigurationSections.add(section);
+      }
+
+      if (featureNames.contains(FeatureName.SYSTEM_FAILURE_MANAGEMENT)) {
+         section = new AircraftConfigurationSection(top, pFormToolkit, Messages.CORE.getString("FailureDescriptionConf"), "*.xml", !aircraftDetailsComposite.isUpdate(), lastFilePath);
+         section.setLayoutData(GridDataFactory.fillDefaults().grab(true, false).create());
+         bindSection(section, aircraftConfigurationModel, "sfmConfigurationFile");
+         aircraftConfigurationSections.add(section);
+      } else {
+         sfmEnabled = false;
+      }
+
+      if (featureNames.contains(FeatureName.VPU_FAILURES)) {
+         section = new AircraftConfigurationSection(top, pFormToolkit, Messages.CORE.getString("MarmsSystemStatusConf"), "*.xml", false, lastFilePath);
+         section.setLayoutData(GridDataFactory.fillDefaults().grab(true, false).create());
+         bindSection(section, aircraftConfigurationModel, "marmsSystemStatusConfigurationFile");
+         aircraftConfigurationSections.add(section);
+      }
+
+      if (featureNames.contains(FeatureName.FDCR)) {
+         section = new AircraftConfigurationSection(top, pFormToolkit, Messages.CORE.getString("FDCRConfiguration"), "*.zip", false, lastFilePath);
+         section.setLayoutData(GridDataFactory.fillDefaults().grab(true, false).create());
+         bindSection(section, aircraftConfigurationModel, "fdcrConfigurationFile");
+         aircraftConfigurationSections.add(section);
+      }
+
+      if (((dmauVersion != null && dmauVersion.hasHealthData()) || dmauVersion == null) && featureNames.contains(FeatureName.ROTOR_TRACK_BALANCE)) {
+         section = new AircraftConfigurationSection(top, pFormToolkit, Messages.CORE.getString("RTBParametersConf"), "*.zip", false, lastFilePath);
+         section.setLayoutData(GridDataFactory.fillDefaults().grab(true, false).create());
+         bindSection(section, aircraftConfigurationModel, "rtbParameterFile");
+         aircraftConfigurationSections.add(section);
+      }
+
+      if (featureNames.contains(FeatureName.RAW_DATA_FILTERING)) {
+         section = new AircraftConfigurationSection(top, pFormToolkit, Messages.CORE.getString("RawDataFilteringConfiguration"), "*.xml", false, lastFilePath);
+         section.setLayoutData(GridDataFactory.fillDefaults().grab(true, false).create());
+         bindSection(section, aircraftConfigurationModel, "rawDataFilteringConfigurationFile");
+         aircraftConfigurationSections.add(section);
+      }
+
+      pFormToolkit.adapt(top);
+   }
+
+   private DmauVersion getCurrentDmauVersion() {
+      BundleContext aircraftBundleContext = FrameworkUtil.getBundle(IAircraftBusiness.class).getBundleContext();
+      IAircraftBusiness aircraftBusiness = aircraftBundleContext.getService(aircraftBundleContext.getServiceReference(IAircraftBusiness.class));
+
+      DmauVersion currentDmauVersion = null;
+      if (aircraftDetailsComposite.isUpdate()) {
+         try {
+            currentDmauVersion = aircraftBusiness.getDmauVersion(aircraftDetailsComposite.getAircraftModel().getAircraft().getId());
+         } catch (EntityNotFoundException e) {
+            LOGGER.warn("Unable to retrieve DMAU version.", e);
+         }
+      }
+
+      return currentDmauVersion;
+   }
+
+   private void bindSection(final AircraftConfigurationSection section, Object object, String attributName) {
+      UpdateValueStrategy<String, File> strategy = new UpdateValueStrategy<>();
+      strategy.setConverter(new Converter<>(String.class, File.class) {
+
+         @Override
+         public File convert(String fromObject) {
+            String path = fromObject;
+            if (path.isEmpty()) {
+               return null;
+            }
+            return new File(path);
+         }
+      });
+      IObservableValue<String> descriptionObserveWidget = WidgetProperties.text(SWT.Modify).observe(section.getFullFilePath());
+      IObservableValue<File> descriptionObserveValue = PojoProperties.value(attributName, File.class).observe(object);
+      localbindingContext.bindValue(descriptionObserveWidget, descriptionObserveValue, strategy, null);
+   }
+}
+
+==============================================================================================
+
+
+package com.eurocopter.mgs.presentation.aircraft.management.dialog;
+
+import java.util.concurrent.atomic.AtomicReference;
+
+import org.eclipse.jface.dialogs.Dialog;
+import org.eclipse.jface.dialogs.IDialogConstants;
+import org.eclipse.swt.SWT;
+import org.eclipse.swt.events.SelectionAdapter;
+import org.eclipse.swt.events.SelectionEvent;
+import org.eclipse.swt.layout.GridLayout;
+import org.eclipse.swt.widgets.Button;
+import org.eclipse.swt.widgets.Composite;
+import org.eclipse.swt.widgets.Control;
+import org.eclipse.swt.widgets.Display;
+import org.eclipse.swt.widgets.Shell;
+import org.eclipse.ui.forms.widgets.FormToolkit;
+
+import com.eurocopter.mgs.core.presentation.i18n.Messages;
+import com.eurocopter.mgs.presentation.aircraft.details.AircraftDetailsComposite;
+import com.eurocopter.mgs.presentation.aircraft.management.composite.ImportConfigurationComposite;
+
+/**
+ * Import Configuration Dialog.
+ * <P>
+ * 
+ */
+public class ImportConfigurationDialog extends Dialog {
+
+   /** The form toolkit. */
+   private FormToolkit formToolkit = new FormToolkit(Display.getCurrent());
+
+   /** The Import configuration Composite */
+   private ImportConfigurationComposite importConfigurationComposite;
+
+   /** The aircraft details composite. */
+   private final AircraftDetailsComposite aircraftDetailsComposite;
+
+   private final AtomicReference<String> lastFilePath;
+
+   /**
+    * Default constructor.
+    * 
+    * @param parent
+    *           The Shell Parent
+    * @param aircraftDetailsComposite
+    *           The AircraftDetailsComposite aircraftDetailsComposite
+    */
+   public ImportConfigurationDialog(Shell parent, AircraftDetailsComposite aircraftDetailsComposite, AtomicReference<String> lastFilePath) {
+      super(parent);
+      this.aircraftDetailsComposite = aircraftDetailsComposite;
+      formToolkit.setBackground(Display.getCurrent().getSystemColor(SWT.COLOR_WHITE));
+      this.lastFilePath = lastFilePath;
+   }
+
+   @Override
+   protected Control createDialogArea(Composite parent) {
+      importConfigurationComposite = new ImportConfigurationComposite(parent, aircraftDetailsComposite, lastFilePath);
+      formToolkit.adapt(importConfigurationComposite);
+      parent.addDisposeListener(e -> {
+         formToolkit.dispose();
+         formToolkit = null;
+      });
+      return importConfigurationComposite;
+   }
+
+   @Override
+   protected Control createButtonBar(Composite parent) {
+      Composite control;
+      control = (Composite) super.createButtonBar(parent);
+      GridLayout layout = (GridLayout) control.getLayout();
+      layout.marginWidth = 5;
+      formToolkit.adapt(control, true, true);
+      formToolkit.adapt(parent);
+      return control;
+   }
+
+   @Override
+   protected void createButtonsForButtonBar(Composite parent) {
+      formToolkit.adapt(parent);
+      /* Create OK Button * */
+      Button okButton = createButton(parent, 3, Messages.CORE.getMnemonicEscapedString("OK"), true);
+      okButton.addSelectionListener(new SelectionAdapter() {
+         @Override
+         public void widgetSelected(SelectionEvent e) {
+            setAircraftConfigurationModelToAicraftDialog();
+         }
+      });
+      okButton.setEnabled(false);
+      createButton(parent, IDialogConstants.CANCEL_ID, Messages.CORE.getMnemonicEscapedString("Cancel"), true);
+      importConfigurationComposite.bindValidation(okButton);
+   }
+
+   @Override
+   protected void configureShell(Shell pShell) {
+      super.configureShell(pShell);
+      pShell.setText(Messages.CORE.getString("ImportConf"));
+   }
+
+   /**
+    * Set the aircraft configuration Model to the aircraft dialog.
+    */
+   private void setAircraftConfigurationModelToAicraftDialog() {
+      aircraftDetailsComposite.setAircraftConfigurationModel(importConfigurationComposite.getAircraftConfigurationModel());
+      close();
+   }
+}
+
+===============================================================================================
+
+
+package com.eurocopter.mgs.health.presentation.composite;
+
+import java.beans.PropertyChangeListener;
+import java.beans.PropertyChangeSupport;
+
+import org.eclipse.swt.SWT;
+import org.eclipse.swt.events.SelectionAdapter;
+import org.eclipse.swt.layout.GridData;
+import org.eclipse.swt.layout.GridLayout;
+import org.eclipse.swt.widgets.Button;
+import org.eclipse.swt.widgets.Composite;
+import org.eclipse.swt.widgets.Group;
+import org.eclipse.swt.widgets.Label;
+import org.eclipse.swt.widgets.Text;
+
+import com.eurocopter.mgs.core.presentation.i18n.Messages;
+
+public class LearningPastHoursSelectionComposite extends Composite {
+
+   private PropertyChangeSupport propertyChangeSupport = new PropertyChangeSupport(this);
+
+   // observable value
+   private long selectedTime;
+
+   public LearningPastHoursSelectionComposite(Composite parent, long initValue) {
+      super(parent, SWT.NONE);
+      setLayout(new GridLayout());
+
+      Group root = new Group(this, SWT.NONE);
+      root.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
+
+      root.setText(Messages.CORE.getString("ThresholdLearningPastHourLabel"));
+      root.setLayout(new GridLayout(2, false));
+
+      final Button zeroButton = new Button(root, SWT.RADIO);
+      zeroButton.setSelection(true);
+      zeroButton.addSelectionListener(new SelectionAdapter() {
+         @Override
+         public void widgetSelected(org.eclipse.swt.events.SelectionEvent e) {
+            setSelectedTime(0L);
+         }
+      });
+      Label zeroTextLabel = new Label(root, SWT.NONE);
+      zeroTextLabel.setText(Messages.CORE.getString("ThresholdLearningNoPastHours"));
+      zeroTextLabel.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, true));
+
+      final Button xButton = new Button(root, SWT.RADIO);
+
+      Composite xLabelComposite = new Composite(root, SWT.NONE);
+      xLabelComposite.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
+      xLabelComposite.setLayout(new GridLayout(2, false));
+      final Text nbHoursInputField = new Text(xLabelComposite, SWT.BORDER | SWT.CENTER);
+      nbHoursInputField.setText(String.valueOf(initValue / 3600000));
+
+      nbHoursInputField.setLayoutData(new GridData(20, -1));
+
+      nbHoursInputField.setEditable(true);
+
+      nbHoursInputField.setTextLimit(3);
+      nbHoursInputField.addListener(SWT.Verify, e -> {
+         String string = e.text;
+         char[] chars = new char[string.length()];
+         string.getChars(0, chars.length, chars, 0);
+         for (char aChar : chars) {
+            if (!('0' <= aChar && aChar <= '9')) {
+               e.doit = false;
+            } else {
+               zeroButton.setSelection(false);
+               xButton.setSelection(true);
+            }
+         }
+      });
+
+      nbHoursInputField.addListener(SWT.Modify, e -> {
+         zeroButton.setSelection(false);
+         xButton.setSelection(true);
+         if (nbHoursInputField.getText().isEmpty()) {
+            setSelectedTime(0L);
+         } else {
+            setSelectedTime(Long.parseLong(nbHoursInputField.getText()) * 3600000);
+         }
+      });
+
+      xButton.addSelectionListener(new SelectionAdapter() {
+         @Override
+         public void widgetSelected(org.eclipse.swt.events.SelectionEvent e) {
+            if (nbHoursInputField.getText().isEmpty()) {
+               setSelectedTime(0L);
+            } else {
+               setSelectedTime(Long.parseLong(nbHoursInputField.getText()) * 3600000);
+            }
+         }
+      });
+
+      xLabelComposite.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
+      Label xTextLabel = new Label(xLabelComposite, SWT.NONE);
+      xTextLabel.setText(Messages.CORE.getString("ThresholdLearningLastDownloadedHours"));
+      xTextLabel.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, true));
+      this.pack();
+   }
+
+   public long getSelectedTime() {
+      return selectedTime;
+   }
+
+   public void setSelectedTime(long selectedHours) {
+      long oldValue = getSelectedTime();
+      this.selectedTime = selectedHours;
+      firePropertyChange("selectedTime", oldValue, this.selectedTime);
+   }
+
+   public void addPropertyChangeListener(String propertyName, PropertyChangeListener listener) {
+      propertyChangeSupport.addPropertyChangeListener(propertyName, listener);
+   }
+
+   public void removePropertyChangeListener(String propertyName,
+         PropertyChangeListener listener) {
+      propertyChangeSupport.removePropertyChangeListener(propertyName, listener);
+   }
+
+   private void firePropertyChange(String propertyName,
+         Object oldValue,
+         Object newValue) {
+      propertyChangeSupport.firePropertyChange(propertyName, oldValue, newValue);
+   }
+}
+
+===================================================================================
+
+
+
+
+
