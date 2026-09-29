@@ -1684,3 +1684,325 @@ public class LearningPastHoursSelectionComposite extends Composite {
 
 
 
+package com.eurocopter.mgs.presentation.aircraft.details;
+
+import java.text.MessageFormat;
+import java.util.Optional;
+
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.eclipse.core.runtime.IStatus;
+import org.eclipse.swt.events.SelectionAdapter;
+import org.eclipse.swt.events.SelectionEvent;
+import org.eclipse.ui.statushandlers.StatusManager;
+import org.osgi.framework.BundleContext;
+import org.osgi.framework.FrameworkUtil;
+
+import com.eurocopter.mgs.app.Activator;
+import com.eurocopter.mgs.business.aircraft.api.ConfigurationDto;
+import com.eurocopter.mgs.business.aircraft.api.IAircraftBusiness;
+import com.eurocopter.mgs.business.aircraft.api.IAircraftManagementBusiness;
+import com.eurocopter.mgs.core.presentation.i18n.Messages;
+import com.eurocopter.mgs.datamodel.aircraft.Aircraft;
+import com.eurocopter.mgs.datamodel.aircraft.DataTransferType;
+import com.eurocopter.mgs.datamodel.core.FeatureName;
+import com.eurocopter.mgs.datamodel.flight.Flight;
+import com.eurocopter.mgs.datamodel.rtb.MainRotorTuning;
+import com.eurocopter.mgs.datamodel.rtb.MainTuningValue;
+import com.eurocopter.mgs.datamodel.rtb.TailRotorTuning;
+import com.eurocopter.mgs.datamodel.rtb.TailTuningValue;
+import com.eurocopter.mgs.presentation.status.GenericStatus;
+import com.eurocopter.mgs.presentation.utils.RtbUtils;
+import com.eurocopter.mgs.service.aircraft.api.AircraftManagementResult;
+import com.eurocopter.mgs.service.aircraft.dto.AircraftDto;
+import com.eurocopter.mgs.service.aircraft.exception.AircraftAlreadyExistsException;
+import com.eurocopter.mgs.service.aircraft.exception.AircraftConcurrentAccessException;
+import com.eurocopter.mgs.service.exception.ConcurrentAccessException;
+import com.eurocopter.mgs.service.exception.EntityNotFoundException;
+import com.eurocopter.mgs.service.exception.ServiceException;
+import com.eurocopter.mgs.service.rtb.dto.MainBladeTuningDto;
+import com.eurocopter.mgs.service.rtb.dto.MainRotorTuningDto;
+import com.eurocopter.mgs.service.rtb.dto.RtbTuningsDto;
+import com.eurocopter.mgs.service.rtb.dto.TailBladeTuningDto;
+import com.eurocopter.mgs.service.rtb.dto.TailRotorTuningDto;
+import com.eurocopter.mgs.service.rtb.dto.VibrationDto;
+
+/**
+ * Aircraft Creation .
+ * <P>
+ * Action to handle when clicking on OK to create a new aircraft.
+ * <P>
+ */
+public final class OkCreateUpdateListener extends SelectionAdapter {
+
+   private static final Logger LOGGER = LogManager.getLogger(OkCreateUpdateListener.class);
+
+   private static final String PAIR_ALREADY_EXISTS_TYPE_ID = Messages.CORE.getString("entered_pair_already_exist");
+
+   private static final String PAIR_ALREADY_EXISTS_TYPE_SERIAL_NUMBER = Messages.CORE.getString("entered_pair_already_exist_type_sn");
+
+   private static final String AIRCRAFTCONFIGURATION_PROBLEM_WITH_REGISTERNUMBER = Messages.CORE.getString("AircraftConfiguration_problem_with_registerNumber");
+
+   /** Aircraft details dialog. */
+   private final AircraftDetailsDialog aircraftDetailsDialog;
+
+   public OkCreateUpdateListener(AircraftDetailsDialog aircraftDetailsDialog) {
+      super();
+      this.aircraftDetailsDialog = aircraftDetailsDialog;
+   }
+
+   @Override
+   public void widgetSelected(SelectionEvent evt) {
+      AircraftDetailsComposite acDetailsComposite = aircraftDetailsDialog.getAircraftDetailsComposite();
+      String acTypeName = acDetailsComposite.getAircraftModel().getAircraftType().getName();
+      String registerNumber = acDetailsComposite.getAircraftModel().getRegisterNumber();
+      DataTransferType dataTransferType = acDetailsComposite.getAircraftModel().getDataTransferType();
+      String aircraftTechnicalId = null;
+      if (acDetailsComposite.getAircraftModel().getAircraft() != null) {
+         aircraftTechnicalId = acDetailsComposite.getAircraftModel().getAircraft().getId();
+      }
+      String aircraftId = null;
+      if (acDetailsComposite.getAircraftModel().getAircraftId() != null && !acDetailsComposite.getAircraftModel().getAircraftId().isEmpty()
+            && !acDetailsComposite.getAircraftModel().getAircraftId().isBlank()) {
+         aircraftId = acDetailsComposite.getAircraftModel().getAircraftId();
+      }
+      String aircraftSerialNumber = null;
+      if (acDetailsComposite.getAircraftModel().getAircraftSerialNumber() != null && !acDetailsComposite.getAircraftModel().getAircraftSerialNumber().isEmpty()
+            && !acDetailsComposite.getAircraftModel().getAircraftSerialNumber().isBlank()) {
+         aircraftSerialNumber = acDetailsComposite.getAircraftModel().getAircraftSerialNumber();
+      }
+      if (validateAircraftInfos(aircraftTechnicalId, acTypeName, aircraftId, aircraftSerialNumber, registerNumber)) {
+         AircraftDto acDto = new AircraftDto();
+         if (aircraftTechnicalId != null) {
+            acDto.setId(aircraftTechnicalId);
+         }
+         acDto.setAircraftType(acTypeName);
+         acDto.setAvionicVersion(acDetailsComposite.getAircraftModel().getAvionicVersion().getId());
+         if (acDetailsComposite.getAircraftModel().getDmauVersion() != null) {
+            acDto.setDmauVersion(acDetailsComposite.getAircraftModel().getDmauVersion().getId());
+         }
+         acDto.setDescription(acDetailsComposite.getAircraftModel().getDescription());
+         acDto.setRegisterNumber(registerNumber);
+         acDto.setAircraftId(aircraftId);
+         acDto.setAircraftSerialNumber(aircraftSerialNumber);
+         acDto.setDataTransferType(dataTransferType);
+
+         // Get ConfigurationDto parameter
+         ConfigurationDto acConfigDto = acDetailsComposite.getAircraftConfigurationModel();
+         if (acConfigDto == null) {
+            acConfigDto = new ConfigurationDto();
+         }
+
+         // Validate configuration files
+
+         // create RtbConfigurationDto parameter
+         final RtbTuningsDto rtbDto = createRtbDto(acDetailsComposite);
+
+         final BundleContext aircraftMangementBundleContext = FrameworkUtil.getBundle(IAircraftManagementBusiness.class).getBundleContext();
+         final IAircraftManagementBusiness aircraftManagementBusiness = aircraftMangementBundleContext
+               .getService(aircraftMangementBundleContext.getServiceReference(IAircraftManagementBusiness.class));
+
+         final AircraftManagementResult aircraftManagementResult;
+         try {
+            if (AircraftDetailsDialog.isUpdate()) {
+               Flight selectedFlight = acDetailsComposite.getSelectedFlight();
+               final String applicableFlightId;
+               if (selectedFlight != null) {
+                  applicableFlightId = selectedFlight.getId();
+               } else {
+                  applicableFlightId = null;
+               }
+               aircraftManagementResult = aircraftManagementBusiness.updateAircraft(acDto, acConfigDto, rtbDto, applicableFlightId);
+            } else {
+               aircraftManagementResult = aircraftManagementBusiness.createAircraft(acDto, acConfigDto, rtbDto);
+            }
+            aircraftDetailsDialog.close();
+
+            if (aircraftManagementResult.hasWarnings()) {
+               handleAircraftConfigurationWarnings(aircraftManagementResult);
+            }
+
+         } catch (AircraftAlreadyExistsException e) {
+            LOGGER.warn("Aircraft already exists", e);
+            // only happens on create
+            StatusManager.getManager().handle(new GenericStatus(IStatus.ERROR, Activator.PLUGIN_ID, Messages.CORE.getString("create.aborted.alreadyExists")), StatusManager.BLOCK); //$NON-NLS-1$
+            validateAircraftInfos(aircraftTechnicalId, acTypeName, aircraftId, aircraftSerialNumber, registerNumber);
+         } catch (EntityNotFoundException e) {
+            LOGGER.warn("Entity not found", e);
+            StatusManager.getManager().handle(
+                  new GenericStatus(IStatus.ERROR, Activator.PLUGIN_ID, Messages.CORE.getString("createUpdate.aborted.missingElement"), e), StatusManager.BLOCK); //$NON-NLS-1$
+            validateAircraftInfos(aircraftTechnicalId, acTypeName, aircraftId, aircraftSerialNumber, registerNumber);
+         } catch (AircraftConcurrentAccessException e) {
+            LOGGER.warn("Aircraft concurrent access", e);
+            // only happens on update
+            StatusManager.getManager()
+                  .handle(new GenericStatus(IStatus.ERROR, Activator.PLUGIN_ID, MessageFormat.format(Messages.CORE.getString("update.aborted.concurrent" + e.getAircraftLock().getLockCause()), //$NON-NLS-1$
+                        e.getAircraft().getRegisterNumber())),
+                        StatusManager.BLOCK);
+            aircraftDetailsDialog.close();
+         } catch (ConcurrentAccessException e) {
+            LOGGER.warn("Concurrent access", e);
+            // only happens on update
+            StatusManager.getManager().handle(new GenericStatus(IStatus.ERROR, Activator.PLUGIN_ID, Messages.CORE.getString("update.aborted.concurrentUpdate")), StatusManager.BLOCK); //$NON-NLS-1$
+            aircraftDetailsDialog.close();
+         } catch (ServiceException e) {
+            StatusManager.getManager()
+                  .handle(
+                        new GenericStatus(IStatus.ERROR, Activator.PLUGIN_ID,
+                              MessageFormat.format(Messages.CORE.getString("create.aborted.unknownCause"), acTypeName, aircraftId, registerNumber), e), //$NON-NLS-1$
+                        StatusManager.BLOCK);
+            validateAircraftInfos(aircraftTechnicalId, acTypeName, aircraftId, aircraftSerialNumber, registerNumber);
+         }
+
+      }
+   }
+
+   private void handleAircraftConfigurationWarnings(AircraftManagementResult aircraftManagementResult) {
+      String featureWithWarnings = "";
+
+      if (aircraftManagementResult.getFeaturesWithWarnings().contains(FeatureName.HEALTH_MONITORING)
+            || aircraftManagementResult.getFeaturesWithWarnings().contains(FeatureName.HEALTH_SIGNAL_ANALYSIS)) {
+         featureWithWarnings = formatAndAddFeatureNameForWarningMessage(featureWithWarnings, "HealthConf");
+      }
+      if (aircraftManagementResult.getFeaturesWithWarnings().contains(FeatureName.COUNTER_AND_CYCLE)
+            || aircraftManagementResult.getFeaturesWithWarnings().contains(FeatureName.EXCEEDANCE)
+            || aircraftManagementResult.getFeaturesWithWarnings().contains(FeatureName.ENGINE_POWER_CHECKS)) {
+         featureWithWarnings = formatAndAddFeatureNameForWarningMessage(featureWithWarnings, "UsageConf");
+      }
+      if (aircraftManagementResult.getFeaturesWithWarnings().contains(FeatureName.SYSTEM_FAILURE_MANAGEMENT)) {
+         featureWithWarnings = formatAndAddFeatureNameForWarningMessage(featureWithWarnings, "FailureDescriptionConf");
+      }
+      if (aircraftManagementResult.getFeaturesWithWarnings().contains(FeatureName.DMAU_FAILURES)) {
+         featureWithWarnings = formatAndAddFeatureNameForWarningMessage(featureWithWarnings, "SystemStatusConf");
+      }
+      if (aircraftManagementResult.getFeaturesWithWarnings().contains(FeatureName.VPU_FAILURES)) {
+         featureWithWarnings = formatAndAddFeatureNameForWarningMessage(featureWithWarnings, "FailureDescriptionConf");
+      }
+      if (aircraftManagementResult.getFeaturesWithWarnings().contains(FeatureName.LOCAL_DIAGNOSIS)) {
+         featureWithWarnings = formatAndAddFeatureNameForWarningMessage(featureWithWarnings, "LocalDiagnosisConf");
+      }
+      if (aircraftManagementResult.getFeaturesWithWarnings().contains(FeatureName.FAILURE_CONTEXT_MONITORING)) {
+         featureWithWarnings = formatAndAddFeatureNameForWarningMessage(featureWithWarnings, "FailureContextMonitoringConf");
+      }
+      if (aircraftManagementResult.getFeaturesWithWarnings().contains(FeatureName.FDCR)) {
+         featureWithWarnings = formatAndAddFeatureNameForWarningMessage(featureWithWarnings, "FDCRConfiguration");
+      }
+      if (aircraftManagementResult.getFeaturesWithWarnings().contains(FeatureName.ROTOR_TRACK_BALANCE)) {
+         featureWithWarnings = formatAndAddFeatureNameForWarningMessage(featureWithWarnings, "RTBParametersConf");
+      }
+
+      StatusManager.getManager()
+            .handle(
+                  new GenericStatus(IStatus.WARNING, Activator.PLUGIN_ID,
+                        MessageFormat.format(Messages.CORE.getString("AircraftManagement_configurationWarnings"), featureWithWarnings)),
+                  StatusManager.BLOCK);
+   }
+
+   private String formatAndAddFeatureNameForWarningMessage(String message, String coreMessageKey) {
+      return message + "- " + Messages.CORE.getString(coreMessageKey) + "\n";
+   }
+
+   private RtbTuningsDto createRtbDto(AircraftDetailsComposite acDetailsComposite) {
+      final RtbTuningsDto rtbDto;
+      if (acDetailsComposite.isValidRotorParameters()) {
+         rtbDto = new RtbTuningsDto();
+         MainRotorTuning mainRotorTuning = acDetailsComposite.getMainRotorTuning();
+         TailRotorTuning tailRotorTuning = acDetailsComposite.getTailRotorTuning();
+
+         final MainRotorTuningDto mainRotorTuningDto = (MainRotorTuningDto) RtbUtils.toDto(mainRotorTuning);
+
+         for (MainTuningValue mainTuningValue : mainRotorTuning.getTuningValues()) {
+            MainBladeTuningDto bladeTuningDto = new MainBladeTuningDto();
+            bladeTuningDto.setBlade(mainTuningValue.getPointName());
+            bladeTuningDto.setSleeveWeight(mainTuningValue.getSleeveWeight());
+            bladeTuningDto.setPitchLinkLength(mainTuningValue.getPitchLinkLength());
+            bladeTuningDto.setTabDeviation(mainTuningValue.getTabDeviation());
+            mainRotorTuningDto.getTuningValues().add(bladeTuningDto);
+         }
+         VibrationDto vibrationDto = new VibrationDto();
+         if (mainRotorTuning.getVibration() != null) {
+            vibrationDto.setValues(mainRotorTuning.getVibration().getValues());
+         }
+         mainRotorTuningDto.setVibration(vibrationDto);
+
+         rtbDto.setMainRotorTuning(mainRotorTuningDto);
+
+         final TailRotorTuningDto tailRotorTuningDto = (TailRotorTuningDto) RtbUtils.toDto(tailRotorTuning);
+         for (TailTuningValue tailTuningValue : tailRotorTuning.getTuningValues()) {
+            TailBladeTuningDto bladeTuningDto = new TailBladeTuningDto();
+            bladeTuningDto.setBlade(tailTuningValue.getPointName());
+            bladeTuningDto.setSleeveWeight(tailTuningValue.getSleeveWeight());
+            tailRotorTuningDto.getTuningValues().add(bladeTuningDto);
+         }
+
+         vibrationDto = new VibrationDto();
+         if (tailRotorTuning.getVibration() != null) {
+            vibrationDto.setValues(tailRotorTuning.getVibration().getValues());
+         }
+         tailRotorTuningDto.setVibration(vibrationDto);
+
+         rtbDto.setTailRotorTuning(tailRotorTuningDto);
+      } else {
+         rtbDto = null;
+      }
+      return rtbDto;
+   }
+
+   private boolean validateAircraftInfos(String aircraftTechnicalId, String acTypeName, String aircraftId, String aircraftSerialNumber, String registerNumber) {
+      final BundleContext aircraftBundleContext = FrameworkUtil.getBundle(IAircraftBusiness.class).getBundleContext();
+      final IAircraftBusiness aircraftBusiness = aircraftBundleContext.getService(aircraftBundleContext.getServiceReference(IAircraftBusiness.class));
+      boolean valid = true;
+
+      String aircraftTypeTooltipText = "";
+      if (aircraftSerialNumber != null) {
+         Optional<Aircraft> aircraftBySerialNumber = aircraftBusiness.getAircraftByAircraftSerialNumber(acTypeName, aircraftSerialNumber);
+         if (aircraftBySerialNumber.isPresent()) {
+            Aircraft aircraft = aircraftBySerialNumber.get();
+            if (!AircraftDetailsDialog.isUpdate() || (AircraftDetailsDialog.isUpdate() && !aircraft.getId().equals(aircraftTechnicalId))) {
+               aircraftDetailsDialog.getAircraftDetailsComposite().getAircraftTypeDecorator().show();
+               aircraftTypeTooltipText = PAIR_ALREADY_EXISTS_TYPE_SERIAL_NUMBER;
+               aircraftDetailsDialog.getAircraftDetailsComposite().getAircraftTypeDecorator().setDescriptionText(aircraftTypeTooltipText);
+               aircraftDetailsDialog.getAircraftDetailsComposite().getAircraftSerialNumberDecorator().show();
+               aircraftDetailsDialog.getAircraftDetailsComposite().getAircraftSerialNumberDecorator().setDescriptionText(PAIR_ALREADY_EXISTS_TYPE_SERIAL_NUMBER);
+               valid = false;
+            }
+         }
+      }
+
+      if (aircraftId != null) {
+         Optional<Aircraft> aircraftById = aircraftBusiness.getAircraftByAircraftId(acTypeName, aircraftId);
+         if (aircraftById.isPresent()) {
+            Aircraft aircraft = aircraftById.get();
+            if (!AircraftDetailsDialog.isUpdate() || (AircraftDetailsDialog.isUpdate() && !aircraft.getId().equals(aircraftTechnicalId))) {
+               aircraftDetailsDialog.getAircraftDetailsComposite().getAircraftTypeDecorator().show();
+               if (aircraftTypeTooltipText != "") {
+                  aircraftTypeTooltipText = aircraftTypeTooltipText + "\n" + PAIR_ALREADY_EXISTS_TYPE_ID;
+               } else {
+                  aircraftTypeTooltipText = PAIR_ALREADY_EXISTS_TYPE_ID;
+               }
+               aircraftDetailsDialog.getAircraftDetailsComposite().getAircraftTypeDecorator().setDescriptionText(aircraftTypeTooltipText);
+               aircraftDetailsDialog.getAircraftDetailsComposite().getAircraftIdDecorator().show();
+               aircraftDetailsDialog.getAircraftDetailsComposite().getAircraftIdDecorator().setDescriptionText(PAIR_ALREADY_EXISTS_TYPE_ID);
+               valid = false;
+            }
+         }
+      }
+
+      Optional<Aircraft> aircraftByRegisterNumber = aircraftBusiness.getAircraftByRegisterNumber(registerNumber);
+      if (aircraftByRegisterNumber.isPresent()) {
+         Aircraft aircraft = aircraftByRegisterNumber.get();
+         if (!AircraftDetailsDialog.isUpdate() || (AircraftDetailsDialog.isUpdate() && !aircraft.getId().equals(aircraftTechnicalId))) {
+            aircraftDetailsDialog.getAircraftDetailsComposite().getRegisterNumberDecorator().show();
+            aircraftDetailsDialog.getAircraftDetailsComposite().getRegisterNumberDecorator().setDescriptionText(AIRCRAFTCONFIGURATION_PROBLEM_WITH_REGISTERNUMBER);
+            valid = false;
+         }
+      }
+      return valid;
+   }
+}
+
+
+
+
+
+
