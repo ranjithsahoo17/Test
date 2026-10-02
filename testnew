@@ -1,11 +1,48 @@
-   @Override
-   protected void contributeButtons(Composite parent) {
-      GridLayout layout = (GridLayout) parent.getLayout();
-      layout.numColumns++;
-      layout.makeColumnsEqualWidth = false;
 
-      Button manageLaws = new Button(parent, SWT.PUSH);
-      manageLaws.setText(Messages.CORE.getString("filteringLawManageButton"));
-      manageLaws.addListener(SWT.Selection, e -> hac.openFilteringLawDialog());
-      setButtonLayoutData(manageLaws);
+package com.eurocopter.mgs.presentation.configuration.preferences.pages;
+
+import org.eclipse.jface.preference.FieldEditorPreferencePage;
+import org.eclipse.ui.IWorkbench;
+import org.eclipse.ui.IWorkbenchPreferencePage;
+
+/**
+ * MGS PREFERENCES PAGES : MGS Configuration and User Preferences Settings.
+ *
+ */
+public abstract class MgsPreferencePage extends FieldEditorPreferencePage implements
+      IWorkbenchPreferencePage {
+
+   /**
+    *
+    * Default constructor. Builds a MGSPreferencePages.
+    */
+   public MgsPreferencePage() {
+      super();
    }
+
+   /**
+    *
+    * Default constructor. Builds a MGSPreferencePages.
+    *
+    * @param title
+    *           the title
+    * @param style
+    *           the style
+    */
+   public MgsPreferencePage(String title, int style) {
+      super(title, style);
+   }
+
+   @Override
+   protected void createFieldEditors() {
+   }
+
+   @Override
+   public void init(IWorkbench workbench) {
+   }
+
+   @Override
+   public void performDefaults() {
+      super.performDefaults();
+   }
+}
