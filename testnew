@@ -1,390 +1,305 @@
+
 package com.eurocopter.mgs.download.analysis.health.impl;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Set;
-import java.util.SortedSet;
-import java.util.TreeSet;
+import java.util.UUID;
 
-import org.apache.commons.collections.primitives.ArrayDoubleList;
-import org.apache.commons.collections.primitives.DoubleList;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.joda.time.Duration;
 
 import com.eurocopter.mgs.datamodel.aircraft.Aircraft;
 import com.eurocopter.mgs.datamodel.aircraft.Avionic;
+import com.eurocopter.mgs.datamodel.aircraft.configuration.AircraftConfiguration;
+import com.eurocopter.mgs.datamodel.aircraft.configuration.AircraftHistory;
+import com.eurocopter.mgs.datamodel.alarm.Alarm;
+import com.eurocopter.mgs.datamodel.alarm.AlarmStatus;
+import com.eurocopter.mgs.datamodel.alarm.CloseMonitoredAcknowledgement;
+import com.eurocopter.mgs.datamodel.alarm.CloseMonitoring;
 import com.eurocopter.mgs.datamodel.flight.Flight;
-import com.eurocopter.mgs.datamodel.health.monitoring.HealthMechanicalComponent;
-import com.eurocopter.mgs.datamodel.health.monitoring.HealthMechanicalComponentConfiguration;
+import com.eurocopter.mgs.datamodel.flight.FlightIndicatorValue;
+import com.eurocopter.mgs.datamodel.flight.FlightRawIndicatorValue;
+import com.eurocopter.mgs.datamodel.health.monitoring.FlightHourData;
+import com.eurocopter.mgs.datamodel.health.monitoring.HealthAlarm;
+import com.eurocopter.mgs.datamodel.health.monitoring.HealthMonitoringConfiguration;
 import com.eurocopter.mgs.datamodel.health.monitoring.Indicator;
-import com.eurocopter.mgs.datamodel.health.monitoring.IndicatorConfiguration;
-import com.eurocopter.mgs.datamodel.health.monitoring.LearnedThresholdConfiguration;
-import com.eurocopter.mgs.datamodel.health.monitoring.RelearnThresholdRequest;
-import com.eurocopter.mgs.datamodel.health.monitoring.RelearnThresholdRequestComparator;
 import com.eurocopter.mgs.datamodel.health.monitoring.TakeoffLandingDateTime;
-import com.eurocopter.mgs.datamodel.health.monitoring.ThresholdConfiguration;
-import com.eurocopter.mgs.datamodel.health.monitoring.ThresholdLevel;
+import com.eurocopter.mgs.download.analysis.exception.AnalysisException;
 import com.eurocopter.mgs.download.analysis.health.api.IHealthHistoryProvider;
-import com.eurocopter.mgs.download.analysis.health.api.IndicatorValueHolder;
+import com.eurocopter.mgs.download.analysis.health.api.IHealthMonitoringAnalyzer;
+import com.eurocopter.mgs.download.analysis.health.data.HealthErrorHandler;
+import com.eurocopter.mgs.download.analysis.health.data.HealthSubsequentFlightHandler;
+import com.eurocopter.mgs.download.analysis.health.data.IHealthSession;
 import com.eurocopter.mgs.parameter.health.monitoring.HealthMonitoringParameters;
 
-import corp.airbus.helicopters.algorithm.health.HealthAlgorithms;
-import corp.airbus.helicopters.algorithm.health.IHealthAlgorithms;
+public class HealthMonitoringAnalyzer implements IHealthMonitoringAnalyzer {
 
-public class LearnedThresholdAnalyzer {
+   private static final Logger LOGGER = LogManager.getLogger(HealthMonitoringAnalyzer.class);
 
-   private static final Logger LOGGER = LogManager.getLogger(LearnedThresholdAnalyzer.class);
+   private final GreyAlarmAnalyzer greyAlarmAnalyzer = new GreyAlarmAnalyzer();
+   private final RedAmberAlarmAnalyzer redAmberAlarmAnalyzer = new RedAmberAlarmAnalyzer();
+   private final HealthAcquisitionAnalyzer healthAcquisitionAnalyzer = new HealthAcquisitionAnalyzer();
+   private final EngineAcquisitionAnalyzer engineAcquisitionAnalyzer = new EngineAcquisitionAnalyzer();
+   private final SensorAnomalyAnalyzer sensorAnomalyAnalyser = new SensorAnomalyAnalyzer();
+   private final VpuAnomalyAnalyzer vpuAnomalyAnalyser = new VpuAnomalyAnalyzer();
+   private final IndicatorInvalidityAnalyzer indicatorInvalidityAnalyzer = new IndicatorInvalidityAnalyzer();
+   private final LearnedThresholdAnalyzer learnedThresholdAnalyzer = new LearnedThresholdAnalyzer();
+   private final AcquisitionRateAnalyzer acquisitionRateAnalyzer = new AcquisitionRateAnalyzer();
+   private final SlidingMedianAnalyzer slidingMedianAnalyzer = new SlidingMedianAnalyzer();
 
-   /** The health algorithms */
-   private static final IHealthAlgorithms HEALTH_ALGORITHMS = new HealthAlgorithms();
+   private static final Comparator<Flight> FLIGHT_COMPARATOR = Comparator.comparing(Flight::getUsageStartDate).thenComparingInt(Flight::getFlightId);
 
-   private static final Comparator<Flight> FLIGHT_DOWNLOAD_COMPARATOR = Comparator.comparing(Flight::getLastDownloadDate).thenComparing(Flight::getUsageStartDate)
-         .thenComparingInt(Flight::getFlightId);
+   @Override
+   public void analyze(Aircraft aircraft, Flight flight, AircraftConfiguration configuration, IHealthSession session, IHealthHistoryProvider healthHistoryProvider,
+         HealthMonitoringParameters commonParameters, HealthErrorHandler healthErrorHandler, HealthSubsequentFlightHandler healthSubsequentFlightHandler) throws AnalysisException {
+      analyzeNullableSession(aircraft, flight, configuration, session, healthHistoryProvider, commonParameters, healthErrorHandler, healthSubsequentFlightHandler);
+   }
 
-   private static final Comparator<TakeoffLandingDateTime> TAKEOFF_LANDING_COMPARATOR = Comparator.comparing(TakeoffLandingDateTime::getTakeoffDateTime);
+   @Override
+   public void analyzeSlidingMedianIndicators(Aircraft aircraft, Flight flight,
+         AircraftConfiguration configuration, IHealthHistoryProvider healthHistoryProvider,
+         HealthMonitoringParameters commonParameters, HealthErrorHandler healthErrorHandler)
+         throws AnalysisException {
+      // We are already analyzing a subsequent flight, we do not care about further subsequent flights
+      // since they are already handled in download process.
+      HealthSubsequentFlightHandler healthSubsequentFlightHandler = new HealthSubsequentFlightHandler();
+      analyzeNullableSession(aircraft, flight, configuration, null, healthHistoryProvider, commonParameters, healthErrorHandler, healthSubsequentFlightHandler);
+   }
 
-   /**
-    * Update learned thresholds.
-    *
-    * @param aircraft
-    *           the aircraft
-    * @param latestHealthConfiguration
-    *           the latest health configuration
-    * @param commonParameters
-    *           the common parameters
-    */
-   void updateLearnedThresholds(final Aircraft aircraft, final Flight flight, final Map<HealthMechanicalComponent, HealthMechanicalComponentConfiguration> latestHealthConfiguration,
-         final HealthMonitoringParameters commonParameters, IHealthHistoryProvider healthHistoryProvider) {
-      for (final Map.Entry<HealthMechanicalComponent, HealthMechanicalComponentConfiguration> mechanicalComponentEntry : latestHealthConfiguration.entrySet()) {
-         for (final Entry<Indicator, IndicatorConfiguration> indicatorEntry : mechanicalComponentEntry.getValue().getIndicatorConfigurations().entrySet()) {
-            // Index threshold configuration by threshold
-            for (final ThresholdConfiguration thresholdConfiguration : indicatorEntry.getValue().getThresholdConfigurations()) {
-               if (thresholdConfiguration instanceof LearnedThresholdConfiguration) {
-                  // This is a learned threshold: retrieve latest relearn request if any
-                  final List<RelearnThresholdRequest> requests = new ArrayList<>(((LearnedThresholdConfiguration) thresholdConfiguration).getRelearnRequests());
-                  if (!requests.isEmpty()) {
-                     // Retrieve latest relearn request
-                     final RelearnThresholdRequest latestRequest = Collections.max(requests, new RelearnThresholdRequestComparator());
-                     if (!latestRequest.isHandled()) {
-                        computeThresholdLearning(aircraft, flight, indicatorEntry.getKey(), (LearnedThresholdConfiguration) thresholdConfiguration,
-                              latestRequest, commonParameters, healthHistoryProvider, mechanicalComponentEntry.getKey().isGroundAcquisition());
-                     }
-                     // Only the last request will be processed (no matter its state)
-                  }
-               }
-            }
+   @Override
+   public void analyzeGreyAlarms(final Aircraft aircraft, final AircraftConfiguration aircraftConfiguration, final Flight currentFlight, IHealthHistoryProvider healthHistoryProvider) {
+      final HealthMonitoringConfiguration healthConfiguration = (HealthMonitoringConfiguration) aircraftConfiguration.getConfigurations().get(HealthMonitoringConfiguration.TYPE);
+
+      // Retrieve and sort flights
+      final List<Flight> sortedFlights = new ArrayList<>(aircraft.getFlights());
+      removeFlightsWithoutUsageData(sortedFlights);
+      sortedFlights.sort(FLIGHT_COMPARATOR);
+
+      final int currentFlightIndex = Collections.binarySearch(sortedFlights, currentFlight, FLIGHT_COMPARATOR);
+
+      // Compute Grey alarms
+      greyAlarmAnalyzer.computeGreyAlarms(aircraft, healthConfiguration, sortedFlights, currentFlightIndex, healthHistoryProvider);
+   }
+
+   private void analyzeNullableSession(Aircraft aircraft, Flight flight, AircraftConfiguration configuration, IHealthSession nullableSession, IHealthHistoryProvider healthHistoryProvider,
+         HealthMonitoringParameters commonParameters, HealthErrorHandler healthErrorHandler, HealthSubsequentFlightHandler healthSubsequentFlightHandler) throws AnalysisException {
+      // Retrieve applicable health configuration
+      final HealthMonitoringConfiguration healthConfiguration = (HealthMonitoringConfiguration) configuration.getConfigurations().get(HealthMonitoringConfiguration.TYPE);
+
+      long startTime = System.currentTimeMillis();
+
+      if (nullableSession != null) {
+         analyzeFlightHourData(aircraft.getAircraftType().getAvionic(), flight, nullableSession);
+         LOGGER.info("Flight hour data analysis done in {} ms.", (System.currentTimeMillis() - startTime));
+      }
+
+      // Compute flight indicator values
+      final Map<Indicator, FlightIndicatorValue> flightIndicatorValues = new HashMap<>();
+      for (FlightIndicatorValue flightIndicatorValue : flight.getFlightIndicatorValues()) {
+         flightIndicatorValues.put(flightIndicatorValue.getIndicator(), flightIndicatorValue);
+      }
+
+      // Compute flight raw indicator values
+      final Map<Indicator, FlightRawIndicatorValue> flightIndicatorRawValues = new HashMap<>();
+      for (FlightRawIndicatorValue flightRawIndicatorValue : flight.getFlightRawIndicatorValues()) {
+         flightIndicatorRawValues.put(flightRawIndicatorValue.getIndicator(), flightRawIndicatorValue);
+      }
+
+      if (nullableSession != null) {
+         healthAcquisitionAnalyzer.analyzeHealthAcquisitions(aircraft, flight, nullableSession, healthConfiguration, flightIndicatorValues, flightIndicatorRawValues);
+         engineAcquisitionAnalyzer.analyzeEngineAcquisitions(aircraft, flight, nullableSession, healthConfiguration, flightIndicatorValues, healthErrorHandler);
+      }
+      slidingMedianAnalyzer.analyzeSlidingMedianIndicators(aircraft, flight, healthHistoryProvider, healthSubsequentFlightHandler, healthConfiguration, flightIndicatorValues,
+            flightIndicatorRawValues);
+
+      // Check that Health Start Date < Health End Date, if not we throw an Analysis Exception and we ignore health data for this flight
+      if (flight.getHealthStartDate() != null && flight.getHealthEndDate() != null && flight.getHealthEndDate().before(flight.getHealthStartDate())) {
+         flight.getFlightIndicatorValues().clear();
+         flight.getEngineAcquisition().clear();
+         throw new AnalysisException("Health Flight duration is negative, Health Data of flight " + flight.getFlightId() + " is ignored.");
+      }
+
+      // Update learned thresholds
+      startTime = System.currentTimeMillis();
+      learnedThresholdAnalyzer.updateLearnedThresholds(aircraft, flight, healthHistoryProvider.getLatestHealthConfiguration(), commonParameters, healthHistoryProvider);
+      LOGGER.info("Learned threshold analysis done in {} ms.", (System.currentTimeMillis() - startTime));
+
+      // Sort flights
+      final List<Flight> sortedFlights = new ArrayList<>(aircraft.getFlights());
+      removeFlightsWithoutUsageData(sortedFlights);
+      sortedFlights.sort(FLIGHT_COMPARATOR);
+
+      final int currentFlightIndex = Collections.binarySearch(sortedFlights, flight, FLIGHT_COMPARATOR);
+      final int nbSuccessiveValues = commonParameters.getNumberOfIndicatorSuccessivePointForAlarmRaising();
+
+      // Compute acquisition rate status
+      startTime = System.currentTimeMillis();
+      acquisitionRateAnalyzer.computeAcquisitionRateStatus(aircraft, healthConfiguration, sortedFlights, currentFlightIndex, healthHistoryProvider, flightIndicatorValues);
+      LOGGER.info("Acquisition rate analysis done in {} ms.", (System.currentTimeMillis() - startTime));
+
+      startTime = System.currentTimeMillis();
+      // Compute RED/AMBER alarms
+      redAmberAlarmAnalyzer.computeRedAmberAlarms(aircraft, sortedFlights, currentFlightIndex, nbSuccessiveValues, healthHistoryProvider, healthConfiguration,
+            flightIndicatorValues);
+      LOGGER.info("Red/amber alarm analysis done in {} ms.", (System.currentTimeMillis() - startTime));
+
+      startTime = System.currentTimeMillis();
+      // Compute Grey alarms
+      greyAlarmAnalyzer.computeGreyAlarms(aircraft, healthConfiguration, sortedFlights, currentFlightIndex, healthHistoryProvider);
+      LOGGER.info("Grey alarm analysis done in {} ms.", (System.currentTimeMillis() - startTime));
+
+      startTime = System.currentTimeMillis();
+      // Update close monitored alarms
+      updateCloseMonitoredAlarm(healthHistoryProvider.getAircraftHistory(), aircraft);
+      LOGGER.info("Close monitoring analysis done in {} ms.", (System.currentTimeMillis() - startTime));
+
+      startTime = System.currentTimeMillis();
+      // Compute Sensor Anomaly
+      sensorAnomalyAnalyser.computeSensorAnomalies(aircraft, sortedFlights, currentFlightIndex, healthHistoryProvider, healthConfiguration, flightIndicatorValues);
+      LOGGER.info("Sensor anomaly analysis done in {} ms.", (System.currentTimeMillis() - startTime));
+
+      if (nullableSession != null) {
+         startTime = System.currentTimeMillis();
+         // Compute VPU Anomaly
+         vpuAnomalyAnalyser.computeVpuAnomaly(healthConfiguration, flight, nullableSession);
+         LOGGER.info("VPU anomaly analysis done in {} ms.", (System.currentTimeMillis() - startTime));
+
+         startTime = System.currentTimeMillis();
+         // Compute Indicator Invalidities
+         indicatorInvalidityAnalyzer.computeIndicatorInvalidities(healthConfiguration, aircraft, flight, nullableSession);
+         LOGGER.info("Indicator invalidity analysis done in {} ms.", (System.currentTimeMillis() - startTime));
+      }
+   }
+
+   private void removeFlightsWithoutUsageData(Iterable<Flight> flights) {
+      // Remove flights without usage data, so they do not contribute and no alarms are generated for them
+      for (Iterator<Flight> it = flights.iterator(); it.hasNext();) {
+         if (!it.next().hasUsageData()) {
+            it.remove();
          }
       }
    }
 
    /**
-    * Compute threshold learning.
-    *
+    * Analyze flight hour data.
+    * 
+    * @param flight
+    *           the current flight
+    * @param healthSession
+    *           the marms acq
+    */
+   private void analyzeFlightHourData(final Avionic avionic, final Flight flight, final IHealthSession healthSession) {
+      FlightHourData flightHourData = new FlightHourData(UUID.randomUUID().toString());
+      List<Date> takeoffDates = healthSession.getTakeoffDateTimes();
+      List<Date> landingDates = healthSession.getLandingDateTimes();
+      Date firstTakeOff = null;
+      Date lastLanding = null;
+      long duration = 0;
+      for (int i = 0; i < takeoffDates.size(); i++) {
+         TakeoffLandingDateTime takeoffLandingDateTime = new TakeoffLandingDateTime(UUID.randomUUID().toString());
+         Date takeoff = takeoffDates.get(i);
+         Date landing = landingDates.get(i);
+         takeoffLandingDateTime.setTakeoffDateTime(takeoff);
+         takeoffLandingDateTime.setLandingDateTime(landing);
+         flightHourData.getTakeoffLandingDateTimes().add(takeoffLandingDateTime);
+
+         if (firstTakeOff == null || takeoff.before(firstTakeOff)) {
+            firstTakeOff = takeoff;
+         }
+         if (lastLanding == null || landing.after(lastLanding)) {
+            lastLanding = landing;
+         }
+         duration += landing.getTime() - takeoff.getTime();
+      }
+      flightHourData.setDuration(duration);
+      flight.setFlightHourData(flightHourData);
+      flight.setHealthStartDate(new Date(healthSession.getStartDateTime().getTime() + healthSession.getGroundStartOffset()));
+      if (firstTakeOff != null && lastLanding != null) {
+         flightHourData.setFirstTakeoffDateTime(firstTakeOff);
+         flightHourData.setLastLandingDateTime(lastLanding);
+      } else {
+         flightHourData.setFirstTakeoffDateTime(flight.getHealthStartDate());
+         flightHourData.setLastLandingDateTime(flight.getHealthStartDate());
+      }
+      // Init health end date for ground acquisitions with usage end date
+      if (avionic == Avionic.CIGALHE) {
+         flight.setHealthEndDate(flight.getFlightHourData().getLastLandingDateTime());
+      } else {
+         flight.setHealthEndDate(new Date(flight.getHealthStartDate().getTime() + healthSession.getGroundDuration()));
+      }
+   }
+
+   /**
+    * Update close monitored alarm.
+    * 
     * @param aircraft
     *           the aircraft
-    * @param currentFlight
-    *           the flight
-    * @param indicator
-    *           the indicator
-    * @param thresholdConfiguration
-    *           the threshold configuration
-    * @param request
-    *           the request
-    * @param commonParameters
-    *           the common parameters
-    * @param groundAcquisitionMode
     */
-   private void computeThresholdLearning(final Aircraft aircraft, final Flight currentFlight, final Indicator indicator, final LearnedThresholdConfiguration thresholdConfiguration,
-         final RelearnThresholdRequest request, final HealthMonitoringParameters commonParameters, final IHealthHistoryProvider healthHistoryProvider, boolean groundAcquisitionMode) {
-      LOGGER.debug("Compute threshold learning: begin flight retrieval");
-
-      Set<Flight> flightsWithValues = healthHistoryProvider.getFlightsWithValues(indicator);
-      if (flightsWithValues.isEmpty()) {
-         // There is no value for this indicator at all, shortcut for skipping the entire algorithm
-         LOGGER.debug("No value for indicator, skipping the learning process");
-         return;
-      }
-
-      // Sort flights for learning
-      final SortedSet<Flight> flightsBefore = new TreeSet<>(Collections.reverseOrder(FLIGHT_DOWNLOAD_COMPARATOR));
-      final SortedSet<Flight> flightsAfter = new TreeSet<>(FLIGHT_DOWNLOAD_COMPARATOR);
-      Flight lastFlight = currentFlight;
-
-      // All flights that contribute to the learning are those downloaded after the learning start date
+   private void updateCloseMonitoredAlarm(final AircraftHistory aircraftHistory, final Aircraft aircraft) {
+      final Duration totalNumberOfMaintenanceFlightHours = getTotalNumberMaintenanceFlightHours(aircraftHistory, aircraft);
+      final Duration totalNumberOfIcaoFlightHours = getTotalNumberIcaoFlightHours(aircraftHistory, aircraft);
       for (final Flight flight : aircraft.getFlights()) {
-         if (flight.getLastDownloadDate().before(request.getStartDate())) {
-            flightsBefore.add(flight);
-         } else {
-            flightsAfter.add(flight);
-         }
-         if (flight.getUsageStartDate().after(lastFlight.getUsageStartDate())) {
-            lastFlight = flight;
-         }
-      }
-      LOGGER.debug("End flight retrieval");
-
-      Avionic avionic = aircraft.getAircraftType().getAvionic();
-      boolean isMarms = avionic == Avionic.MARMS;
-
-      // Values for learning
-      final DoubleList values = new ArrayDoubleList();
-
-      final long maxPastLearningTime = Math.min(request.getHistoryLearningTime(), thresholdConfiguration.getLearningTime());
-      long remainingPastLearningTime = maxPastLearningTime;
-      // Get values from download before request
-      for (final Flight flight : flightsBefore) {
-         if (remainingPastLearningTime == 0) {
-            // If history learning time has been reached then stop loop
-            break;
-         }
-         final Set<IndicatorValueHolder> indicatorValues = healthHistoryProvider.getIndicatorValues(flight, indicator);
-         if (!indicatorValues.isEmpty()) {
-            // If sensor acquisition contains acquisitions for concerned indicator
-            // then compute past learning time and get corresponding indicator values
-            if (groundAcquisitionMode) {
-               if (flight.getHealthStartDate() != null) {
-                  Date startDate = flight.getHealthStartDate();
-                  Date endDate = flight.getHealthEndDate();
-                  if (endDate.getTime() - startDate.getTime() > remainingPastLearningTime) {
-                     // If interval is too long, adjust end time
-                     startDate = new Date(endDate.getTime() - remainingPastLearningTime);
-                  }
-                  values.addAll(getIndicatorValuesBetweenDates(indicatorValues, startDate, endDate, isMarms));
-                  // Update the flight acquisition duration
-                  remainingPastLearningTime -= endDate.getTime() - startDate.getTime();
-               }
-            } else {
-               // Sort takeoffs/landings in reverse chronological order
-               List<TakeoffLandingDateTime> sortedTLDates = new ArrayList<>(flight.getFlightHourData().getTakeoffLandingDateTimes());
-               sortedTLDates.sort(Collections.reverseOrder(TAKEOFF_LANDING_COMPARATOR));
-
-               for (final TakeoffLandingDateTime takeoffLandingDateTime : sortedTLDates) {
-                  if (remainingPastLearningTime == 0) {
-                     break;
-                  }
-                  Date startDate = takeoffLandingDateTime.getTakeoffDateTime();
-                  final Date endDate = takeoffLandingDateTime.getLandingDateTime();
-                  if (endDate.getTime() - startDate.getTime() > remainingPastLearningTime) {
-                     // If interval is too long, adjust end time
-                     startDate = new Date(endDate.getTime() - remainingPastLearningTime);
-                  }
-                  values.addAll(getIndicatorValuesBetweenDates(indicatorValues, startDate, endDate, isMarms));
-                  // Update the flight acquisition duration
-                  remainingPastLearningTime -= endDate.getTime() - startDate.getTime();
-               }
-            }
-         }
-      }
-
-      // Remaining time for learning
-      int i = 1;
-      long remainingTime = thresholdConfiguration.getLearningTime() - (maxPastLearningTime - remainingPastLearningTime);
-      final long originalRemainingTime = remainingTime;
-      if (remainingTime == 0 && !values.isEmpty()) {
-         // learning completed with past hours data only. set end date equals to start date
-         request.setEndDate(request.getStartDate());
-         // Applicable to the current flight as well, so include it
-         request.setApplicableFlightDate(new Date(lastFlight.getUsageStartDate().getTime() - 1));
-      } else if (isLearningPossible(flightsAfter, remainingTime, groundAcquisitionMode)) {
-         // Boolean that indicates if all indicator values are processed (i.e. cannot extend further the learning time)
-         boolean endReached = false;
-         // Loop in order to extend the learning time when no values have been found
-         while (!endReached) {
-            endReached = true;
-            // Get values from downloads after request
-            for (final Flight flight : flightsAfter) {
-               if (remainingTime == 0) {
-                  // If learning time has been reached with values, then stop loop
-                  endReached = !values.isEmpty();
-                  break;
-               }
-               final Set<IndicatorValueHolder> indicatorValues = healthHistoryProvider.getIndicatorValues(flight, indicator);
-               if (groundAcquisitionMode) {
-                  if (flight.getHealthStartDate() != null) {
-                     final Date startDate = flight.getHealthStartDate();
-                     Date endDate = flight.getHealthEndDate();
-                     if (endDate.getTime() - startDate.getTime() > remainingTime) {
-                        // If interval is too long, adjust end time
-                        endDate = new Date(startDate.getTime() + remainingTime);
-                        endReached = false;
-                     }
-                     values.addAll(getIndicatorValuesBetweenDates(indicatorValues, startDate, endDate, isMarms));
-                     // Update the flight acquisition duration
-                     remainingTime -= endDate.getTime() - startDate.getTime();
-                  }
-               } else if (flight.getFlightHourData() != null) {
-                  // Sort takeoffs/landings in chronological order
-                  List<TakeoffLandingDateTime> sortedTLDates = new ArrayList<>(flight.getFlightHourData().getTakeoffLandingDateTimes());
-                  sortedTLDates.sort(TAKEOFF_LANDING_COMPARATOR);
-                  for (final TakeoffLandingDateTime takeoffLandingDateTime : sortedTLDates) {
-                     if (remainingTime == 0) {
-                        // If learning time has been reached with values, then stop loop
-                        endReached = !values.isEmpty();
-                        break;
-                     }
-                     final Date startDate = takeoffLandingDateTime.getTakeoffDateTime();
-                     Date endDate = takeoffLandingDateTime.getLandingDateTime();
-                     if (endDate.getTime() - startDate.getTime() > remainingTime) {
-                        // If interval is too long, adjust end time
-                        endDate = new Date(startDate.getTime() + remainingTime);
-                        endReached = false;
-                     }
-                     values.addAll(getIndicatorValuesBetweenDates(indicatorValues, startDate, endDate, isMarms));
-                     // Update the flight acquisition duration
-                     remainingTime -= endDate.getTime() - startDate.getTime();
-                  }
-               }
-            }
-            if (remainingTime == 0 && values.isEmpty()) {
-               if (endReached) {
-                  // Cannot extend the learning time (infinite loop, there won't be any more values)
-               } else if (thresholdConfiguration.getLearningTime() == 0) {
-                  // Infinite loop as well, if the configured learning time is 0
-                  endReached = true;
+         final Set<Alarm> alarmSet = flight.getAlarms();
+         for (final Alarm alarm : alarmSet) {
+            if (alarm instanceof HealthAlarm && alarm.getAlarmStatus() == AlarmStatus.CLOSEMONITORED) {
+               final CloseMonitoredAcknowledgement closeMonitoredAcknowledgement = (CloseMonitoredAcknowledgement) alarm
+                     .getAcknowledgement();
+               // update remaining duration
+               final Duration passedFlightHours;
+               if (((HealthAlarm) alarm).getHealthMechanicalComponent().isGroundAcquisition()) {
+                  passedFlightHours = totalNumberOfIcaoFlightHours.minus(closeMonitoredAcknowledgement.getFlightHoursAtBeginning());
                } else {
-                  // No values for the computation, need to extend the learning time
-                  remainingTime = originalRemainingTime + i * thresholdConfiguration.getLearningTime();
-                  // Loop again
-                  endReached = false;
-                  LOGGER.info("Extending learning time (since no point has been found during the learning time).");
+                  passedFlightHours = totalNumberOfMaintenanceFlightHours.minus(closeMonitoredAcknowledgement.getFlightHoursAtBeginning());
+               }
 
-                  ++i;
+               closeMonitoredAcknowledgement.setRemainingDuration(closeMonitoredAcknowledgement.getCloseMonitoringDuration() - passedFlightHours.getMillis());
+
+               // Check if the close monitoring duration expired
+               if (closeMonitoredAcknowledgement.isCloseMonitoringDurationExpired()) {
+                  // update status from Close Monitored to Not Acknowledged
+                  alarm.setAlarmStatus(AlarmStatus.NOTACK);
+                  alarm.setCloseMonitoringStatus(CloseMonitoring.EXPIRED);
                }
             }
          }
-      }
-
-      if ((remainingTime == 0 || i > 1) && !values.isEmpty()) {
-         completeLearning(currentFlight, lastFlight, thresholdConfiguration, request, commonParameters, values);
-      }
-   }
-
-   private boolean isLearningPossible(SortedSet<Flight> flightsAfter, long originalRemainingTime, boolean groundAcquisitionMode) {
-      long remainingTime = originalRemainingTime;
-      for (final Flight flight : flightsAfter) {
-         if (groundAcquisitionMode) {
-            if (flight.getHealthStartDate() != null) {
-               final Date startDate = flight.getHealthStartDate();
-               Date endDate = flight.getHealthEndDate();
-               if (endDate.getTime() - startDate.getTime() > remainingTime) {
-                  endDate = new Date(startDate.getTime() + remainingTime);
-               }
-               remainingTime -= endDate.getTime() - startDate.getTime();
-               if (remainingTime == 0) {
-                  return true;
-               }
-            }
-         } else if (flight.getFlightHourData() != null) {
-            List<TakeoffLandingDateTime> sortedTLDates = new ArrayList<>(flight.getFlightHourData().getTakeoffLandingDateTimes());
-            sortedTLDates.sort(TAKEOFF_LANDING_COMPARATOR);
-            for (final TakeoffLandingDateTime takeoffLandingDateTime : sortedTLDates) {
-               final Date startDate = takeoffLandingDateTime.getTakeoffDateTime();
-               Date endDate = takeoffLandingDateTime.getLandingDateTime();
-               if (endDate.getTime() - startDate.getTime() > remainingTime) {
-                  endDate = new Date(startDate.getTime() + remainingTime);
-               }
-               remainingTime -= endDate.getTime() - startDate.getTime();
-               if (remainingTime == 0) {
-                  return true;
-               }
-            }
-         }
-      }
-      return remainingTime <= 0;
-   }
-
-   private void completeLearning(final Flight currentFlight, final Flight lastFlight, final LearnedThresholdConfiguration thresholdConfiguration, final RelearnThresholdRequest request,
-         final HealthMonitoringParameters commonParameters, final DoubleList values) {
-      final double mean = HEALTH_ALGORITHMS.mean(values.toArray());
-      double standardDeviation = HEALTH_ALGORITHMS.rms(values.toArray());
-      final Double minimumDeviation = thresholdConfiguration.getMinimumDeviation();
-      if (minimumDeviation != null && standardDeviation < minimumDeviation) {
-         standardDeviation = minimumDeviation;
-      }
-      Double deviationCoeff = thresholdConfiguration.getDeviationCoefficient();
-      double meanFactor = thresholdConfiguration.getMeanFactor();
-      if (deviationCoeff == null) {
-         // When absent from threshold configuration, get deviation coefficient from health parameters
-         deviationCoeff = switch (thresholdConfiguration.getThreshold().getSeverity()) {
-            case AMBER -> commonParameters.getLearningThresholdAlgorithmAmber();
-            case RED -> commonParameters.getLearningThresholdAlgorithmRed();
-            default -> 0.0;
-         };
-      }
-      double learnedValue = meanFactor * mean + deviationCoeff * standardDeviation;
-
-      learnedValue = ajustThresholdBounds(thresholdConfiguration, learnedValue);
-
-      request.setLearnedValue(learnedValue);
-
-      request.setHandled(true);
-      if (request.getEndDate() == null) {
-         // If the end date has not been set at the end of past flight hours analysis (see above)
-         request.setEndDate(currentFlight.getLastDownloadDate());
-         request.setApplicableFlightDate(lastFlight.getUsageStartDate());
       }
    }
 
    /**
-    * Ajust learned value to min or max (depending on threshold type) of learned threshold if value is out of bounds.
+    * Gets the total number of maintenance flight hours, including purged flights.
     * 
-    * To be launched after learning and after configuration update.
-    * 
-    * @param thresholdConfiguration
-    *           LearnedThresholdConfiguration
-    * @param learnedValue
-    *           initial value after learning time
-    * @return learnedValue corrected value
-    * 
+    * @param aircraft
+    *           The aircraft
+    * @return the total number of maintenance flight hours
     */
-   public double ajustThresholdBounds(LearnedThresholdConfiguration thresholdConfiguration, double learnedValue) {
-      if (thresholdConfiguration.getThresholdLevel() == ThresholdLevel.HIGH) {
-         if (learnedValue > thresholdConfiguration.getMaximumThreshold()) {
-            learnedValue = thresholdConfiguration.getMaximumThreshold();
-         } else if (thresholdConfiguration.getMinimumThreshold() != null && learnedValue < thresholdConfiguration.getMinimumThreshold()) {
-            learnedValue = thresholdConfiguration.getMinimumThreshold();
-         }
-      } else if (thresholdConfiguration.getThresholdLevel() == ThresholdLevel.LOW) {
-         if (thresholdConfiguration.getMaximumThreshold() > learnedValue) {
-            learnedValue = thresholdConfiguration.getMaximumThreshold();
-         } else if (thresholdConfiguration.getMinimumThreshold() != null && thresholdConfiguration.getMinimumThreshold() < learnedValue) {
-            learnedValue = thresholdConfiguration.getMinimumThreshold();
-         }
+   private Duration getTotalNumberMaintenanceFlightHours(final AircraftHistory aircraftHistory, final Aircraft aircraft) {
+      long totalDuration = 0;
+      for (Flight flight : aircraft.getFlights()) {
+         totalDuration += flight.getMaintenanceFlightTime();
       }
-      return learnedValue;
+      return new Duration(totalDuration + aircraftHistory.getMaintenanceFlightTime());
    }
 
    /**
-    * Gets the indicator values between dates.
-    *
-    * @param indicatorValues
-    *           the indicator values
-    * @param startDate
-    *           the start date
-    * @param endDate
-    *           the end date
-    * @return the indicator values between dates
+    * Gets the total number of ICAO flight hour, including purged flights.
+    * 
+    * @param aircraft
+    *           The aircraft
+    * @return the total number of ICAO flight hours
     */
-   private ArrayDoubleList getIndicatorValuesBetweenDates(final Set<IndicatorValueHolder> indicatorValues, final Date startDate, final Date endDate, boolean isMarms) {
-      final ArrayDoubleList result = new ArrayDoubleList();
-      for (final IndicatorValueHolder indicatorValue : indicatorValues) {
-         if (isMarms) {
-            // no filter
-            result.add(indicatorValue.getValue());
-         } else if (!indicatorValue.getDate().before(startDate) && !indicatorValue.getDate().after(endDate)) {
-            result.add(indicatorValue.getValue());
-         }
+   private Duration getTotalNumberIcaoFlightHours(final AircraftHistory aircraftHistory, final Aircraft aircraft) {
+      long totalDuration = 0;
+      for (Flight flight : aircraft.getFlights()) {
+         totalDuration += flight.getFlightDuration();
       }
-      return result;
+      return new Duration(totalDuration + aircraftHistory.getIcaoFlightTime());
    }
 }
-=========================================================================================
-
-
-
-
