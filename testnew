@@ -1,798 +1,1272 @@
+package com.eurocopter.mgs.download.analysis.health.impl;
 
-package com.eurocopter.mgs.presentation.configuration.preferences.healthalarms.store;
-
-import java.text.MessageFormat;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.Objects;
 import java.util.Set;
-import java.util.TreeMap;
+import java.util.SortedSet;
 import java.util.TreeSet;
 
+import org.apache.commons.collections.primitives.ArrayDoubleList;
+import org.apache.commons.collections.primitives.DoubleList;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.eclipse.jface.dialogs.MessageDialog;
-import org.eclipse.jface.util.SafeRunnable;
-import org.eclipse.ui.statushandlers.StatusManager;
-import org.osgi.framework.BundleContext;
-import org.osgi.framework.FrameworkUtil;
 
-import com.eurocopter.mgs.business.health.api.IHealthCommonBusiness;
-import com.eurocopter.mgs.business.health.model.IndicatorModel;
-import com.eurocopter.mgs.business.health.model.WCThresholdBaseline;
-import com.eurocopter.mgs.business.health.model.WCThresholdModel;
-import com.eurocopter.mgs.core.presentation.i18n.Messages;
 import com.eurocopter.mgs.datamodel.aircraft.Aircraft;
-import com.eurocopter.mgs.datamodel.alarm.Severity;
+import com.eurocopter.mgs.datamodel.aircraft.Avionic;
+import com.eurocopter.mgs.datamodel.flight.Flight;
 import com.eurocopter.mgs.datamodel.health.monitoring.HealthMechanicalComponent;
 import com.eurocopter.mgs.datamodel.health.monitoring.HealthMechanicalComponentConfiguration;
-import com.eurocopter.mgs.datamodel.health.monitoring.HealthMonitoringConfiguration;
 import com.eurocopter.mgs.datamodel.health.monitoring.Indicator;
 import com.eurocopter.mgs.datamodel.health.monitoring.IndicatorConfiguration;
+import com.eurocopter.mgs.datamodel.health.monitoring.LearnedThresholdConfiguration;
+import com.eurocopter.mgs.datamodel.health.monitoring.RelearnThresholdRequest;
+import com.eurocopter.mgs.datamodel.health.monitoring.RelearnThresholdRequestComparator;
+import com.eurocopter.mgs.datamodel.health.monitoring.TakeoffLandingDateTime;
+import com.eurocopter.mgs.datamodel.health.monitoring.ThresholdConfiguration;
 import com.eurocopter.mgs.datamodel.health.monitoring.ThresholdLevel;
-import com.eurocopter.mgs.datamodel.health.monitoring.ThresholdType;
-import com.eurocopter.mgs.health.activator.Activator;
-import com.eurocopter.mgs.presentation.common.MgsSession;
-import com.eurocopter.mgs.presentation.configuration.preferences.healthalarms.HealthAlarmsComposite;
-import com.eurocopter.mgs.presentation.configuration.preferences.healthalarms.WCHealthMechanicalComponentModel;
-import com.eurocopter.mgs.presentation.configuration.preferences.healthalarms.WCMechanicalComponentModel;
-import com.eurocopter.mgs.presentation.configuration.store.MgsPreferenceStore;
-import com.eurocopter.mgs.presentation.configuration.store.MgsPreferenceStoreManager;
-import com.eurocopter.mgs.presentation.utils.AircraftExceptionHandler;
-import com.eurocopter.mgs.service.aircraft.dto.AircraftConfigurationHistoryDto;
-import com.eurocopter.mgs.service.aircraft.exception.AircraftConcurrentAccessException;
-import com.eurocopter.mgs.service.exception.EntityNotFoundException;
-import com.eurocopter.mgs.service.health.common.dto.FilteringLawDto;
-import com.eurocopter.mgs.service.health.common.dto.IndicatorConfigurationDto;
-import com.eurocopter.mgs.service.health.common.dto.IndicatorDeviationDto;
-import com.eurocopter.mgs.service.health.common.dto.MechanicalComponentConfigurationDto;
-import com.eurocopter.mgs.service.health.common.dto.ThresholdConfigurationDto;
-import com.google.common.collect.ArrayListMultimap;
-import com.google.common.collect.Multimap;
+import com.eurocopter.mgs.download.analysis.health.api.IHealthHistoryProvider;
+import com.eurocopter.mgs.download.analysis.health.api.IndicatorValueHolder;
+import com.eurocopter.mgs.parameter.health.monitoring.HealthMonitoringParameters;
 
-/**
- * Preference store for health alarms.
- */
-public class HealthAlarmsPreferenceStore extends MgsPreferenceStore {
+import corp.airbus.helicopters.algorithm.health.HealthAlgorithms;
+import corp.airbus.helicopters.algorithm.health.IHealthAlgorithms;
 
-   private static final Logger LOGGER = LogManager.getLogger(HealthAlarmsPreferenceStore.class);
-   /** data. */
-   private Map<Aircraft, WCMechanicalComponentModel> data = new HashMap<>();
+public class LearnedThresholdAnalyzer {
+
+   private static final Logger LOGGER = LogManager.getLogger(LearnedThresholdAnalyzer.class);
+
+   /** The health algorithms */
+   private static final IHealthAlgorithms HEALTH_ALGORITHMS = new HealthAlgorithms();
+
+   private static final Comparator<Flight> FLIGHT_DOWNLOAD_COMPARATOR = Comparator.comparing(Flight::getLastDownloadDate).thenComparing(Flight::getUsageStartDate)
+         .thenComparingInt(Flight::getFlightId);
+
+   private static final Comparator<TakeoffLandingDateTime> TAKEOFF_LANDING_COMPARATOR = Comparator.comparing(TakeoffLandingDateTime::getTakeoffDateTime);
 
    /**
-    * List of MCModels
-    */
-   private WCMechanicalComponentModel rootMechanicalComponents;
-
-   // field, beside lawNameToId
-   private final Map<String, String> indicatorDisplayNames = new HashMap<>();
-
-   private final Map<String, String> lawNameToId = new HashMap<>();
-
-   /** Composite parent. */
-   private final HealthAlarmsComposite parent;
-
-   private final BundleContext healthBundleContext = FrameworkUtil.getBundle(IHealthCommonBusiness.class)
-         .getBundleContext();
-   private final IHealthCommonBusiness healthBusiness = healthBundleContext
-         .getService(healthBundleContext.getServiceReference(IHealthCommonBusiness.class));
-
-   private static final Comparator<Severity> SEVERITY_COMPARATOR = (severity1, severity2) -> {
-      if (severity1 == severity2) {
-         return 0;
-      }
-      if (severity1 == Severity.RED) {
-         return -1;
-      }
-      return 1;
-   };
-
-   /**
-    * Constructor with argument. Builds a HealthAlarmsPreferenceStore.
-    */
-   public HealthAlarmsPreferenceStore(HealthAlarmsComposite parent) {
-      this.parent = parent;
-   }
-
-   /**
-    * Initialize the original mechanical component data.
-    * 
-    * @param aircraft
-    *           the aircraft model
-    */
-   public void initMechanicalComponentData(Aircraft aircraft) {
-      retrieveAircraftMechanicalComponents(aircraft);
-   }
-
-   @Override
-   public boolean needsSaving() {
-      return !data.isEmpty();
-   }
-
-   @Override
-   public void innerLoad() {
-   }
-
-   @Override
-   public void innerSave() {
-      for (Entry<Aircraft, WCMechanicalComponentModel> modelEntry : data.entrySet()) {
-         Aircraft aircraft = modelEntry.getKey();
-         HealthMonitoringConfiguration configuration;
-         AircraftConfigurationHistoryDto aircraftConfigurationHistoryDto;
-         try {
-            configuration = getConfiguration(aircraft);
-            aircraftConfigurationHistoryDto = MgsPreferenceStoreManager.getAircraftConfigurationDto(aircraft);
-         } catch (EntityNotFoundException e) {
-            LOGGER.warn("Entity not found exception", e);
-            AircraftConcurrentAccessException wrapper = new AircraftConcurrentAccessException(aircraft, true);
-            StatusManager.getManager().handle(
-                  AircraftExceptionHandler.getStatusForAircraftException(wrapper, "update", Activator.PLUGIN_ID), //$NON-NLS-1$
-                  StatusManager.SHOW);
-            continue;
-         }
-         // Retrieve the root node element
-         WCMechanicalComponentModel wcModel = modelEntry.getValue();
-
-         // Create maps to associate JPA entities with WC* instances
-         Map<HealthMechanicalComponent, WCHealthMechanicalComponentModel> wcMechanicalComponentModels = new HashMap<>();
-         Map<Indicator, Set<WCThresholdModel>> thresholdModels = new HashMap<>();
-         getModels(wcModel, wcMechanicalComponentModels, thresholdModels);
-
-         for (Map.Entry<HealthMechanicalComponent, HealthMechanicalComponentConfiguration> mcEntry : configuration
-               .getMechanicalComponentConfigurations().entrySet()) {
-            HealthMechanicalComponent mechanicalComponent = mcEntry.getKey();
-            MechanicalComponentConfigurationDto mechanicalComponentConfigurationDto = new MechanicalComponentConfigurationDto(
-                  mechanicalComponent.getId());
-            WCHealthMechanicalComponentModel mechanicalComponentModel = wcMechanicalComponentModels
-                  .get(mechanicalComponent);
-            mechanicalComponentConfigurationDto
-                  .setWorkcardReference(mechanicalComponentModel.getWorkcardReference());
-            mechanicalComponentConfigurationDto
-                  .setMaxTimeWOAcquisition(mechanicalComponentModel.getMaxtimeWithoutAcquitision());
-
-            for (Map.Entry<Indicator, IndicatorConfiguration> indicatorEntry : mcEntry.getValue()
-                  .getIndicatorConfigurations().entrySet()) {
-               Indicator indicator = indicatorEntry.getKey();
-               if (!thresholdModels.containsKey(indicator)) {
-                  // This indicator is likely inactive and has no current configuration to copy
-                  continue;
-               }
-               Set<WCThresholdModel> indicatorThresholdModels = thresholdModels.get(indicator);
-               IndicatorConfigurationDto indicatorConfigurationDto = new IndicatorConfigurationDto(
-                     indicator.getId());
-               for (WCThresholdModel wcThresholdModel : indicatorThresholdModels) {
-                  if (wcThresholdModel.isEnabled()) {
-                     final ThresholdConfigurationDto thresholdConfigurationDto;
-                     if (wcThresholdModel.getType() == ThresholdType.FIXED) {
-                        thresholdConfigurationDto = new ThresholdConfigurationDto(
-                              wcThresholdModel.getSeverity(), wcThresholdModel.getLevel(),
-                              wcThresholdModel.getType(), wcThresholdModel.getDefaultValue(),
-                              wcThresholdModel.getNbSuccessivePoints(),
-                              wcThresholdModel.getMinimumEngineOilTemperature());
-                     } else {
-                        thresholdConfigurationDto = new ThresholdConfigurationDto(
-                              wcThresholdModel.getSeverity(), wcThresholdModel.getLevel(),
-                              wcThresholdModel.getType(), wcThresholdModel.getLearningTime(),
-                              wcThresholdModel.getMinValue(), wcThresholdModel.getMaxValue(),
-                              wcThresholdModel.getDefaultValue(), wcThresholdModel.getMinimumDeviation(),
-                              wcThresholdModel.getMeanFactor(), wcThresholdModel.getDeviationCoefficient(),
-                              wcThresholdModel.getNbSuccessivePoints(),
-                              wcThresholdModel.getMinimumEngineOilTemperature());
-                     }
-                     thresholdConfigurationDto.setWorkcard(wcThresholdModel.getWorkCardReference());
-                     indicatorConfigurationDto.getThresholdConfigurationDtos().add(thresholdConfigurationDto);
-                  }
-               }
-               mechanicalComponentConfigurationDto.getIndicatorConfigurationDtos().add(indicatorConfigurationDto);
-            }
-            aircraftConfigurationHistoryDto.getMechanicalComponentConfigurations()
-                  .add(mechanicalComponentConfigurationDto);
-         }
-
-         aircraftConfigurationHistoryDto.setIndicatorConfigurationUpdated(true);
-      }
-   }
-
-   private void getModels(WCMechanicalComponentModel wcModel,
-         Map<HealthMechanicalComponent, WCHealthMechanicalComponentModel> mechanicalComponents,
-         Map<Indicator, Set<WCThresholdModel>> thresholdModels) {
-      for (WCMechanicalComponentModel subModel : wcModel.getSubHealthWCModel()) {
-         getModels(subModel, mechanicalComponents, thresholdModels);
-      }
-      for (WCHealthMechanicalComponentModel healthMechanicalComponentModel : wcModel.getHealthComponentModels()) {
-         mechanicalComponents.put(healthMechanicalComponentModel.getHealthMechanicalComponent(),
-               healthMechanicalComponentModel);
-         for (WCThresholdModel wcThresholdModel : healthMechanicalComponentModel.getThresholdModels()) {
-            if (!thresholdModels.containsKey(wcThresholdModel.getIndicator())) {
-               thresholdModels.put(wcThresholdModel.getIndicator(), new HashSet<>());
-            }
-            thresholdModels.get(wcThresholdModel.getIndicator()).add(wcThresholdModel);
-         }
-      }
-   }
-
-   private HealthMonitoringConfiguration getConfiguration(Aircraft aircraft) throws EntityNotFoundException {
-      try {
-         return MgsPreferenceStoreManager.getConfiguration(aircraft, HealthMonitoringConfiguration.TYPE,
-               HealthMonitoringConfiguration.class);
-      } catch (EntityNotFoundException e) {
-         LOGGER.error("Could not load health configuration for aircraft. Register number - Serial number = {}",
-               aircraft.getRegisterNumber(), e);
-         throw e;
-      }
-   }
-
-   /**
-    * Load data.
-    * 
-    * @param aircraft
-    *           the specified aircraft
-    * @return a list of health data
-    */
-   public WCMechanicalComponentModel loadHealthModels(Aircraft aircraft) {
-      emptyData();
-      retrieveAircraftMechanicalComponents(aircraft);
-      // save it
-      data.put(aircraft, rootMechanicalComponents);
-      rootMechanicalComponents.setName(Messages.CORE.getString("Label.HealthComponents"));
-      WCMechanicalComponentModel all = new WCMechanicalComponentModel();
-      all.getSubHealthWCModel().add(rootMechanicalComponents);
-      all.setName(Messages.CORE.getString("Label.HealthComponents"));
-      return all;
-   }
-
-   /**
-    * Retrieve the data related to an Aircraft.
-    * 
+    * Update learned thresholds.
+    *
     * @param aircraft
     *           the aircraft
-    * @return the list of health data
+    * @param latestHealthConfiguration
+    *           the latest health configuration
+    * @param commonParameters
+    *           the common parameters
     */
-   public WCMechanicalComponentModel getHealthModels(Aircraft aircraft) {
-      final WCMechanicalComponentModel result;
-      if (data.containsKey(aircraft)) {
-         result = data.get(aircraft);
-      } else {
-         // load it
-         result = loadHealthModels(aircraft);
+   void updateLearnedThresholds(final Aircraft aircraft, final Flight flight, final Map<HealthMechanicalComponent, HealthMechanicalComponentConfiguration> latestHealthConfiguration,
+         final HealthMonitoringParameters commonParameters, IHealthHistoryProvider healthHistoryProvider) {
+      for (final Map.Entry<HealthMechanicalComponent, HealthMechanicalComponentConfiguration> mechanicalComponentEntry : latestHealthConfiguration.entrySet()) {
+         for (final Entry<Indicator, IndicatorConfiguration> indicatorEntry : mechanicalComponentEntry.getValue().getIndicatorConfigurations().entrySet()) {
+            // Index threshold configuration by threshold
+            for (final ThresholdConfiguration thresholdConfiguration : indicatorEntry.getValue().getThresholdConfigurations()) {
+               if (thresholdConfiguration instanceof LearnedThresholdConfiguration) {
+                  // This is a learned threshold: retrieve latest relearn request if any
+                  final List<RelearnThresholdRequest> requests = new ArrayList<>(((LearnedThresholdConfiguration) thresholdConfiguration).getRelearnRequests());
+                  if (!requests.isEmpty()) {
+                     // Retrieve latest relearn request
+                     final RelearnThresholdRequest latestRequest = Collections.max(requests, new RelearnThresholdRequestComparator());
+                     if (!latestRequest.isHandled()) {
+                        computeThresholdLearning(aircraft, flight, indicatorEntry.getKey(), (LearnedThresholdConfiguration) thresholdConfiguration,
+                              latestRequest, commonParameters, healthHistoryProvider, mechanicalComponentEntry.getKey().isGroundAcquisition());
+                     }
+                     // Only the last request will be processed (no matter its state)
+                  }
+               }
+            }
+         }
+      }
+   }
+
+   /**
+    * Compute threshold learning.
+    *
+    * @param aircraft
+    *           the aircraft
+    * @param currentFlight
+    *           the flight
+    * @param indicator
+    *           the indicator
+    * @param thresholdConfiguration
+    *           the threshold configuration
+    * @param request
+    *           the request
+    * @param commonParameters
+    *           the common parameters
+    * @param groundAcquisitionMode
+    */
+   private void computeThresholdLearning(final Aircraft aircraft, final Flight currentFlight, final Indicator indicator, final LearnedThresholdConfiguration thresholdConfiguration,
+         final RelearnThresholdRequest request, final HealthMonitoringParameters commonParameters, final IHealthHistoryProvider healthHistoryProvider, boolean groundAcquisitionMode) {
+      LOGGER.debug("Compute threshold learning: begin flight retrieval");
+
+      Set<Flight> flightsWithValues = healthHistoryProvider.getFlightsWithValues(indicator);
+      if (flightsWithValues.isEmpty()) {
+         // There is no value for this indicator at all, shortcut for skipping the entire algorithm
+         LOGGER.debug("No value for indicator, skipping the learning process");
+         return;
       }
 
-      if (!Messages.CORE.getString("Label.HealthComponents").equals(result.getName())) {
-         WCMechanicalComponentModel all = new WCMechanicalComponentModel();
-         all.getSubHealthWCModel().add(result);
-         all.setName(Messages.CORE.getString("Label.HealthComponents"));
-         return all;
+      // Sort flights for learning
+      final SortedSet<Flight> flightsBefore = new TreeSet<>(Collections.reverseOrder(FLIGHT_DOWNLOAD_COMPARATOR));
+      final SortedSet<Flight> flightsAfter = new TreeSet<>(FLIGHT_DOWNLOAD_COMPARATOR);
+      Flight lastFlight = currentFlight;
+
+      // All flights that contribute to the learning are those downloaded after the learning start date
+      for (final Flight flight : aircraft.getFlights()) {
+         if (flight.getLastDownloadDate().before(request.getStartDate())) {
+            flightsBefore.add(flight);
+         } else {
+            flightsAfter.add(flight);
+         }
+         if (flight.getUsageStartDate().after(lastFlight.getUsageStartDate())) {
+            lastFlight = flight;
+         }
+      }
+      LOGGER.debug("End flight retrieval");
+
+      Avionic avionic = aircraft.getAircraftType().getAvionic();
+      boolean isMarms = avionic == Avionic.MARMS;
+
+      // Values for learning
+      final DoubleList values = new ArrayDoubleList();
+
+      final long maxPastLearningTime = Math.min(request.getHistoryLearningTime(), thresholdConfiguration.getLearningTime());
+      long remainingPastLearningTime = maxPastLearningTime;
+      // Get values from download before request
+      for (final Flight flight : flightsBefore) {
+         if (remainingPastLearningTime == 0) {
+            // If history learning time has been reached then stop loop
+            break;
+         }
+         final Set<IndicatorValueHolder> indicatorValues = healthHistoryProvider.getIndicatorValues(flight, indicator);
+         if (!indicatorValues.isEmpty()) {
+            // If sensor acquisition contains acquisitions for concerned indicator
+            // then compute past learning time and get corresponding indicator values
+            if (groundAcquisitionMode) {
+               if (flight.getHealthStartDate() != null) {
+                  Date startDate = flight.getHealthStartDate();
+                  Date endDate = flight.getHealthEndDate();
+                  if (endDate.getTime() - startDate.getTime() > remainingPastLearningTime) {
+                     // If interval is too long, adjust end time
+                     startDate = new Date(endDate.getTime() - remainingPastLearningTime);
+                  }
+                  values.addAll(getIndicatorValuesBetweenDates(indicatorValues, startDate, endDate, isMarms));
+                  // Update the flight acquisition duration
+                  remainingPastLearningTime -= endDate.getTime() - startDate.getTime();
+               }
+            } else {
+               // Sort takeoffs/landings in reverse chronological order
+               List<TakeoffLandingDateTime> sortedTLDates = new ArrayList<>(flight.getFlightHourData().getTakeoffLandingDateTimes());
+               sortedTLDates.sort(Collections.reverseOrder(TAKEOFF_LANDING_COMPARATOR));
+
+               for (final TakeoffLandingDateTime takeoffLandingDateTime : sortedTLDates) {
+                  if (remainingPastLearningTime == 0) {
+                     break;
+                  }
+                  Date startDate = takeoffLandingDateTime.getTakeoffDateTime();
+                  final Date endDate = takeoffLandingDateTime.getLandingDateTime();
+                  if (endDate.getTime() - startDate.getTime() > remainingPastLearningTime) {
+                     // If interval is too long, adjust end time
+                     startDate = new Date(endDate.getTime() - remainingPastLearningTime);
+                  }
+                  values.addAll(getIndicatorValuesBetweenDates(indicatorValues, startDate, endDate, isMarms));
+                  // Update the flight acquisition duration
+                  remainingPastLearningTime -= endDate.getTime() - startDate.getTime();
+               }
+            }
+         }
+      }
+
+      // Remaining time for learning
+      int i = 1;
+      long remainingTime = thresholdConfiguration.getLearningTime() - (maxPastLearningTime - remainingPastLearningTime);
+      final long originalRemainingTime = remainingTime;
+      if (remainingTime == 0 && !values.isEmpty()) {
+         // learning completed with past hours data only. set end date equals to start date
+         request.setEndDate(request.getStartDate());
+         // Applicable to the current flight as well, so include it
+         request.setApplicableFlightDate(new Date(lastFlight.getUsageStartDate().getTime() - 1));
+      } else if (isLearningPossible(flightsAfter, remainingTime, groundAcquisitionMode)) {
+         // Boolean that indicates if all indicator values are processed (i.e. cannot extend further the learning time)
+         boolean endReached = false;
+         // Loop in order to extend the learning time when no values have been found
+         while (!endReached) {
+            endReached = true;
+            // Get values from downloads after request
+            for (final Flight flight : flightsAfter) {
+               if (remainingTime == 0) {
+                  // If learning time has been reached with values, then stop loop
+                  endReached = !values.isEmpty();
+                  break;
+               }
+               final Set<IndicatorValueHolder> indicatorValues = healthHistoryProvider.getIndicatorValues(flight, indicator);
+               if (groundAcquisitionMode) {
+                  if (flight.getHealthStartDate() != null) {
+                     final Date startDate = flight.getHealthStartDate();
+                     Date endDate = flight.getHealthEndDate();
+                     if (endDate.getTime() - startDate.getTime() > remainingTime) {
+                        // If interval is too long, adjust end time
+                        endDate = new Date(startDate.getTime() + remainingTime);
+                        endReached = false;
+                     }
+                     values.addAll(getIndicatorValuesBetweenDates(indicatorValues, startDate, endDate, isMarms));
+                     // Update the flight acquisition duration
+                     remainingTime -= endDate.getTime() - startDate.getTime();
+                  }
+               } else if (flight.getFlightHourData() != null) {
+                  // Sort takeoffs/landings in chronological order
+                  List<TakeoffLandingDateTime> sortedTLDates = new ArrayList<>(flight.getFlightHourData().getTakeoffLandingDateTimes());
+                  sortedTLDates.sort(TAKEOFF_LANDING_COMPARATOR);
+                  for (final TakeoffLandingDateTime takeoffLandingDateTime : sortedTLDates) {
+                     if (remainingTime == 0) {
+                        // If learning time has been reached with values, then stop loop
+                        endReached = !values.isEmpty();
+                        break;
+                     }
+                     final Date startDate = takeoffLandingDateTime.getTakeoffDateTime();
+                     Date endDate = takeoffLandingDateTime.getLandingDateTime();
+                     if (endDate.getTime() - startDate.getTime() > remainingTime) {
+                        // If interval is too long, adjust end time
+                        endDate = new Date(startDate.getTime() + remainingTime);
+                        endReached = false;
+                     }
+                     values.addAll(getIndicatorValuesBetweenDates(indicatorValues, startDate, endDate, isMarms));
+                     // Update the flight acquisition duration
+                     remainingTime -= endDate.getTime() - startDate.getTime();
+                  }
+               }
+            }
+            if (remainingTime == 0 && values.isEmpty()) {
+               if (endReached) {
+                  // Cannot extend the learning time (infinite loop, there won't be any more values)
+               } else if (thresholdConfiguration.getLearningTime() == 0) {
+                  // Infinite loop as well, if the configured learning time is 0
+                  endReached = true;
+               } else {
+                  // No values for the computation, need to extend the learning time
+                  remainingTime = originalRemainingTime + i * thresholdConfiguration.getLearningTime();
+                  // Loop again
+                  endReached = false;
+                  LOGGER.info("Extending learning time (since no point has been found during the learning time).");
+
+                  ++i;
+               }
+            }
+         }
+      }
+
+      if ((remainingTime == 0 || i > 1) && !values.isEmpty()) {
+         completeLearning(currentFlight, lastFlight, thresholdConfiguration, request, commonParameters, values);
+      }
+   }
+
+   private boolean isLearningPossible(SortedSet<Flight> flightsAfter, long originalRemainingTime, boolean groundAcquisitionMode) {
+      long remainingTime = originalRemainingTime;
+      for (final Flight flight : flightsAfter) {
+         if (groundAcquisitionMode) {
+            if (flight.getHealthStartDate() != null) {
+               final Date startDate = flight.getHealthStartDate();
+               Date endDate = flight.getHealthEndDate();
+               if (endDate.getTime() - startDate.getTime() > remainingTime) {
+                  endDate = new Date(startDate.getTime() + remainingTime);
+               }
+               remainingTime -= endDate.getTime() - startDate.getTime();
+               if (remainingTime == 0) {
+                  return true;
+               }
+            }
+         } else if (flight.getFlightHourData() != null) {
+            List<TakeoffLandingDateTime> sortedTLDates = new ArrayList<>(flight.getFlightHourData().getTakeoffLandingDateTimes());
+            sortedTLDates.sort(TAKEOFF_LANDING_COMPARATOR);
+            for (final TakeoffLandingDateTime takeoffLandingDateTime : sortedTLDates) {
+               final Date startDate = takeoffLandingDateTime.getTakeoffDateTime();
+               Date endDate = takeoffLandingDateTime.getLandingDateTime();
+               if (endDate.getTime() - startDate.getTime() > remainingTime) {
+                  endDate = new Date(startDate.getTime() + remainingTime);
+               }
+               remainingTime -= endDate.getTime() - startDate.getTime();
+               if (remainingTime == 0) {
+                  return true;
+               }
+            }
+         }
+      }
+      return remainingTime <= 0;
+   }
+
+   private void completeLearning(final Flight currentFlight, final Flight lastFlight, final LearnedThresholdConfiguration thresholdConfiguration, final RelearnThresholdRequest request,
+         final HealthMonitoringParameters commonParameters, final DoubleList values) {
+      final double mean = HEALTH_ALGORITHMS.mean(values.toArray());
+      double standardDeviation = HEALTH_ALGORITHMS.rms(values.toArray());
+      final Double minimumDeviation = thresholdConfiguration.getMinimumDeviation();
+      if (minimumDeviation != null && standardDeviation < minimumDeviation) {
+         standardDeviation = minimumDeviation;
+      }
+      Double deviationCoeff = thresholdConfiguration.getDeviationCoefficient();
+      double meanFactor = thresholdConfiguration.getMeanFactor();
+      if (deviationCoeff == null) {
+         // When absent from threshold configuration, get deviation coefficient from health parameters
+         deviationCoeff = switch (thresholdConfiguration.getThreshold().getSeverity()) {
+            case AMBER -> commonParameters.getLearningThresholdAlgorithmAmber();
+            case RED -> commonParameters.getLearningThresholdAlgorithmRed();
+            default -> 0.0;
+         };
+      }
+      double learnedValue = meanFactor * mean + deviationCoeff * standardDeviation;
+
+      learnedValue = ajustThresholdBounds(thresholdConfiguration, learnedValue);
+
+      request.setLearnedValue(learnedValue);
+
+      request.setHandled(true);
+      if (request.getEndDate() == null) {
+         // If the end date has not been set at the end of past flight hours analysis (see above)
+         request.setEndDate(currentFlight.getLastDownloadDate());
+         request.setApplicableFlightDate(lastFlight.getUsageStartDate());
+      }
+   }
+
+   /**
+    * Ajust learned value to min or max (depending on threshold type) of learned threshold if value is out of bounds.
+    * 
+    * To be launched after learning and after configuration update.
+    * 
+    * @param thresholdConfiguration
+    *           LearnedThresholdConfiguration
+    * @param learnedValue
+    *           initial value after learning time
+    * @return learnedValue corrected value
+    * 
+    */
+   public double ajustThresholdBounds(LearnedThresholdConfiguration thresholdConfiguration, double learnedValue) {
+      if (thresholdConfiguration.getThresholdLevel() == ThresholdLevel.HIGH) {
+         if (learnedValue > thresholdConfiguration.getMaximumThreshold()) {
+            learnedValue = thresholdConfiguration.getMaximumThreshold();
+         } else if (thresholdConfiguration.getMinimumThreshold() != null && learnedValue < thresholdConfiguration.getMinimumThreshold()) {
+            learnedValue = thresholdConfiguration.getMinimumThreshold();
+         }
+      } else if (thresholdConfiguration.getThresholdLevel() == ThresholdLevel.LOW) {
+         if (thresholdConfiguration.getMaximumThreshold() > learnedValue) {
+            learnedValue = thresholdConfiguration.getMaximumThreshold();
+         } else if (thresholdConfiguration.getMinimumThreshold() != null && thresholdConfiguration.getMinimumThreshold() < learnedValue) {
+            learnedValue = thresholdConfiguration.getMinimumThreshold();
+         }
+      }
+      return learnedValue;
+   }
+
+   /**
+    * Gets the indicator values between dates.
+    *
+    * @param indicatorValues
+    *           the indicator values
+    * @param startDate
+    *           the start date
+    * @param endDate
+    *           the end date
+    * @return the indicator values between dates
+    */
+   private ArrayDoubleList getIndicatorValuesBetweenDates(final Set<IndicatorValueHolder> indicatorValues, final Date startDate, final Date endDate, boolean isMarms) {
+      final ArrayDoubleList result = new ArrayDoubleList();
+      for (final IndicatorValueHolder indicatorValue : indicatorValues) {
+         if (isMarms) {
+            // no filter
+            result.add(indicatorValue.getValue());
+         } else if (!indicatorValue.getDate().before(startDate) && !indicatorValue.getDate().after(endDate)) {
+            result.add(indicatorValue.getValue());
+         }
       }
       return result;
-
    }
-
-   /**
-    * Empty the data of the store.
-    */
-   public void emptyData() {
-      data.clear();
-   }
-
-   /**
-    * Indicates whether data are valid or not.
-    * 
-    * @param dataToBeValidated
-    *           to be validated
-    * @return true if data are valid, false otherwise
-    */
-   public boolean isValidData(Map<Aircraft, WCMechanicalComponentModel> dataToBeValidated) {
-
-      // for each aircraft
-      for (Entry<Aircraft, WCMechanicalComponentModel> entry : dataToBeValidated.entrySet()) {
-
-         // retrieve the whole set of thresholds of the current aircraft
-         Multimap<Indicator, WCThresholdModel> wcThresholdMap = getComponentThresholds(entry.getValue());
-
-         // browse the list of thresholds of the current aircraft
-         // in order to determine if data are valid
-         for (Indicator indicator : wcThresholdMap.keySet()) {
-
-            WCThresholdModel redModel = null;
-            WCThresholdModel amberModel = null;
-            for (WCThresholdModel currentModel : wcThresholdMap.get(indicator)) {
-               switch (currentModel.getType()) {
-                  case FIXED:
-                     if (currentModel.getDefaultValue() == null) {
-                        // fixed thresholds without value
-                        MessageDialog.openError(parent.getShell(),
-                              Messages.CORE.getString("healthAlarmPageDataInvalidTitle"),
-                              MessageFormat.format(
-                                    Messages.CORE.getMnemonicEscapedString("healthAlarmPageDataInvalidMessage"),
-                                    entry.getKey().getRegisterNumber(),
-                                    currentModel.getHealthMechanicalComponentName() + "/"
-                                          + currentModel.getIndicator()
-                                          + " (fixed threshold value cannot be undefined)"));
-                        return false;
-                     }
-                     break;
-
-                  case LEARNED:
-                     if (currentModel.getMinValue() != null) {
-                        final double min;
-                        final double max;
-                        if (currentModel.getLevel() == ThresholdLevel.HIGH) {
-                           min = currentModel.getMinValue();
-                           max = currentModel.getMaxValue();
-                        } else {
-                           min = currentModel.getMaxValue();
-                           max = currentModel.getMinValue();
-                        }
-                        if (min >= max) {
-                           MessageDialog.openError(parent.getShell(),
-                                 Messages.CORE.getString("healthAlarmPageDataInvalidTitle"),
-                                 MessageFormat.format(
-                                       Messages.CORE
-                                             .getMnemonicEscapedString("healthAlarmPageDataInvalidMessage"),
-                                       entry.getKey().getRegisterNumber(),
-                                       currentModel.getHealthMechanicalComponentName() + "/"
-                                             + currentModel.getIndicator() + " (check min and max values)"));
-                           return false;
-                        }
-                     }
-                     break;
-                  default:
-                     throw new IllegalStateException("Unhandled threshold type : " + currentModel.getType());
-               }
-               if (currentModel.getSeverity() == Severity.RED) {
-                  redModel = currentModel;
-               } else {
-                  amberModel = currentModel;
-               }
-            }
-
-            if (redModel != null && amberModel != null) {
-
-               boolean valid = true;
-               if (amberModel.getDefaultValue() == null || redModel.getDefaultValue() == null) {
-                  continue;
-               } else if (amberModel.getLevel() == redModel.getLevel()) {
-
-                  boolean highAmberHigherThanHighRed = amberModel.getLevel() == ThresholdLevel.HIGH
-                        && amberModel.getDefaultValue() > redModel.getDefaultValue();
-                  // threshold
-                  boolean lowAmberSmallerThanLowRed = amberModel.getLevel() == ThresholdLevel.LOW
-                        && amberModel.getDefaultValue() < redModel.getDefaultValue();
-                  if (highAmberHigherThanHighRed || lowAmberSmallerThanLowRed) {
-                     valid = false;
-                  }
-               } else if (amberModel.getLevel() == ThresholdLevel.HIGH
-                     && amberModel.getDefaultValue() < redModel.getDefaultValue()) {
-                  // threshold
-                  valid = false;
-               } else if ((redModel.getLevel() == ThresholdLevel.HIGH)
-                     && (redModel.getDefaultValue() < amberModel.getDefaultValue())) {
-                  // threshold
-                  valid = false;
-               }
-               if (!valid) {
-                  MessageDialog.openError(parent.getShell(),
-                        Messages.CORE.getString("healthAlarmPageDataInvalidTitle"),
-                        MessageFormat.format(
-                              Messages.CORE.getMnemonicEscapedString("healthAlarmPageDataInvalidMessage"),
-                              entry.getKey().getRegisterNumber(),
-                              amberModel.getHealthMechanicalComponentName() + ">"
-                                    + amberModel.getIndicator().getName()));
-                  return false;
-               }
-            }
-         }
-      }
-
-      this.data = dataToBeValidated;
-
-      List<WCThresholdModel> deviatedModels = new ArrayList<>();
-      for (Entry<Aircraft, WCMechanicalComponentModel> entry : dataToBeValidated.entrySet()) {
-         for (WCThresholdModel model : getComponentThresholds(entry.getValue()).values()) {
-            if (model.isDeviated() || model.isModifiedAgainstBaseline()) {
-               deviatedModels.add(model);
-            }
-         }
-      }
-      for (WCThresholdModel model : deviatedModels) {
-         if (model.getTeReference() == null || model.getTeReference().trim().isEmpty()) {
-            MessageDialog.openError(parent.getShell(),
-                  Messages.CORE.getString("healthAlarmPageDataInvalidTitle"), MessageFormat.format(Messages.CORE.getString("deviationErrorTeMandatory"), model.getIndicator().getName()));
-            return false;
-         }
-      }
-      for (WCThresholdModel model : deviatedModels) {
-         model.setDeviated(true);
-      }
-      return true;
-   }
-
-   /**
-    * Retrieve the list of the whole threshold models for a specific component.
-    * 
-    * @param component
-    *           the component from which thresholds models have to be retrieved
-    * @return a list of thresholds models
-    */
-   private Multimap<Indicator, WCThresholdModel> getComponentThresholds(WCMechanicalComponentModel component) {
-      Multimap<Indicator, WCThresholdModel> thresholdModels = ArrayListMultimap.create();
-
-      // add the list of thresholds models to the result, if they exist
-      for (WCHealthMechanicalComponentModel healthMechanicalComponentModel : component.getHealthComponentModels()) {
-         for (WCThresholdModel thresholdModel : healthMechanicalComponentModel.getThresholdModels()) {
-            if (thresholdModel.isEnabled()) {
-               thresholdModels.put(thresholdModel.getIndicator(), thresholdModel);
-            }
-         }
-      }
-      for (WCMechanicalComponentModel mechanicalComponentModel : component.getSubHealthWCModel()) {
-         thresholdModels.putAll(getComponentThresholds(mechanicalComponentModel));
-      }
-      return thresholdModels;
-   }
-
-   /**
-    * Retrieves the aircraft monitored mechanical components and indicators with their status from the data base.
-    */
-   private void retrieveAircraftMechanicalComponents(final Aircraft aircraft) {
-      SafeRunnable.run(new SafeRunnable() {
-         @Override
-         public void run() {
-            try {
-               rootMechanicalComponents = createAllMechanicalComponents(aircraft).get("");
-            } catch (EntityNotFoundException e) {
-               LOGGER.error("Cannot find mechanical components for aircaft : {}", aircraft, e);
-            }
-         }
-      });
-   }
-
-   /**
-    * Build Health node Tree hierarchy
-    */
-   private Map<String, WCMechanicalComponentModel> createAllMechanicalComponents(final Aircraft aircraft)
-         throws EntityNotFoundException {
-      Map<String, WCMechanicalComponentModel> createdObjects = new HashMap<>();
-      Map<Indicator, IndicatorModel> indicatorModels;
-      try {
-         indicatorModels = healthBusiness.getIndicatorModels(MgsSession.getInstance().getUser().getId(),
-               aircraft.getId());
-      } catch (EntityNotFoundException e1) {
-         LOGGER.warn("Unable to retrieve indicator models", e1);
-         return createdObjects;
-      }
-
-      Map<HealthMechanicalComponent, HealthMechanicalComponentConfiguration> hmcConfigurations = healthBusiness
-            .getActiveComponentsAndConfiguration(aircraft.getId());
-
-      // BCR-6605 fetch the active deviations once for this aircraft
-      Map<String, IndicatorDeviationDto> deviationMap = new HashMap<>();
-      try {
-         for (IndicatorDeviationDto dto : healthBusiness.findActiveDeviations(aircraft.getId())) {
-            // deviationMap.put(dto.getIndicatorConfigurationId() + "|" + dto.getSeverity(), dto);
-            deviationMap.put(dto.getIndicatorId() + "|" + dto.getSeverity(), dto);
-         }
-      } catch (Exception e) {
-         LOGGER.warn("Could not load active deviations", e);
-      }
-
-      for (Entry<HealthMechanicalComponent, HealthMechanicalComponentConfiguration> entry : hmcConfigurations
-            .entrySet()) {
-         HealthMechanicalComponent healthMechanicalComponent = entry.getKey();
-         int position = healthMechanicalComponent.getPath()
-               .lastIndexOf(HealthMechanicalComponent.HMC_PATH_SEPARATOR);
-         String parentPath = healthMechanicalComponent.getPath().substring(0, position);
-         WCMechanicalComponentModel parentComponent = createdObjects.get(parentPath);
-         if (parentComponent == null) {
-            parentComponent = createMechanicalComponent(parentPath, createdObjects);
-         }
-         // List<WCThresholdModel> thresholdModels = getThresholdModels(healthMechanicalComponent, indicatorModels);
-         List<WCThresholdModel> thresholdModels = getThresholdModels(healthMechanicalComponent,
-               indicatorModels, entry.getValue().getIndicatorConfigurations(), deviationMap);
-         WCHealthMechanicalComponentModel wcModel = new WCHealthMechanicalComponentModel(healthMechanicalComponent,
-               thresholdModels, entry.getValue().getWorkcard(),
-               entry.getValue().getMaximumTimeWithoutAcquistion());
-         parentComponent.getHealthComponentModels().add(wcModel);
-      }
-      return createdObjects;
-   }
-
-   private WCMechanicalComponentModel createMechanicalComponent(String path,
-         Map<String, WCMechanicalComponentModel> createdObjects) {
-      int position = path.lastIndexOf(HealthMechanicalComponent.HMC_PATH_SEPARATOR);
-      WCMechanicalComponentModel newMCModel = new WCMechanicalComponentModel();
-      newMCModel.setName(path.substring(position + 1));
-      createdObjects.put(path, newMCModel);
-      if (position >= 0) {
-         String parentPath = path.substring(0, position);
-         WCMechanicalComponentModel parentComponent = createdObjects.get(parentPath);
-         if (parentComponent == null) {
-            parentComponent = createMechanicalComponent(parentPath, createdObjects);
-         }
-         parentComponent.getSubHealthWCModel().add(newMCModel);
-      }
-      return newMCModel;
-   }
-
-   private List<WCThresholdModel> getThresholdModels(HealthMechanicalComponent healthMechanicalComponent,
-         Map<Indicator, IndicatorModel> indicatorModels, Map<Indicator, IndicatorConfiguration> indicatorConfigurations,
-         Map<String, IndicatorDeviationDto> deviationMap) {
-      Severity[] severities = { Severity.RED, Severity.AMBER };
-      List<WCThresholdModel> hmcThresholdModels = new ArrayList<>();
-      boolean odd = true;
-
-      Set<Indicator> sortedSet = new TreeSet<>((i1, i2) -> i1.getName().compareTo(i2.getName()));
-      sortedSet.addAll(healthMechanicalComponent.getIndicators().values());
-      for (Indicator indicator : sortedSet) {
-         Map<Severity, WCThresholdModel> indicatorThresholdsMap = new TreeMap<>(SEVERITY_COMPARATOR);
-         IndicatorModel indicatorModel = indicatorModels.get(indicator);
-         String path = healthMechanicalComponent.getPath().replace(String.valueOf(HealthMechanicalComponent.HMC_PATH_SEPARATOR), " - ");
-         if (path.startsWith(" - ")) {
-            path = path.substring(3);
-         }
-         indicatorDisplayNames.put(indicator.getId(), path + " - " + indicator.getName());
-         for (WCThresholdModel thresholdModel : indicatorModel.getThresholdModels()) {
-            thresholdModel.setOdd(odd);
-            indicatorThresholdsMap.put(thresholdModel.getSeverity(), thresholdModel);
-         }
-         for (Severity severity : severities) {
-            if (!indicatorThresholdsMap.containsKey(severity)) {
-               WCThresholdModel thresholdModel = new WCThresholdModel(indicator,
-                     healthMechanicalComponent.getFunctionalId());
-               thresholdModel.setSeverity(severity);
-               thresholdModel.setOdd(odd);
-               indicatorThresholdsMap.put(severity, thresholdModel);
-            }
-         }
-
-         // BCR-6605 default filtering law, baseline, and any stored deviation
-         IndicatorConfiguration indicatorConfiguration = indicatorConfigurations.get(indicator);
-         String law = indicatorConfiguration != null ? indicatorConfiguration.getFilteringLaw() : null;
-         String icId = indicatorConfiguration != null ? indicatorConfiguration.getId() : null;
-         for (WCThresholdModel thresholdModel : indicatorThresholdsMap.values()) {
-            thresholdModel.setFilteringLawName(law);
-            thresholdModel.setIndicatorConfigurationId(icId);
-            thresholdModel.setBaseline(new WCThresholdBaseline(thresholdModel, law));
-            IndicatorDeviationDto deviation = deviationMap.get(indicator.getId() + "|" + thresholdModel.getSeverity().name());
-            if (deviation != null) {
-               thresholdModel.setDeviated(true);
-               thresholdModel.setDeviationId(deviation.getId());
-               thresholdModel.setTeReference(deviation.getTeReference());
-               thresholdModel.setDeviationStartDate(deviation.getStartDate());
-               thresholdModel.setDeviationEndDate(deviation.getEndDate());
-               if (deviation.getThresholdLevel() != null) {
-                  thresholdModel.setLevel(ThresholdLevel.valueOf(deviation.getThresholdLevel()));
-               }
-               if (deviation.getThresholdType() != null) {
-                  thresholdModel.setType(ThresholdType.valueOf(deviation.getThresholdType()));
-               }
-               if (deviation.getThresholdValue() != null) {
-                  thresholdModel.setDefaultValue(deviation.getThresholdValue());
-               }
-               if (deviation.getMinValue() != null) {
-                  thresholdModel.setMinValue(deviation.getMinValue());
-               }
-               if (deviation.getMaxValue() != null) {
-                  thresholdModel.setMaxValue(deviation.getMaxValue());
-               }
-               if (deviation.getLearningTime() != null) {
-                  thresholdModel.setLearningTime(deviation.getLearningTime());
-               }
-               if (deviation.getWorkcard() != null) {
-                  thresholdModel.setWorkCardReference(deviation.getWorkcard());
-               }
-               if (deviation.getMinimumDeviation() != null) {
-                  thresholdModel.setMinimumDeviation(deviation.getMinimumDeviation());
-               }
-               if (deviation.getMeanFactor() != null) {
-                  thresholdModel.setMeanFactor(deviation.getMeanFactor());
-               }
-               if (deviation.getDeviationCoefficient() != null) {
-                  thresholdModel.setDeviationCoefficient(deviation.getDeviationCoefficient());
-               }
-               if (deviation.getNbSuccessivePoints() != null) {
-                  thresholdModel.setNbSuccessivePoints(deviation.getNbSuccessivePoints());
-               }
-               if (deviation.getFilteringLawName() != null) {
-                  thresholdModel.setFilteringLawName(deviation.getFilteringLawName());
-                  thresholdModel.setFilteringLawId(deviation.getFilteringLawId());
-               }
-            }
-
-         }
-         hmcThresholdModels.addAll(indicatorThresholdsMap.values());
-         odd = !odd;
-      }
-      return hmcThresholdModels;
-   }
-
-   /*
-    * public List<String> getFilteringLawNames(Aircraft aircraft) { try { return healthBusiness.getFilteringLawNames(aircraft.getId()); } catch (EntityNotFoundException e) {
-    * LOGGER.warn("Could not load filtering laws", e); return new ArrayList<>(); } }
-    */
-
-   public List<String> getFilteringLawNames(Aircraft aircraft) {
-      List<String> names = new ArrayList<>();
-      lawNameToId.clear();
-      try {
-         for (FilteringLawDto dto : healthBusiness.getFilteringLaws(aircraft.getId())) {
-            names.add(dto.getName());
-            lawNameToId.put(dto.getName(), dto.getId());
-         }
-      } catch (Exception e) {
-         LOGGER.warn("Could not load filtering laws", e);
-      }
-      names.sort(String::compareTo);
-      return names;
-   }
-
-   public String getFilteringLawId(String name) {
-      return lawNameToId.get(name);
-   }
-
-   public void saveDeviations() {
-      List<IndicatorDeviationDto> newDeviations = new ArrayList<>();
-      Date now = new Date();
-      for (Entry<Aircraft, WCMechanicalComponentModel> entry : data.entrySet()) {
-         Multimap<Indicator, WCThresholdModel> thresholds = getComponentThresholds(entry.getValue());
-         for (WCThresholdModel model : thresholds.values()) {
-            LOGGER.info("BCR-6605 {} deviated={} deviationId={} icId={} te={}", model.getIndicator().getName(), model.isDeviated(), model.getDeviationId(), model.getIndicatorConfigurationId(),
-                  model.getTeReference());
-            if (!model.isDeviated() || model.getDeviationId() != null) {
-               continue;
-            }
-            newDeviations.add(toDeviationDto(model, now));
-         }
-      }
-      if (!newDeviations.isEmpty()) {
-         try {
-            healthBusiness.createDeviations(newDeviations);
-         } catch (Exception e) {
-            LOGGER.error("Could not save deviations", e);
-         }
-      }
-   }
-
-   /*
-    * public void saveDeviations() { List<IndicatorDeviationDto> newDeviations = new ArrayList<>(); List<WCThresholdModel> savedModels = new ArrayList<>(); Date now = new Date(); for (Entry<Aircraft,
-    * WCMechanicalComponentModel> entry : data.entrySet()) { Multimap<Indicator, WCThresholdModel> thresholds = getComponentThresholds(entry.getValue()); for (WCThresholdModel model :
-    * thresholds.values()) { if (!model.isDeviated() || model.getDeviationId() != null) { continue; } newDeviations.add(toDeviationDto(model, now)); savedModels.add(model); } } if
-    * (!newDeviations.isEmpty()) { try { healthBusiness.createDeviations(newDeviations); for (WCThresholdModel model : savedModels) { model.setDeviationId("SAVED"); } } catch (Exception e) {
-    * LOGGER.error("Could not save deviations", e); } } }
-    */
-   /*
-    * private IndicatorDeviationDto toDeviationDto(WCThresholdModel model, Date now) { IndicatorDeviationDto dto = new IndicatorDeviationDto();
-    * dto.setIndicatorConfigurationId(model.getIndicatorConfigurationId()); dto.setFilteringLawId(getFilteringLawId(model.getFilteringLawName())); dto.setTeReference(model.getTeReference());
-    * dto.setStartDate(now); dto.setSeverity(model.getSeverity().name()); dto.setThresholdLevel(model.getLevel().name()); dto.setThresholdType(model.getType().name());
-    * dto.setThresholdValue(model.getDefaultValue()); dto.setMinValue(model.getMinValue()); dto.setMaxValue(model.getMaxValue()); dto.setLearningTime(model.getLearningTime());
-    * dto.setWorkcard(model.getWorkCardReference()); dto.setMinimumDeviation(model.getMinimumDeviation()); dto.setMeanFactor(model.getMeanFactor());
-    * dto.setDeviationCoefficient(model.getDeviationCoefficient()); dto.setNbSuccessivePoints(model.getNbSuccessivePoints()); return dto; }
-    */
-
-   private IndicatorDeviationDto toDeviationDto(WCThresholdModel model, Date now) {
-      IndicatorDeviationDto dto = new IndicatorDeviationDto();
-      dto.setIndicatorConfigurationId(model.getIndicatorConfigurationId());
-      dto.setStartDate(now);
-      dto.setSeverity(model.getSeverity().name());
-      dto.setTeReference(model.getTeReference());
-      dto.setFilteringLawId(getFilteringLawId(model.getFilteringLawName()));
-      WCThresholdBaseline baseline = model.getBaseline();
-      if (baseline == null) {
-         return dto;
-      }
-      if (!Objects.equals(baseline.getLevel(), model.getLevel())) {
-         dto.setThresholdLevel(model.getLevel().name());
-      }
-      if (!Objects.equals(baseline.getType(), model.getType())) {
-         dto.setThresholdType(model.getType().name());
-      }
-      if (!Objects.equals(baseline.getDefaultValue(), model.getDefaultValue())) {
-         dto.setThresholdValue(model.getDefaultValue());
-      }
-      if (!Objects.equals(baseline.getMinValue(), model.getMinValue())) {
-         dto.setMinValue(model.getMinValue());
-      }
-      if (!Objects.equals(baseline.getMaxValue(), model.getMaxValue())) {
-         dto.setMaxValue(model.getMaxValue());
-      }
-      if (!Objects.equals(baseline.getLearningTime(), model.getLearningTime())) {
-         dto.setLearningTime(model.getLearningTime());
-      }
-      if (!Objects.equals(baseline.getWorkCardReference(), model.getWorkCardReference())) {
-         dto.setWorkcard(model.getWorkCardReference());
-      }
-      if (!Objects.equals(baseline.getMinimumDeviation(), model.getMinimumDeviation())) {
-         dto.setMinimumDeviation(model.getMinimumDeviation());
-      }
-      if (!Objects.equals(baseline.getMeanFactor(), model.getMeanFactor())) {
-         dto.setMeanFactor(model.getMeanFactor());
-      }
-      if (!Objects.equals(baseline.getDeviationCoefficient(), model.getDeviationCoefficient())) {
-         dto.setDeviationCoefficient(model.getDeviationCoefficient());
-      }
-      if (!Objects.equals(baseline.getNbSuccessivePoints(), model.getNbSuccessivePoints())) {
-         dto.setNbSuccessivePoints(model.getNbSuccessivePoints());
-      }
-      return dto;
-   }
-
-   public String getIndicatorDisplayName(String indicatorId) {
-      String name = indicatorDisplayNames.get(indicatorId);
-      return name != null ? name : "";
-   }
-
-   public List<IndicatorDeviationDto> findActiveDeviations(Aircraft aircraft) {
-      if (aircraft == null) {
-         return new ArrayList<>();
-      }
-      try {
-         return healthBusiness.findActiveDeviations(aircraft.getId());
-      } catch (Exception e) {
-         LOGGER.warn("Could not load active deviations", e);
-         return new ArrayList<>();
-      }
-   }
-
-   public List<IndicatorDeviationDto> findDeviationHistory(Aircraft aircraft) {
-      if (aircraft == null) {
-         return new ArrayList<>();
-      }
-      try {
-         return healthBusiness.findDeviationHistory(aircraft.getId());
-      } catch (Exception e) {
-         LOGGER.warn("Could not load deviation history", e);
-         return new ArrayList<>();
-      }
-   }
-
-   public void acknowledgeDeviations(List<String> deviationIds) {
-      try {
-         healthBusiness.acknowledgeDeviations(deviationIds);
-      } catch (Exception e) {
-         LOGGER.error("Could not acknowledge deviations", e);
-      }
-   }
-
-   public List<FilteringLawDto> getFilteringLawDetails(Aircraft aircraft) {
-      if (aircraft == null) {
-         return new ArrayList<>();
-      }
-      try {
-         return healthBusiness.getFilteringLaws(aircraft.getId());
-      } catch (Exception e) {
-         LOGGER.warn("Could not load filtering laws", e);
-         return new ArrayList<>();
-      }
-   }
-
-   public void createFilteringLaw(Aircraft aircraft, FilteringLawDto dto) {
-      try {
-         healthBusiness.createFilteringLaw(aircraft.getId(), dto);
-      } catch (Exception e) {
-         LOGGER.error("Could not create filtering law", e);
-      }
-   }
-
-   public void updateFilteringLaw(FilteringLawDto dto) {
-      try {
-         healthBusiness.updateFilteringLaw(dto);
-      } catch (Exception e) {
-         LOGGER.error("Could not update filtering law", e);
-      }
-   }
-
-   public void deleteFilteringLaw(Aircraft aircraft, String lawId) {
-      try {
-         healthBusiness.deleteFilteringLaw(aircraft.getId(), lawId);
-      } catch (Exception e) {
-         LOGGER.error("Could not delete filtering law", e);
-      }
-   }
-
 }
+
+
+=============================================================================================================
+
+
+
+package com.eurocopter.mgs.datamodel.flight;
+
+import java.io.Serializable;
+import java.util.Date;
+import java.util.HashSet;
+import java.util.Set;
+
+import com.eurocopter.mgs.datamodel.alarm.Alarm;
+import com.eurocopter.mgs.datamodel.diagnosis.DiagnosisData;
+import com.eurocopter.mgs.datamodel.failure.FailureContextMonitoringData;
+import com.eurocopter.mgs.datamodel.fdcr.FdcrData;
+import com.eurocopter.mgs.datamodel.health.common.ContextualAcquisition;
+import com.eurocopter.mgs.datamodel.health.common.EngineAcquisition;
+import com.eurocopter.mgs.datamodel.health.common.MarmsMechanicalComponentAcquisition;
+import com.eurocopter.mgs.datamodel.health.common.SensorAcquisition;
+import com.eurocopter.mgs.datamodel.health.monitoring.FlightHourData;
+import com.eurocopter.mgs.datamodel.rtb.RotorAcquisition;
+import com.eurocopter.mgs.datamodel.sfm.FailureGroup;
+import com.eurocopter.mgs.datamodel.synchro.ServerOnly;
+import com.eurocopter.mgs.datamodel.usage.common.UsageFlightData;
+
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.NamedQuery;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.OneToOne;
+import jakarta.persistence.Table;
+import jakarta.persistence.Temporal;
+import jakarta.persistence.TemporalType;
+import jakarta.persistence.Transient;
+import jakarta.persistence.UniqueConstraint;
+
+/**
+ * This class represents a flight.
+ */
+@Entity
+@Table(name = "FLIGHT", uniqueConstraints = { @UniqueConstraint(columnNames = {
+      "FLIGHT_DATE", "FLIGHT_ID", "AIRCRAFT_ID", "LOCAL" }) })
+@NamedQuery(name = "findFlightsByAircraft", query = "SELECT f FROM Aircraft a JOIN a.flights f WHERE a.id = :aircraftId AND f.hasUsageData = TRUE")
+@NamedQuery(name = "findAllFlightsByAircraft", query = "SELECT f FROM Aircraft a JOIN a.flights f WHERE a.id = :aircraftId")
+@NamedQuery(name = "findFlightByFlightIdAndDate", query = "SELECT f FROM Aircraft a JOIN a.flights f WHERE a.id = :aircraftId AND f.flightId = :flightId AND f.date BETWEEN :date1 AND :date2")
+@NamedQuery(name = "findFlightByFlightId", query = "SELECT f FROM Flight f WHERE f.id = :id")
+@NamedQuery(name = "findFlightsByAircraftOlderThanDate", query = "SELECT f FROM Aircraft a JOIN a.flights f WHERE a.id = :aircraftId and f.usageStartDate < :date ")
+@NamedQuery(name = "findFlightsOlderThanDate", query = "SELECT f FROM Flight f WHERE f.usageStartDate < :date ")
+@NamedQuery(name = "findFlightsByAircraftOrderByDate", query = "SELECT f FROM Aircraft a JOIN a.flights f WHERE a.id = :aircraftId order by f.usageStartDate ASC")
+@NamedQuery(name = "findFlightsOrderByDate", query = "SELECT f FROM Flight f order by f.usageStartDate ASC")
+@NamedQuery(name = "findFlightsOrderByDateDesc", query = "SELECT f FROM Aircraft a JOIN a.flights f WHERE a.id = :aircraftId AND f.hasUsageData = TRUE ORDER BY f.usageStartDate DESC")
+@NamedQuery(name = "findFlightBySensorAcquisition", query = "SELECT f FROM Aircraft a JOIN a.flights f JOIN f.sensorAcquisitions sa WHERE sa.id = :sensorAcquisitionId")
+public class Flight implements Serializable {
+
+   /**
+    * Serial Id.
+    */
+   private static final long serialVersionUID = 1L;
+
+   /**
+    * Database Id.
+    */
+   @Id
+   @Column(name = "ID", nullable = false)
+   private String id;
+
+   /**
+    * Flight Id.
+    */
+   @Column(name = "FLIGHT_ID", nullable = false)
+   private int flightId;
+
+   /**
+    * Start date for the flight.
+    */
+   @Column(name = "FLIGHT_DATE", nullable = false)
+   @Temporal(TemporalType.TIMESTAMP)
+   private Date date;
+
+   /**
+    * Whether the flight is local or remote.
+    */
+   @Column(name = "LOCAL")
+   private boolean local;
+
+   /**
+    * Start date defined in usage data.
+    */
+   @Column(name = "USAGE_START_DATE")
+   @Temporal(TemporalType.TIMESTAMP)
+   private Date usageStartDate;
+
+   /**
+    * End date defined in usage data.
+    */
+   @Column(name = "USAGE_END_DATE")
+   @Temporal(TemporalType.TIMESTAMP)
+   private Date usageEndDate;
+
+   /**
+    * Jet lag for the flight
+    */
+   @Column(name = "JET_LAG")
+   private Long jetLag;
+
+   /**
+    * Start date defined in health data.
+    */
+   @Column(name = "HEALTH_START_DATE")
+   @Temporal(TemporalType.TIMESTAMP)
+   private Date healthStartDate;
+
+   /**
+    * End date for the flight.
+    */
+   @Column(name = "HEALTH_END_DATE")
+   @Temporal(TemporalType.TIMESTAMP)
+   private Date healthEndDate;
+
+   /**
+    * Flight type.
+    */
+   private String flightType;
+
+   /**
+    * Flight duration.
+    */
+   @Column(name = "MAINTENANCE_FLIGHT_TIME")
+   private long maintenanceFlightTime;
+
+   /**
+    * Maintenance start date which is the minimum between the usage start date and the first failure of the flight
+    */
+   @Column(name = "MAINTENANCE_START_DATE")
+   @Temporal(TemporalType.TIMESTAMP)
+   private Date maintenanceStartDate;
+
+   /**
+    * Maintenance end date which is the maximum between the usage end date and the last failure of the flight
+    */
+   @Column(name = "MAINTENANCE_END_DATE")
+   @Temporal(TemporalType.TIMESTAMP)
+   private Date maintenanceEndDate;
+
+   /**
+    * Number of landings (defined in USAGE data - Has to be mocked up with the only Health data feature).
+    */
+   @Column(name = "LANDINGS")
+   private int landings;
+
+   /**
+    * Flight status.
+    */
+   @Transient
+   private String flightStatus;
+
+   /**
+    * Configuration serial number to associate a flight with the applicable configuration that has been used to analyze all data.
+    */
+   @Column(name = "CONFIGURATION_SERIAL_NUMBER")
+   private int configurationSerialNumber;
+
+   /** The last download date. */
+   @Column(name = "LAST_DOWNLOAD_DATE")
+   @Temporal(TemporalType.TIMESTAMP)
+   private Date lastDownloadDate;
+
+   /**
+    * The property unloaded is false only for SNDE flights
+    */
+   @Column(name = "UNLOADED")
+   private boolean unloaded;
+
+   @Column(name = "HAS_USAGE_DATA")
+   private boolean hasUsageData = true;
+
+   @Column(name = "HAS_FDCR_DATA")
+   private boolean hasFdcrData;
+
+   /** The sensor acquisitions. */
+   @ServerOnly
+   @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
+   @JoinColumn(name = "FLIGHT_ID", updatable = false)
+   private Set<SensorAcquisition> sensorAcquisitions = new HashSet<>();
+
+   /** The M'ARMS acquisitions. */
+   @ServerOnly
+   @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
+   @JoinColumn(name = "FLIGHT_ID", updatable = false)
+   private Set<MarmsMechanicalComponentAcquisition> mechanicalComponentAcquisitions = new HashSet<>();
+
+   /** The engine vibration acquisitions. */
+   @ServerOnly
+   @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
+   @JoinColumn(name = "FLIGHT_ID", updatable = false)
+   private Set<EngineAcquisition> engineAcquisition = new HashSet<>();
+
+   /** The contextual acquisitions. */
+   @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
+   @JoinColumn(name = "FLIGHT_ID", updatable = false)
+   private Set<ContextualAcquisition> contextualAcquisitions = new HashSet<>();
+
+   /** The main rotor acquisition. */
+   @ServerOnly
+   @OneToOne(cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
+   @JoinColumn(name = "MAIN_ROTOR_ACQUISITION_ID")
+   private RotorAcquisition mainRotorAcquisition;
+
+   /** The tail rotor acquisition. */
+   @ServerOnly
+   @OneToOne(cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
+   @JoinColumn(name = "TAIL_ROTOR_ACQUISITION_ID")
+   private RotorAcquisition tailRotorAcquisition;
+
+   /** The flight hour data. */
+   @ServerOnly
+   @OneToOne(cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
+   @JoinColumn(name = "FLIGHT_HOUR_DATA_ID")
+   private FlightHourData flightHourData;
+
+   /** The usage flight data. */
+   @ServerOnly
+   @OneToOne(cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
+   @JoinColumn(name = "USAGE_FLIGHT_DATA_ID")
+   private UsageFlightData usageFlightData;
+
+   /** The alarms. */
+   @ServerOnly
+   @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
+   @JoinColumn(name = "FLIGHT_ID", updatable = false)
+   private Set<Alarm> alarms = new HashSet<>();
+
+   /** The failure groups. */
+   @ServerOnly
+   @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
+   @JoinColumn(name = "FLIGHT_ID", updatable = false)
+   private Set<FailureGroup> failureGroups = new HashSet<>();
+
+   /** The flight indicator values. */
+   @ServerOnly
+   @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
+   @JoinColumn(name = "FLIGHT_ID", updatable = false)
+   private Set<FlightIndicatorValue> flightIndicatorValues = new HashSet<>();
+
+   /** The FDCR data. */
+   @ServerOnly
+   @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
+   @JoinColumn(name = "FLIGHT_ID", updatable = false)
+   private Set<FdcrData> fdcrDataSet = new HashSet<>();
+
+   /** The diagnosis data. */
+   @ServerOnly
+   @OneToOne(cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
+   @JoinColumn(name = "DIAGNOSIS_DATA_ID")
+   private DiagnosisData diagnosisData;
+
+   @ServerOnly
+   @OneToOne(cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
+   @JoinColumn(name = "FAILURE_CONTEXT_MONITORING_DATA_ID")
+   private FailureContextMonitoringData failureContextMonitoringData;
+
+   /** The flight raw indicator values. */
+   @ServerOnly
+   @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
+   @JoinColumn(name = "FLIGHT_ID", updatable = false)
+   private Set<FlightRawIndicatorValue> flightRawIndicatorValues = new HashSet<>();
+
+   /**
+    * The property indicate if the health of the flight is right or not
+    */
+   @Column(name = "HEALTH_DECRIPTOR_MISSING")
+   private boolean healthDescriptorMissing;
+
+   /**
+    * Instantiates a new flight.
+    */
+   Flight() {
+   }
+
+   /**
+    * Instantiates a new flight.
+    *
+    * @param id
+    *           the id
+    */
+   public Flight(String id) {
+      this.id = id;
+      unloaded = true;
+   }
+
+   /**
+    * Gets the id.
+    *
+    * @return the id
+    */
+   public String getId() {
+      return id;
+   }
+
+   /**
+    * Gets the flight id.
+    *
+    * @return the flight id
+    */
+   public int getFlightId() {
+      return flightId;
+   }
+
+   /**
+    * Sets the flight id.
+    *
+    * @param flightId
+    *           the new flight id
+    */
+   public void setFlightId(int flightId) {
+      this.flightId = flightId;
+   }
+
+   /**
+    * Gets the date.
+    *
+    * @return the date
+    */
+   public Date getDate() {
+      return date;
+   }
+
+   /**
+    * Sets the date.
+    *
+    * @param date
+    *           the new date
+    */
+   public void setDate(Date date) {
+      this.date = date;
+   }
+
+   /**
+    * Checks if is local.
+    *
+    * @return true, if is local
+    */
+   public boolean isLocal() {
+      return local;
+   }
+
+   /**
+    * Sets the local.
+    *
+    * @param local
+    *           the new local
+    */
+   public void setLocal(boolean local) {
+      this.local = local;
+   }
+
+   /**
+    * Gets the start date.
+    *
+    * @return the start date
+    */
+   public Date getUsageStartDate() {
+      return usageStartDate;
+   }
+
+   /**
+    * Sets the start date.
+    *
+    * @param startDate
+    *           the new start date
+    */
+   public void setUsageStartDate(Date startDate) {
+      this.usageStartDate = startDate;
+   }
+
+   /**
+    * Gets the end date.
+    *
+    * @return the end date
+    */
+   public Date getUsageEndDate() {
+      return usageEndDate;
+   }
+
+   /**
+    * Sets the end date.
+    *
+    * @param endDate
+    *           the new end date
+    */
+   public void setUsageEndDate(Date endDate) {
+      this.usageEndDate = endDate;
+   }
+
+   /**
+    * Gets the jetLag.
+    *
+    * @return the jetLag
+    */
+   public Long getJetLag() {
+      return jetLag;
+   }
+
+   /**
+    * Sets the jetLag.
+    *
+    * @param jetLag
+    *           the new jetLag
+    */
+   public void setJetLag(Long jetLag) {
+      this.jetLag = jetLag;
+   }
+
+   public Date getHealthStartDate() {
+      return this.healthStartDate;
+   }
+
+   public void setHealthStartDate(Date startDate) {
+      this.healthStartDate = startDate;
+   }
+
+   public Date getHealthEndDate() {
+      return this.healthEndDate;
+   }
+
+   public void setHealthEndDate(Date endDate) {
+      this.healthEndDate = endDate;
+   }
+
+   /**
+    * Gets the flight type.
+    *
+    * @return the flight type
+    */
+   public FlightType getFlightType() {
+      return flightType != null ? FlightType.valueOf(flightType) : null;
+   }
+
+   /**
+    * Sets the flight type.
+    *
+    * @param flightType
+    *           the new flight type
+    */
+   public void setFlightType(FlightType flightType) {
+      this.flightType = flightType != null ? flightType.name() : null;
+   }
+
+   /**
+    * Gets the maintenance flight time.
+    *
+    * @return the maintenance flight time
+    */
+   public long getMaintenanceFlightTime() {
+      return maintenanceFlightTime;
+   }
+
+   /**
+    * Sets the maintenance flight time.
+    *
+    * @param maintenanceFlightTime
+    *           the new maintenance flight time
+    */
+   public void setMaintenanceFlightTime(long maintenanceFlightTime) {
+      this.maintenanceFlightTime = maintenanceFlightTime;
+   }
+
+   public long getFlightDuration() {
+      if (usageEndDate == null) {
+         return 0;
+      }
+      return usageEndDate.getTime() - usageStartDate.getTime();
+   }
+
+   public Date getMaintenanceStartDate() {
+      return maintenanceStartDate;
+   }
+
+   public void setMaintenanceStartDate(Date maintenanceStartDate) {
+      this.maintenanceStartDate = maintenanceStartDate;
+   }
+
+   public Date getMaintenanceEndDate() {
+      return maintenanceEndDate;
+   }
+
+   public void setMaintenanceEndDate(Date maintenanceEndDate) {
+      this.maintenanceEndDate = maintenanceEndDate;
+   }
+
+   /**
+    * Gets the landings.
+    *
+    * @return the landings
+    */
+   public int getLandings() {
+      return landings;
+   }
+
+   /**
+    * Sets the landings.
+    *
+    * @param landings
+    *           the new landings
+    */
+   public void setLandings(int landings) {
+      this.landings = landings;
+   }
+
+   /**
+    * Gets the flight status.
+    *
+    * @return the flight status
+    */
+   public FlightStatus getFlightStatus() {
+      return flightStatus != null ? FlightStatus.valueOf(flightStatus) : null;
+   }
+
+   /**
+    * Sets the flight status.
+    *
+    * @param flightStatus
+    *           the new flight status
+    */
+   public void setFlightStatus(FlightStatus flightStatus) {
+      this.flightStatus = flightStatus != null ? flightStatus.name() : null;
+   }
+
+   public int getConfigurationSerialNumber() {
+      return configurationSerialNumber;
+   }
+
+   public void setConfigurationSerialNumber(int configurationSerialNumber) {
+      this.configurationSerialNumber = configurationSerialNumber;
+   }
+
+   /**
+    * Gets the last download date.
+    *
+    * @return the last download date
+    */
+   public Date getLastDownloadDate() {
+      return lastDownloadDate;
+   }
+
+   /**
+    * Sets the last download date.
+    *
+    * @param lastDownloadDate
+    *           the new last download date
+    */
+   public void setLastDownloadDate(Date lastDownloadDate) {
+      this.lastDownloadDate = lastDownloadDate;
+   }
+
+   /**
+    * Gets the sensor acquisitions.
+    *
+    * @return the sensor acquisitions
+    */
+   public Set<SensorAcquisition> getSensorAcquisitions() {
+      return sensorAcquisitions;
+   }
+
+   /**
+    * Sets the sensor acquisitions.
+    *
+    * @param sensorAcquisitions
+    *           the new sensor acquisitions
+    */
+   public void setSensorAcquisitions(Set<SensorAcquisition> sensorAcquisitions) {
+      this.sensorAcquisitions = sensorAcquisitions;
+   }
+
+   /**
+    * Gets the mechanical component acquisitions.
+    *
+    * @return the mechanical component acquisitions
+    */
+   public Set<MarmsMechanicalComponentAcquisition> getMechanicalComponentAcquisitions() {
+      return mechanicalComponentAcquisitions;
+   }
+
+   /**
+    * Sets the mechanical component acquisitions.
+    *
+    * @param mechanicalComponentAcquisitions
+    *           the new mechanical component acquisitions
+    */
+   public void setMechanicalComponentAcquisitions(Set<MarmsMechanicalComponentAcquisition> mechanicalComponentAcquisitions) {
+      this.mechanicalComponentAcquisitions = mechanicalComponentAcquisitions;
+   }
+
+   public Set<EngineAcquisition> getEngineAcquisition() {
+      return engineAcquisition;
+   }
+
+   public void setEngineAcquisition(Set<EngineAcquisition> engineAcquisition) {
+      this.engineAcquisition = engineAcquisition;
+   }
+
+   /**
+    * Gets the contextual acquisitions.
+    *
+    * @return the contextualAcquisitions
+    */
+   public Set<ContextualAcquisition> getContextualAcquisitions() {
+      return contextualAcquisitions;
+   }
+
+   /**
+    * Sets the contextual acquisitions.
+    *
+    * @param contextualAcquisitions
+    *           the contextualAcquisitions to set
+    */
+   public void setContextualAcquisitions(Set<ContextualAcquisition> contextualAcquisitions) {
+      this.contextualAcquisitions = contextualAcquisitions;
+   }
+
+   /**
+    * Gets the main rotor acquisition.
+    *
+    * @return the main rotor acquisition
+    */
+   public RotorAcquisition getMainRotorAcquisition() {
+      return mainRotorAcquisition;
+   }
+
+   /**
+    * Sets the main rotor acquisition.
+    *
+    */
+   public void setMainRotorAcquisition(RotorAcquisition mainRotorAcquisition) {
+      this.mainRotorAcquisition = mainRotorAcquisition;
+   }
+
+   /**
+    * Gets the tail rotor acquisition.
+    *
+    * @return the tail rotor acquisition
+    */
+   public RotorAcquisition getTailRotorAcquisition() {
+      return tailRotorAcquisition;
+   }
+
+   /**
+    * Sets the tail rotor acquisition.
+    *
+    * @param tailRotorAcquisition
+    *           the new tail rotor acquisition
+    */
+   public void setTailRotorAcquisition(RotorAcquisition tailRotorAcquisition) {
+      this.tailRotorAcquisition = tailRotorAcquisition;
+   }
+
+   public boolean isUnloaded() {
+      return unloaded;
+   }
+
+   public void setUnloaded(boolean unloaded) {
+      this.unloaded = unloaded;
+   }
+
+   public boolean hasFdcrData() {
+      return hasFdcrData;
+   }
+
+   public void setHasFdcrData(boolean hasFdcrData) {
+      this.hasFdcrData = hasFdcrData;
+   }
+
+   public boolean hasUsageData() {
+      return hasUsageData;
+   }
+
+   public void setHasUsageData(boolean hasUsageData) {
+      this.hasUsageData = hasUsageData;
+   }
+
+   /**
+    * Gets the flight hour data.
+    *
+    * @return the flight hour data
+    */
+   public FlightHourData getFlightHourData() {
+      return flightHourData;
+   }
+
+   /**
+    * Sets the flight hour data.
+    *
+    * @param flightHourData
+    *           the new flight hour data
+    */
+   public void setFlightHourData(FlightHourData flightHourData) {
+      this.flightHourData = flightHourData;
+   }
+
+   /**
+    * Gets the usage flight data.
+    *
+    * @return the usage flight data
+    */
+   public UsageFlightData getUsageFlightData() {
+      return usageFlightData;
+   }
+
+   /**
+    * Sets the usage flight data.
+    *
+    * @param usageFlightData
+    *           the new usage flight data
+    */
+   public void setUsageFlightData(UsageFlightData usageFlightData) {
+      this.usageFlightData = usageFlightData;
+   }
+
+   /**
+    * Gets the alarms.
+    *
+    * @return the alarms
+    */
+   public Set<Alarm> getAlarms() {
+      return alarms;
+   }
+
+   /**
+    * Sets the alarms.
+    *
+    * @param alarms
+    *           the new alarms
+    */
+   public void setAlarms(Set<Alarm> alarms) {
+      this.alarms = alarms;
+   }
+
+   /**
+    * Gets the failure groups.
+    *
+    * @return the failure groups
+    */
+   public Set<FailureGroup> getFailureGroups() {
+      return failureGroups;
+   }
+
+   /**
+    * Sets the failure groups.
+    *
+    * @param failureGroups
+    *           the new failure groups
+    */
+   public void setFailureGroups(Set<FailureGroup> failureGroups) {
+      this.failureGroups = failureGroups;
+   }
+
+   /**
+    * Gets the flight indicator values.
+    *
+    * @return the flight indicator values
+    */
+   public Set<FlightIndicatorValue> getFlightIndicatorValues() {
+      return flightIndicatorValues;
+   }
+
+   /**
+    * Sets the flight indicator values.
+    *
+    * @param flightIndicatorValues
+    *           the new flight indicator values
+    */
+   public void setFlightIndicatorValues(Set<FlightIndicatorValue> flightIndicatorValues) {
+      this.flightIndicatorValues = flightIndicatorValues;
+   }
+
+   /**
+    * Gets the fdcr data set.
+    *
+    * @return the fdcr data set
+    */
+   public final Set<FdcrData> getFdcrDataSet() {
+      return fdcrDataSet;
+   }
+
+   /**
+    * Sets the fdcr data set.
+    *
+    * @param fdcrDataSet
+    *           the new fdcr data set
+    */
+   public final void setFdcrDataSet(Set<FdcrData> fdcrDataSet) {
+      this.fdcrDataSet = fdcrDataSet;
+   }
+
+   public DiagnosisData getDiagnosisData() {
+      return diagnosisData;
+   }
+
+   public void setDiagnosisData(DiagnosisData diagnosisData) {
+      this.diagnosisData = diagnosisData;
+   }
+
+   public FailureContextMonitoringData getFailureContextMonitoringData() {
+      return failureContextMonitoringData;
+   }
+
+   public void setFailureContextMonitoringData(FailureContextMonitoringData failureContextMonitoringData) {
+      this.failureContextMonitoringData = failureContextMonitoringData;
+   }
+
+   public boolean isHealthDescriptorMissing() {
+      return healthDescriptorMissing;
+   }
+
+   public void setHealthDescriptorMissing(boolean healthDescriptorMissing) {
+      this.healthDescriptorMissing = healthDescriptorMissing;
+   }
+
+   /**
+    * Gets the flight raw indicator values.
+    *
+    * @return the flight raw indicator values
+    */
+   public Set<FlightRawIndicatorValue> getFlightRawIndicatorValues() {
+      return flightRawIndicatorValues;
+   }
+
+   /**
+    * Sets the flight raw indicator values.
+    *
+    */
+   public void setFlightRawIndicatorValues(Set<FlightRawIndicatorValue> flightRawIndicatorValues) {
+      this.flightRawIndicatorValues = flightRawIndicatorValues;
+   }
+
+   @Override
+   public int hashCode() {
+      final int prime = 31;
+      int result = 1;
+      result = prime * result + (id == null ? 0 : id.hashCode());
+      return result;
+   }
+
+   @Override
+   public boolean equals(Object obj) {
+      if (this == obj) {
+         return true;
+      }
+      if (obj == null) {
+         return false;
+      }
+      if (getClass() != obj.getClass()) {
+         return false;
+      }
+      Flight other = (Flight) obj;
+      if (id == null) {
+         return other.id == null;
+      } else
+         return id.equals(other.id);
+   }
+}
+
+
+===========================================================================================================
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
