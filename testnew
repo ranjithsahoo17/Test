@@ -1,214 +1,549 @@
+/***************************************/
+/** Copyright Airbus Helicopters 2019 **/
+/***************************************/
+package com.eurocopter.mgs.health.presentation.acknowledgement.composite;
 
-package com.eurocopter.mgs.service.download.ejb;
-
+import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
-import com.eurocopter.mgs.datamodel.aircraft.Aircraft;
-import com.eurocopter.mgs.datamodel.aircraft.configuration.AircraftConfiguration;
-import com.eurocopter.mgs.datamodel.aircraft.configuration.AircraftHistory;
-import com.eurocopter.mgs.datamodel.flight.Flight;
-import com.eurocopter.mgs.datamodel.health.common.IndicatorRawValue;
-import com.eurocopter.mgs.datamodel.health.monitoring.HealthAlarm;
-import com.eurocopter.mgs.datamodel.health.monitoring.HealthMechanicalComponent;
-import com.eurocopter.mgs.datamodel.health.monitoring.HealthMechanicalComponentConfiguration;
-import com.eurocopter.mgs.datamodel.health.monitoring.HealthMonitoringConfiguration;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.eclipse.core.databinding.DataBindingContext;
+import org.eclipse.core.databinding.UpdateValueStrategy;
+import org.eclipse.core.databinding.beans.typed.BeanProperties;
+import org.eclipse.core.databinding.beans.typed.PojoProperties;
+import org.eclipse.core.databinding.observable.value.IObservableValue;
+import org.eclipse.core.runtime.IStatus;
+import org.eclipse.core.runtime.Status;
+import org.eclipse.jface.databinding.swt.typed.WidgetProperties;
+import org.eclipse.jface.fieldassist.ControlDecoration;
+import org.eclipse.swt.SWT;
+import org.eclipse.swt.custom.ScrolledComposite;
+import org.eclipse.swt.custom.StyledText;
+import org.eclipse.swt.layout.GridData;
+import org.eclipse.swt.layout.GridLayout;
+import org.eclipse.swt.widgets.Button;
+import org.eclipse.swt.widgets.Composite;
+import org.eclipse.swt.widgets.Event;
+import org.eclipse.swt.widgets.Group;
+import org.eclipse.swt.widgets.Listener;
+import org.eclipse.ui.forms.widgets.ExpandableComposite;
+import org.osgi.framework.BundleContext;
+import org.osgi.framework.FrameworkUtil;
+
+import com.eurocopter.mgs.business.health.api.IHealthCommonBusiness;
+import com.eurocopter.mgs.core.presentation.i18n.Messages;
+import com.eurocopter.mgs.datamodel.health.common.Accelerometer;
 import com.eurocopter.mgs.datamodel.health.monitoring.Indicator;
-import com.eurocopter.mgs.datamodel.health.monitoring.IndicatorConfiguration;
-import com.eurocopter.mgs.datamodel.systemstatus.SensorAnomaly;
-import com.eurocopter.mgs.download.analysis.health.api.IHealthHistoryProvider;
-import com.eurocopter.mgs.download.analysis.health.api.IndicatorValueHolder;
+import com.eurocopter.mgs.datamodel.health.monitoring.LearnedThresholdConfiguration;
+import com.eurocopter.mgs.health.presentation.HealthMonitoringUtil;
+import com.eurocopter.mgs.health.presentation.acknowledgement.model.AcknowledgeHealthNodeModel;
+import com.eurocopter.mgs.health.presentation.composite.LearningPastHoursSelectionComposite;
+import com.eurocopter.mgs.health.presentation.model.HealthMechanicalComponentModel;
+import com.eurocopter.mgs.health.presentation.model.HealthRootNodeModel;
+import com.eurocopter.mgs.health.presentation.model.IHealthTreeViewNodeModel;
+import com.eurocopter.mgs.health.presentation.model.IndicatorHmcModel;
+import com.eurocopter.mgs.health.presentation.model.MechanicalComponentModel;
+import com.eurocopter.mgs.presentation.alarm.composite.AcknowledgeAlarmComposite;
+import com.eurocopter.mgs.presentation.alarm.validator.IValidatorListener;
+import com.eurocopter.mgs.presentation.alarm.validator.ValidateFieldSize;
+import com.eurocopter.mgs.presentation.common.MgsSession;
+import com.eurocopter.mgs.service.exception.EntityNotFoundException;
 
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.TypedQuery;
+/**
+ * Acknowledge Management Composite.
+ * <P>
+ *
+ * Acknowledge Alarm Through Health Node.
+ * <P>
+ *
+ */
+public class AcknowledgeHealthNodeComposite extends AcknowledgeAlarmComposite {
 
-public class HealthHistoryProvider implements IHealthHistoryProvider {
+   private static final Logger LOGGER = LogManager.getLogger(AcknowledgeHealthNodeComposite.class);
 
-   private final EntityManager manager;
-   private final Aircraft aircraft;
-   private final Map<Indicator, HealthAlarm> latestCloseMonitoredAlarms;
-   private final Map<HealthMechanicalComponent, HealthMechanicalComponentConfiguration> latestComponentConfiguration;
+   /** Relearning Description Label. */
+   private Group relearningDescriptionSection;
 
-   public HealthHistoryProvider(EntityManager manager, Aircraft aircraft, Map<Indicator, HealthAlarm> latestCloseMonitoredAlarms,
-         Map<HealthMechanicalComponent, HealthMechanicalComponentConfiguration> latestComponentConfiguration) {
-      this.manager = manager;
-      this.aircraft = aircraft;
-      this.latestCloseMonitoredAlarms = latestCloseMonitoredAlarms;
-      this.latestComponentConfiguration = latestComponentConfiguration;
-   }
+   /** Relearning Description Text. */
+   private StyledText relearningDescriptionText;
 
-   public HealthHistoryProvider(EntityManager manager, Aircraft aircraft) {
-      this(manager, aircraft, Collections.emptyMap(), Collections.emptyMap());
-   }
+   private LearningPastHoursSelectionComposite pastHoursSelectionComposite;
 
-   @Override
-   public Map<Indicator, HealthAlarm> getLatestCloseMonitoredAlarms() {
-      return latestCloseMonitoredAlarms;
-   }
+   /** Check button. */
+   private Button checkButton;
 
-   @Override
-   public Map<HealthMechanicalComponent, HealthMechanicalComponentConfiguration> getLatestHealthConfiguration() {
-      return latestComponentConfiguration;
-   }
+   /** Relearning dedicated composite. */
+   private Composite relearningComposite;
 
-   @Override
-   public Map<Indicator, Map<Flight, HealthAlarm>> getExistingHealthAlarms() {
-      TypedQuery<Object[]> query = manager.createNamedQuery("findNotAckHealthAlarmsAndFlightByAircraft", Object[].class);
-      query.setParameter("aircraftId", aircraft.getId());
-      Map<Indicator, Map<Flight, HealthAlarm>> alarms = new HashMap<>();
-      for (Object[] row : query.getResultList()) {
-         HealthAlarm alarm = (HealthAlarm) row[0];
-         Flight flight = (Flight) row[1];
-         Indicator indicator = alarm.getIndicator();
-         alarms.computeIfAbsent(indicator, k -> new HashMap<>()).put(flight, alarm);
-      }
-      return alarms;
-   }
+   /** Empty field validator for relearning description. */
+   private ValidateFieldSize relearningEmptyFieldValidator;
 
-   @Override
-   public Map<Indicator, Map<Flight, SensorAnomaly>> getExistingSensorAnomaly() {
-      TypedQuery<Object[]> query = manager.createNamedQuery("findNotAckSensorAnomalyAndFlightByAircraft", Object[].class);
-      query.setParameter("aircraftId", aircraft.getId());
-      Map<Indicator, Map<Flight, SensorAnomaly>> sensorAnomalies = new HashMap<>();
-      for (Object[] row : query.getResultList()) {
-         SensorAnomaly sensorAnomaly = (SensorAnomaly) row[0];
-         Flight flight = (Flight) row[1];
-         Indicator indicator = sensorAnomaly.getIndicator();
-         sensorAnomalies.computeIfAbsent(indicator, k -> new HashMap<>()).put(flight, sensorAnomaly);
-      }
-      return sensorAnomalies;
+   private DataBindingContext bindingContext;
+
+   /**
+    * Create the composite.
+    *
+    * @param parent
+    *           the parent
+    * @param style
+    *           the style
+    * @param model
+    *           the view model.
+    */
+   public AcknowledgeHealthNodeComposite(Composite parent, AcknowledgeHealthNodeModel model) {
+      super(parent, model);
    }
 
    /**
-    * Gets all indicator values for given flight and indicator
+    * {@inheritDoc}
     *
-    * @param flight
-    * @return indicator values
+    * @see com.eurocopter.mgs.alarm.presentation.acknowledgement.maintenancereport.composite.AcknowledgeAlarmComposite# createCloseMonitoringComposite()
     */
    @Override
-   public Set<IndicatorValueHolder> getIndicatorValues(final Flight flight) {
-      TypedQuery<Object[]> query = manager.createQuery(
-            "SELECT fiv.indicator, iv.startDate, iv.cumulatedFlightTime, iv.value FROM Flight f JOIN f.flightIndicatorValues fiv JOIN fiv.values iv WHERE f.id = :flightId", Object[].class);
-      query.setParameter("flightId", flight.getId());
-      return toHolders(query);
+   protected void createCloseMonitoringComposite() {
+      createCloseMonitoringSection(getCompositeAckManagement());
+
+      checkButton = new Button(getCompositeAckManagement(), SWT.CHECK);
+      checkButton.addListener(SWT.Selection, new Listener() {
+         /**
+          * {@inheritDoc}
+          *
+          * @see org.eclipse.swt.widgets.Listener#handleEvent(org.eclipse.swt.widgets.Event)
+          */
+         @Override
+         public void handleEvent(Event arg0) {
+            doSelection();
+         }
+      });
+
+      // Re-learning composite
+      relearningComposite = new Composite(getCompositeAckManagement(), SWT.NONE);
+      GridData relearningCompositeLayoutData = new GridData(SWT.FILL, SWT.FILL, false, false, 2, 1);
+      relearningComposite.setLayoutData(relearningCompositeLayoutData);
+      GridLayout relearningCompositeLayout = new GridLayout(3, false);
+      relearningCompositeLayout.marginWidth = 0;
+      relearningComposite.setLayout(relearningCompositeLayout);
+
+      /**
+       * Relearning Description
+       */
+      relearningDescriptionSection = new Group(this, ExpandableComposite.TITLE_BAR);
+      relearningDescriptionSection.setLayout(new GridLayout());
+      GridData gdRelearningDescriptionSection = new GridData(SWT.FILL, SWT.FILL, false, false, 3, 1);
+      gdRelearningDescriptionSection.heightHint = 0; // Trac#1711: Alarm : Fenêtre Acknowledge
+      gdRelearningDescriptionSection.widthHint = 494;
+      relearningDescriptionSection.setLayoutData(gdRelearningDescriptionSection);
+      relearningDescriptionSection.setText(Messages.CORE.getMnemonicEscapedString("AcknowledgeAlarmThroughHealthNodeComposite_6"));
+      relearningDescriptionSection.setVisible(false);
+
+      relearningDescriptionText = new StyledText(relearningDescriptionSection, SWT.V_SCROLL
+            | SWT.MULTI | SWT.WRAP);
+      GridData relearningDescriptionTextData = new GridData(SWT.FILL, SWT.FILL, true, true);
+      relearningDescriptionText.setLayoutData(relearningDescriptionTextData);
+
+      // Search max learning time for initialization
+      pastHoursSelectionComposite = new LearningPastHoursSelectionComposite(this, computeLearningTime());
+      pastHoursSelectionComposite.setLayoutData(gdRelearningDescriptionSection);
    }
 
    /**
-    * Gets all indicator values for given flight and indicator
+    * {@inheritDoc}
     *
-    * @param flight
+    * @see com.eurocopter.mgs.alarm.presentation.acknowledgement.maintenancereport.composite.AcknowledgeAlarmComposite# registerListeners()
+    */
+   @Override
+   protected void registerListeners() {
+      super.registerListeners();
+
+      IValidatorListener<String> dialogOKButtonManager = source -> manageAcknowledgmentHealthNodeDialogOKButton();
+      this.relearningEmptyFieldValidator.addValidatorListener(dialogOKButtonManager);
+   }
+
+   @Override
+   protected void processCompositeVisibilityAfterSelection() {
+      super.processCompositeVisibilityAfterSelection();
+      if (isAcknowledgeSelected()) {
+         // Trac#1711: Alarm : Fenêtre Acknowledge
+         GridData gdRelearningDescriptionSection = new GridData(SWT.FILL, SWT.FILL, false, false,
+               3, 1);
+         gdRelearningDescriptionSection.heightHint = checkButton.getSelection() ? 113 : 0;
+         gdRelearningDescriptionSection.widthHint = 494;
+         relearningDescriptionSection.setLayoutData(gdRelearningDescriptionSection);
+         relearningDescriptionSection.setVisible(checkButton.getSelection());
+         pastHoursSelectionComposite.setLayoutData(gdRelearningDescriptionSection);
+         pastHoursSelectionComposite.setVisible(checkButton.getSelection());
+         checkButton.setEnabled(true);
+         // Trac#1711: Alarm : Fenêtre Acknowledge
+         this.pack();
+         ((ScrolledComposite) this.getParent()).setMinSize(computeSize(SWT.DEFAULT, SWT.DEFAULT));
+      } else if (isCloseMonitoringSelected()) {
+         checkButton.setSelection(false); // bug#1471
+         checkButton.setEnabled(false);
+         // Trac#1711: Alarm : Fenêtre Acknowledge
+         GridData gdRelearningDescriptionSection = new GridData(SWT.FILL, SWT.FILL, false, false, 3, 1);
+         gdRelearningDescriptionSection.heightHint = 0;
+         gdRelearningDescriptionSection.widthHint = 494;
+         relearningDescriptionSection.setLayoutData(gdRelearningDescriptionSection);
+         relearningDescriptionSection.setVisible(false);
+         pastHoursSelectionComposite.setLayoutData(gdRelearningDescriptionSection);
+         pastHoursSelectionComposite.setVisible(checkButton.getSelection());
+         // Trac#1711: Alarm : Fenêtre Acknowledge
+         this.pack();
+         ((ScrolledComposite) this.getParent()).setMinSize(computeSize(SWT.DEFAULT, SWT.DEFAULT));
+      }
+   }
+
+   @Override
+   protected String getDialogTitle() {
+      return Messages.CORE.getString("AcknowledgeManagement");
+   }
+
+   @Override
+   protected String getCompositeTitle() {
+      return getModel().getTitle();
+   }
+
+   @Override
+   protected String getDescriptionText() {
+      return Messages.CORE.getMnemonicEscapedString("AcknowledgeAlarmThroughHealthNodeComposite_5");
+   }
+
+   @Override
+   protected boolean isCloseMonitoringRadioButtonVisible() {
+      return true;
+   }
+
+   @Override
+   protected boolean isAutomaticMarkerCreationVisible() {
+      return true;
+   }
+
+   /**
+    * Initialize data binding.
+    *
+    * @return DataBindingContext.
+    */
+   @Override
+   protected DataBindingContext initializeDataBindings() {
+      bindingContext = super.initializeDataBindings();
+
+      AcknowledgeHealthNodeModel healthAlarmAckThroughHealthNodeModel = (AcknowledgeHealthNodeModel) this.getModel();
+      final boolean checkBoxVisibility;
+      final String checkboxText;
+      IHealthTreeViewNodeModel healthNode = healthAlarmAckThroughHealthNodeModel.getHealthNode();
+
+      final BundleContext healthBundleContext = FrameworkUtil.getBundle(IHealthCommonBusiness.class).getBundleContext();
+      final IHealthCommonBusiness healthBusiness = healthBundleContext.getService(healthBundleContext.getServiceReference(IHealthCommonBusiness.class));
+
+      if (MgsSession.getInstance().getUser().getProfile().canRunThresholdRelearning()) {
+         if (healthNode.isIndicatorNode()) {
+            String indicatorId = ((IndicatorHmcModel) healthNode.getObject()).getIndicator().getId();
+            Accelerometer accelerometer = healthBusiness.getAccelerometer(indicatorId, MgsSession.getInstance().getAircraft().getId());
+            if (accelerometer == null) {
+               // MARMS indicators have no accelerometers => do not display checkbox
+               checkBoxVisibility = false;
+               checkboxText = "";
+            } else {
+               // CIGALHE indicators have accelerometer
+               checkBoxVisibility = true;
+               checkboxText = healthAlarmAckThroughHealthNodeModel.getComponentToBeChanged();
+            }
+         } else {
+            checkBoxVisibility = !healthAlarmAckThroughHealthNodeModel.isHealthRootNode();
+            checkboxText = healthAlarmAckThroughHealthNodeModel.getComponentToBeChanged();
+         }
+      } else {
+         // Non authorized users shall not see the checkbox
+         checkBoxVisibility = false;
+         checkboxText = "";
+      }
+      checkButton.setText(checkboxText);
+      checkButton.setVisible(checkBoxVisibility);
+
+      // Bind checkButton with model.componentOrSensorChanged
+      IObservableValue<Boolean> checkButtonObserveSelectionObserveWidget = WidgetProperties.buttonSelection().observe(checkButton);
+      IObservableValue<Boolean> modelComponentOrSensorChangedObserveValue = PojoProperties.value("componentOrSensorChanged", boolean.class).observe(healthAlarmAckThroughHealthNodeModel);
+      bindingContext.bindValue(checkButtonObserveSelectionObserveWidget,
+            modelComponentOrSensorChangedObserveValue, null, null);
+
+      // RelearningComposite with checkButton
+      IObservableValue<Boolean> checkButtonObserveVisibilityObserveWidget = WidgetProperties.visible().observe(checkButton);
+      IObservableValue<Boolean> relearningCompositeObserveSelectionObserveWidget = WidgetProperties.visible().observe(relearningComposite);
+      bindingContext.bindValue(relearningCompositeObserveSelectionObserveWidget,
+            checkButtonObserveVisibilityObserveWidget, null, null);
+
+      IObservableValue<Boolean> relearningDescriptionSectionObserveSelectionObserveWidget = WidgetProperties.visible().observe(relearningDescriptionSection);
+      bindingContext.bindValue(relearningDescriptionSectionObserveSelectionObserveWidget,
+            checkButtonObserveSelectionObserveWidget, null, null);
+
+      // Bind relearningDescriptionText with model.relearningReason
+      bindRelearningPart();
+
+      return bindingContext;
+   }
+
+   /**
+    *
+    * Bind relearningDescriptionText with model.model.relearningReason
+    */
+   private void bindRelearningPart() {
+      AcknowledgeHealthNodeModel healthAlarmAckThroughHealthNodeModel = (AcknowledgeHealthNodeModel) this.getModel();
+      // Bind relearningDescriptionText with model.relearningReason
+      ControlDecoration descriptionTextDecoration = HealthMonitoringUtil.createDecorator(
+            relearningDescriptionText, "");
+      UpdateValueStrategy<String, String> updateDescription = new UpdateValueStrategy<>();
+      relearningEmptyFieldValidator = new ValidateFieldSize(descriptionTextDecoration);
+      descriptionTextDecoration.setDescriptionText(relearningEmptyFieldValidator.getMessage());
+      updateDescription.setAfterConvertValidator(relearningEmptyFieldValidator);
+
+      IObservableValue<String> descriptionTextObserveSelectionObserveWidget = WidgetProperties.text(SWT.FocusOut, SWT.Modify).observe(relearningDescriptionText);
+      IObservableValue<String> relearningReasonObserveValue = PojoProperties.value("relearningReason", String.class).observe(healthAlarmAckThroughHealthNodeModel);
+      bindingContext.bindValue(descriptionTextObserveSelectionObserveWidget,
+            relearningReasonObserveValue, updateDescription, null);
+
+      bindingContext.bindValue(BeanProperties.value("selectedTime").observe(pastHoursSelectionComposite),
+            PojoProperties.value("historyLearningTime").observe(healthAlarmAckThroughHealthNodeModel));
+   }
+
+   /**
+    * Manages acknowledgment dialog OK button activation/desactivation.
+    */
+   private void manageAcknowledgmentHealthNodeDialogOKButton() {
+      IStatus alarmDescriptionTextStatus = getAlarmEmptyFieldValidator().getStatus();
+      IStatus relearningDescriptionTextStatus = relearningEmptyFieldValidator.getStatus();
+      IStatus durationTimeStatus = isCloseMonitoringSelected() ? getCloseMonitoringDurationValidator().getStatus() : Status.OK_STATUS;
+      setOkButtonEnabled(alarmDescriptionTextStatus.isOK() && durationTimeStatus.isOK()
+            && (!checkButton.getSelection() || relearningDescriptionTextStatus.isOK()));
+   }
+
+   private long computeLearningTime() {
+      long maxLearningTime = 0L;
+      if (getModel() instanceof AcknowledgeHealthNodeModel) {
+         IHealthTreeViewNodeModel node = ((AcknowledgeHealthNodeModel) getModel()).getHealthNode();
+         List<LearnedThresholdConfiguration> learnedThresholds = new ArrayList<>();
+         if (node.isIndicatorNode()) {
+            learnedThresholds = getLearnedThresholdConfs(((IndicatorHmcModel) node.getObject()).getIndicator());
+         } else if (!(node instanceof HealthRootNodeModel)) {
+            learnedThresholds = getLearnedThresholdConfs((MechanicalComponentModel) node.getObject());
+         }
+         for (LearnedThresholdConfiguration threshold : learnedThresholds) {
+            if (maxLearningTime < threshold.getLearningTime()) {
+               maxLearningTime = threshold.getLearningTime();
+            }
+         }
+      }
+      return maxLearningTime;
+   }
+
+   /**
+    * Return the learned thresholds of a mechanical component.
+    *
+    * @param mechanicalComponent
+    *           the mechanical component
+    * @return the learned thresholds of the mechanical component
+    */
+   private List<LearnedThresholdConfiguration> getLearnedThresholdConfs(MechanicalComponentModel mechanicalComponent) {
+      List<LearnedThresholdConfiguration> learnedThresholds = new ArrayList<>();
+
+      if (mechanicalComponent instanceof HealthMechanicalComponentModel healthMechanicalComponent) {
+
+         // get the thresholds of the current mechanical component
+         Map<String, Indicator> indicators = healthMechanicalComponent.getHealthComponent().getIndicators();
+         if (indicators != null) {
+            for (Indicator indicator : indicators.values()) {
+               learnedThresholds.addAll(getLearnedThresholdConfs(indicator));
+            }
+         }
+      }
+
+      // get the thresholds for the sub-components
+      List<MechanicalComponentModel> subComponents = mechanicalComponent.getSubComponents();
+      if (subComponents != null) {
+         for (MechanicalComponentModel subComponent : subComponents) {
+            learnedThresholds.addAll(getLearnedThresholdConfs(subComponent));
+         }
+      }
+
+      return learnedThresholds;
+   }
+
+   /**
+    * Get the learned thresholds of an indicator.
+    *
     * @param indicator
-    * @return indicator values
+    *           the indicator
+    * @param model
+    * @return the learned thresholds of the indicator
     */
-   @Override
-   public Set<IndicatorValueHolder> getIndicatorValues(final Flight flight, final Indicator indicator) {
-      TypedQuery<Object[]> query = manager.createQuery(
-            "SELECT fiv.indicator, iv.startDate, iv.cumulatedFlightTime, iv.value FROM Flight f JOIN f.flightIndicatorValues fiv JOIN fiv.values iv WHERE fiv.indicator.id = :indicatorId AND f.id = :flightId",
-            Object[].class);
-      query.setParameter("flightId", flight.getId());
-      query.setParameter("indicatorId", indicator.getId());
-      return toHolders(query);
+   private List<LearnedThresholdConfiguration> getLearnedThresholdConfs(Indicator indicator) {
+      final BundleContext healthMonitoringBundleContext = FrameworkUtil.getBundle(IHealthCommonBusiness.class).getBundleContext();
+      IHealthCommonBusiness healthBusiness = healthMonitoringBundleContext.getService(healthMonitoringBundleContext.getServiceReference(IHealthCommonBusiness.class));
+      // Get the latest threshold of the indicator
+      try {
+         return healthBusiness.getIndicatorLatestLearnedThresholds(MgsSession.getInstance().getAircraft().getId(), indicator.getId());
+      } catch (EntityNotFoundException e) {
+         LOGGER.warn("Unable to retrieve learned thresholds", e);
+      }
+      return Collections.emptyList();
+
+   }
+}
+
+===========================================================================================
+/***************************************/
+/** Copyright Airbus Helicopters 2019 **/
+/***************************************/
+package com.eurocopter.mgs.health.presentation.composite;
+
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
+
+import org.apache.commons.lang.StringUtils;
+import org.eclipse.core.databinding.DataBindingContext;
+import org.eclipse.core.databinding.UpdateValueStrategy;
+import org.eclipse.core.databinding.beans.typed.BeanProperties;
+import org.eclipse.core.databinding.beans.typed.PojoProperties;
+import org.eclipse.core.databinding.observable.value.IObservableValue;
+import org.eclipse.jface.databinding.swt.typed.WidgetProperties;
+import org.eclipse.jface.fieldassist.ControlDecoration;
+import org.eclipse.swt.SWT;
+import org.eclipse.swt.custom.StyledText;
+import org.eclipse.swt.layout.GridData;
+import org.eclipse.swt.layout.GridLayout;
+import org.eclipse.swt.widgets.Button;
+import org.eclipse.swt.widgets.Composite;
+import org.eclipse.swt.widgets.Group;
+import org.eclipse.ui.forms.widgets.ExpandableComposite;
+
+import com.eurocopter.mgs.core.presentation.i18n.Messages;
+import com.eurocopter.mgs.health.presentation.HealthMonitoringUtil;
+import com.eurocopter.mgs.health.presentation.model.ThresholdLearningModel;
+import com.eurocopter.mgs.presentation.alarm.validator.ValidateFieldSize;
+
+/**
+ * Learning threshold composite.
+ */
+public class ThresholdLearningComposite extends Composite implements PropertyChangeListener {
+
+   /** Reason of the threshold learning. */
+   private StyledText learningReason;
+
+   /** Threshold learning dialog OK button. */
+   private Button thresholdLearningDialogOKButton;
+
+   /** Empty description validator. */
+   private ValidateFieldSize reasonValidator;
+
+   /** Threshold learning model. */
+   private final ThresholdLearningModel model;
+
+   private LearningPastHoursSelectionComposite pastHoursSelectionComposite;
+
+   /**
+    * Create the composite.
+    *
+    * @param parent
+    *           the parent composite
+    * @param style
+    *           the composite style
+    * @param model
+    *           the threshold learning model
+    */
+   public ThresholdLearningComposite(Composite parent, ThresholdLearningModel model, long defaultHistoryDuration) {
+      super(parent, SWT.NONE);
+      this.model = model;
+      model.addPropertyChangeListener(this);
+      createContent(defaultHistoryDuration);
+      initializeDataBindings();
+      GridLayout layout = new GridLayout(3, false);
+      layout.marginWidth = 10;
+      setLayout(layout);
+   }
+
+   /**
+    * Sets the thresholdLearningDialogOKButton.
+    *
+    * @param dialogOKButton
+    *           the thresholdLearningDialogOKButton to set
+    */
+   public void setLearningThresholdDialogOKButton(Button dialogOKButton) {
+      this.thresholdLearningDialogOKButton = dialogOKButton;
+      // initialize the button activation state
+      manageThresholdLearningDialogOKButton();
    }
 
    @Override
-   public Set<Flight> getFlightsWithValues(Indicator indicator) {
-      TypedQuery<Flight> query = manager.createQuery("SELECT f FROM Flight f JOIN f.flightIndicatorValues fiv WHERE fiv.indicator.id = :indicatorId", Flight.class);
-      query.setParameter("indicatorId", indicator.getId());
-      return new HashSet<>(query.getResultList());
+   public void propertyChange(PropertyChangeEvent arg0) {
+      manageThresholdLearningDialogOKButton();
    }
 
-   @Override
-   public boolean isIndicatorActive(String indicatorId, String flightId) {
-      TypedQuery<AircraftConfiguration> query = manager.createQuery(
-            "SELECT c FROM AircraftConfiguration c JOIN c.aircraft a JOIN a.flights f WHERE f.id = :flightId AND f.configurationSerialNumber = c.serialNumber", AircraftConfiguration.class);
-      query.setParameter("flightId", flightId);
-      List<AircraftConfiguration> aircraftConfigurations = query.getResultList();
-      if (aircraftConfigurations.isEmpty()) {
-         return false;
-      }
-      AircraftConfiguration aircraftConfiguration = aircraftConfigurations.iterator().next();
-      HealthMonitoringConfiguration healthMonitoringConfiguration = (HealthMonitoringConfiguration) aircraftConfiguration.getConfigurations().get(HealthMonitoringConfiguration.TYPE);
-      if (healthMonitoringConfiguration == null) {
-         return false;
-      }
-      TypedQuery<IndicatorConfiguration> indicatorConfigurationQuery = manager.createNamedQuery("findIndicatorConfigurationByHealthConfigurationAndIndicator", IndicatorConfiguration.class);
-      indicatorConfigurationQuery.setParameter("configurationId", healthMonitoringConfiguration.getId());
-      indicatorConfigurationQuery.setParameter("indicatorId", indicatorId);
-      return !indicatorConfigurationQuery.getResultList().isEmpty();
+   /**
+    * Create the composite content.
+    *
+    * @param defaultHistoryDuration
+    */
+   private void createContent(long defaultHistoryDuration) {
+
+      // title
+      this.getShell().setText(Messages.CORE.getMnemonicEscapedString("ThresholdLearningComposite_0"));
+
+      // learning reason
+      Group reasonSection = new Group(this, ExpandableComposite.TITLE_BAR);
+      reasonSection.setLayout(new GridLayout());
+      GridData gdreasonSection = new GridData(SWT.FILL, SWT.FILL, false, false, 3, 1);
+      gdreasonSection.heightHint = 113;
+      gdreasonSection.widthHint = 494;
+      reasonSection.setLayoutData(gdreasonSection);
+      reasonSection.setText(Messages.CORE.getMnemonicEscapedString("Description"));
+
+      learningReason = new StyledText(reasonSection, SWT.V_SCROLL | SWT.MULTI | SWT.WRAP);
+      GridData reasonTextData = new GridData(SWT.FILL, SWT.FILL, true, true);
+      learningReason.setLayoutData(reasonTextData);
+
+      pastHoursSelectionComposite = new LearningPastHoursSelectionComposite(this, defaultHistoryDuration);
+      pastHoursSelectionComposite.setLayoutData(gdreasonSection);
    }
 
-   @Override
-   public AircraftHistory getAircraftHistory() {
-      TypedQuery<Object[]> query = manager.createNamedQuery("sumPurgedFlightsForAircraft", Object[].class);
-      query.setParameter("aircraftId", aircraft.getId());
-      List<Object[]> results = query.getResultList();
-      if (results.isEmpty()) {
-         return new AircraftHistory();
-      }
-      Object[] row = results.get(0);
-      return new AircraftHistory((Long) row[0], (Long) row[1], (Long) row[2], (Long) row[3]);
+   /**
+    * Initialize data binding.
+    *
+    * @return data binding context
+    */
+   private DataBindingContext initializeDataBindings() {
+      DataBindingContext bindingContext = new DataBindingContext();
+
+      ControlDecoration descriptionTextDecoration = HealthMonitoringUtil.createDecorator(learningReason, StringUtils.EMPTY);
+      UpdateValueStrategy<String, String> updateDescription = new UpdateValueStrategy<>();
+      reasonValidator = new ValidateFieldSize(descriptionTextDecoration);
+      descriptionTextDecoration.setDescriptionText(reasonValidator.getMessage());
+      updateDescription.setAfterConvertValidator(reasonValidator);
+
+      IObservableValue<String> reasonTextObserveSelectionObserveWidget = WidgetProperties.text(SWT.FocusOut, SWT.Modify).observe(learningReason);
+      IObservableValue<String> acknowledgmentReasonObserveValue = PojoProperties.value("learningReason", String.class).observe(model);
+      bindingContext.bindValue(reasonTextObserveSelectionObserveWidget, acknowledgmentReasonObserveValue, updateDescription, null);
+
+      bindingContext.bindValue(BeanProperties.value("selectedTime").observe(pastHoursSelectionComposite), PojoProperties.value("historyLearningTime").observe(model));
+
+      reasonValidator.addValidatorListener(source -> manageThresholdLearningDialogOKButton());
+
+      return bindingContext;
    }
 
-   @Override
-   public List<IndicatorRawValue> getLastIndicatorRawValuesBeforeFlight(Aircraft aircraft, Flight flight, Indicator indicator, int count) {
-      TypedQuery<IndicatorRawValue> indicatorRawValueQuery = manager
-            .createNamedQuery("findIndicatorRawValuesBeforeFlight", IndicatorRawValue.class);
-      indicatorRawValueQuery.setParameter("aircraft", aircraft);
-      indicatorRawValueQuery.setParameter("indicator", indicator);
-      indicatorRawValueQuery.setParameter("date", flight.getDate());
-      indicatorRawValueQuery.setMaxResults(count);
-      return indicatorRawValueQuery.getResultList();
-   }
-
-   @Override
-   public Set<String> getFlightIdsWithRawValuesAfterFlight(Aircraft aircraft, Flight flight, Indicator indicator, int count) {
-      TypedQuery<Object[]> indicatorRawValueQuery = manager
-            .createNamedQuery("findFlightsAfterFlightWithIndicatorRawValues", Object[].class);
-      indicatorRawValueQuery.setParameter("aircraft", aircraft);
-      indicatorRawValueQuery.setParameter("indicator", indicator);
-      indicatorRawValueQuery.setParameter("date", flight.getDate());
-      indicatorRawValueQuery.setMaxResults(count);
-      Set<String> flightIds = new HashSet<>();
-      for (Object[] row : indicatorRawValueQuery.getResultList()) {
-         String flightId = (String) row[0];
-         flightIds.add(flightId);
-      }
-      return flightIds;
-   }
-
-   private Set<IndicatorValueHolder> toHolders(TypedQuery<Object[]> query) {
-      Set<IndicatorValueHolder> holders = new HashSet<>();
-      for (Object[] row : query.getResultList()) {
-         holders.add(new IndicatorValueHolderImpl((Indicator) row[0], (Date) row[1], (Long) row[2], (Double) row[3]));
-      }
-      return holders;
-   }
-
-   public record IndicatorValueHolderImpl(Indicator indicator, Date date, Long cumulatedFlightTime, double value) implements IndicatorValueHolder {
-
-      @Override
-      public Indicator getIndicator() {
-         return indicator;
-      }
-
-      @Override
-      public Date getDate() {
-         return date;
-      }
-
-      @Override
-      public Long getCumulatedFlightTime() {
-         return cumulatedFlightTime;
-      }
-
-      @Override
-      public double getValue() {
-         return value;
+   /**
+    * Manage threshold learning dialog OK button.
+    */
+   private void manageThresholdLearningDialogOKButton() {
+      if (thresholdLearningDialogOKButton != null) {
+         thresholdLearningDialogOKButton.setEnabled(reasonValidator.getStatus().isOK());
       }
    }
 }
+
+
+
+
+
+===================================
