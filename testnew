@@ -1,70 +1,1678 @@
 
-package com.eurocopter.mgs.health.presentation.dialog;
+package com.eurocopter.mgs.health.presentation.action;
 
-import org.eclipse.jface.dialogs.Dialog;
-import org.eclipse.jface.dialogs.IDialogConstants;
-import org.eclipse.swt.SWT;
-import org.eclipse.swt.widgets.Button;
-import org.eclipse.swt.widgets.Composite;
-import org.eclipse.swt.widgets.Control;
-import org.eclipse.swt.widgets.Display;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.eclipse.core.runtime.IStatus;
+import org.eclipse.jface.action.Action;
+import org.eclipse.jface.window.Window;
+import org.eclipse.swt.widgets.Event;
+import org.eclipse.ui.statushandlers.StatusManager;
+import org.osgi.framework.BundleContext;
+import org.osgi.framework.FrameworkUtil;
+
+import com.eurocopter.mgs.business.health.api.IHealthCommonBusiness;
 import com.eurocopter.mgs.core.presentation.i18n.Messages;
-import com.eurocopter.mgs.health.presentation.composite.ThresholdLearningComposite;
+import com.eurocopter.mgs.datamodel.aircraft.AircraftState;
+import com.eurocopter.mgs.datamodel.health.monitoring.Indicator;
+import com.eurocopter.mgs.datamodel.health.monitoring.LearnedThresholdConfiguration;
+import com.eurocopter.mgs.health.activator.Activator;
+import com.eurocopter.mgs.health.presentation.dialog.ThresholdLearningDialog;
+import com.eurocopter.mgs.health.presentation.model.HealthMechanicalComponentModel;
+import com.eurocopter.mgs.health.presentation.model.IHealthTreeViewNodeModel;
+import com.eurocopter.mgs.health.presentation.model.IndicatorHmcModel;
+import com.eurocopter.mgs.health.presentation.model.IndicatorNodeModel;
+import com.eurocopter.mgs.health.presentation.model.MechanicalComponentModel;
 import com.eurocopter.mgs.health.presentation.model.ThresholdLearningModel;
+import com.eurocopter.mgs.presentation.common.MgsSession;
+import com.eurocopter.mgs.presentation.status.GenericStatus;
+import com.eurocopter.mgs.presentation.utils.AircraftExceptionHandler;
+import com.eurocopter.mgs.service.aircraft.exception.AircraftConcurrentAccessException;
+import com.eurocopter.mgs.service.aircraft.exception.AircraftFrozenException;
+import com.eurocopter.mgs.service.exception.EntityNotFoundException;
+import com.eurocopter.mgs.service.exception.ServiceException;
 
 /**
- * Threshold learning dialog window.
+ * Handle the threshold learning process action.
  */
-public class ThresholdLearningDialog extends Dialog {
+public class HealthTreeViewNodeLearnThresholdAction extends Action {
 
-   /** Content composite of the dialog window. */
-   private ThresholdLearningComposite composite;
+   /** Class logger. */
+   private static final Logger LOGGER = LogManager.getLogger(HealthTreeViewNodeLearnThresholdAction.class);
 
-   /** Threshold learning model. */
-   private final ThresholdLearningModel model;
+   /** The name of the action. */
+   private static final String ACTION_NAME = Messages.CORE.getMnemonicEscapedString("Health_treeview_node_contextualAction_learn_threshold"); //$NON-NLS-1$
 
-   private final long defaultHistoryDuration;
+   /** Health Monitoring business. */
+   private final IHealthCommonBusiness healthBusiness;
+
+   /** The node. */
+   private final IHealthTreeViewNodeModel node;
+
+   /** Health TreeView Node Action. */
+   private final HealthTreeViewNodeAction healthTreeViewNodeAction;
 
    /**
-    * Builds a ThresholdLearningDialog.
+    * Builds a HealthTreeViewNodeLearnThresholdAction.
     *
+    * @param healthTreeViewNodeAction
+    *           the health tree view node action
+    * @param node
+    *           the node
+    */
+   public HealthTreeViewNodeLearnThresholdAction(HealthTreeViewNodeAction healthTreeViewNodeAction,
+         IHealthTreeViewNodeModel node) {
+      super(ACTION_NAME);
+      setDescription(Messages.CORE.getString("ClickLearnThresholdAction")); //$NON-NLS-1$
+      this.node = node;
+      this.healthTreeViewNodeAction = healthTreeViewNodeAction;
+      final BundleContext healthMonitoringBundleContext = FrameworkUtil.getBundle(IHealthCommonBusiness.class).getBundleContext();
+      healthBusiness = healthMonitoringBundleContext.getService(healthMonitoringBundleContext.getServiceReference(IHealthCommonBusiness.class));
+   }
+
+   /**
+    * {@inheritDoc}
+    *
+    * @see org.eclipse.jface.action.Action#runWithEvent(org.eclipse.swt.widgets.Event)
+    */
+   @Override
+   public void runWithEvent(Event event) {
+      learnThreshold();
+   }
+
+   /**
+    * {@inheritDoc}
+    *
+    * @see org.eclipse.jface.action.Action#run()
+    */
+   @Override
+   public void run() {
+      runWithEvent(null);
+   }
+
+   /**
+    * Manage the threshold learning process.
+    */
+   private void learnThreshold() {
+      if (LOGGER.isDebugEnabled()) {
+         LOGGER.debug("Starting node '{}'  threshold learning.", node.getName()); //$NON-NLS-1$ //$NON-NLS-2$
+      }
+      LOGGER.info("displayThresholdLearningDialog for '{}' node.", node.toString()); //$NON-NLS-1$ //$NON-NLS-2$
+
+      try {
+         // get the learning thresholds
+         List<LearnedThresholdConfiguration> learnedThresholds;
+         if (node instanceof IndicatorNodeModel) {
+            learnedThresholds = getLearnedThresholdConfs(((IndicatorHmcModel) node.getObject()).getIndicator());
+         } else {
+            learnedThresholds = getLearnedThresholdConfs((MechanicalComponentModel) node.getObject());
+         }
+
+         long maxLearningTime = 0L;
+         List<String> learnedThresholdIds = new ArrayList<>();
+         // get the learned thresholds of the indicator
+         for (LearnedThresholdConfiguration threshold : learnedThresholds) {
+            learnedThresholdIds.add(threshold.getId());
+            if (maxLearningTime < threshold.getLearningTime()) {
+               maxLearningTime = threshold.getLearningTime();
+            }
+         }
+
+         ThresholdLearningDialog dialog = new ThresholdLearningDialog(maxLearningTime);
+         if (dialog.open() == Window.OK) {
+            ThresholdLearningModel model = dialog.getModel();
+            // create the threshold learning requests
+            healthBusiness.createRelearnThresholdRequests(MgsSession.getInstance().getAircraft().getId(), learnedThresholdIds,
+                  model.getHistoryLearningTime(), model.getLearningReason(), MgsSession.getInstance().getUser().getLoginName());
+         }
+
+         // TODO MLAH TBC
+         // update the Health tree node status and the mechanical component bitmap view
+         healthTreeViewNodeAction.updateHealthNodesStatus();
+         healthTreeViewNodeAction.updateHealthViews(node, true);
+      } catch (AircraftConcurrentAccessException e) {
+         StatusManager.getManager().handle(AircraftExceptionHandler.getStatusForAircraftException(e, "relearn", Activator.PLUGIN_ID), StatusManager.BLOCK); //$NON-NLS-1$
+      } catch (AircraftFrozenException e) {
+         StatusManager.getManager().handle(new GenericStatus(IStatus.ERROR, Activator.PLUGIN_ID, Messages.CORE.getString("relearn.aborted.aircraftFrozen"), e), StatusManager.BLOCK); //$NON-NLS-1$
+      } catch (ServiceException e) {
+         StatusManager.getManager().handle(new GenericStatus(IStatus.ERROR, Activator.PLUGIN_ID, Messages.CORE.getString("relearn.aborted"), e), StatusManager.BLOCK); //$NON-NLS-1$
+      }
+
+      // TODO MLAH TBC
+
+      if (LOGGER.isDebugEnabled()) {
+         LOGGER.debug("End of node '{}' threshold learning.", node.getName()); //$NON-NLS-1$ //$NON-NLS-2$
+      }
+   }
+
+   /**
+    * {@inheritDoc}
+    *
+    * @see java.lang.Object#toString()
+    */
+   @Override
+   public String toString() {
+      return getText();
+   }
+
+   /**
+    * {@inheritDoc}
+    *
+    * @see org.eclipse.jface.action.Action#isEnabled()
+    */
+   @Override
+   public boolean isEnabled() {
+
+      if (MgsSession.getInstance().getAircraft().getAircraftState() == AircraftState.FROZEN) {
+         // If aicraft is frozen, the action is not available
+         return false;
+      } else {
+         // get the learning thresholds
+         if (node instanceof IndicatorNodeModel) {
+            return hasLearnedThresholdConfs(((IndicatorHmcModel) node.getObject()).getIndicator());
+         }
+         return hasLearnedThresholdConfs((MechanicalComponentModel) node.getObject());
+      }
+   }
+
+   private boolean hasLearnedThresholdConfs(Indicator indicator) {
+      try {
+         return healthBusiness.hasLearnedThresholds(MgsSession.getInstance().getAircraft().getId(), indicator.getId());
+      } catch (EntityNotFoundException e) {
+         LOGGER.warn("Unable to retrieve learned thresholds", e);
+         return false;
+      }
+   }
+
+   private boolean hasLearnedThresholdConfs(MechanicalComponentModel mechanicalComponent) {
+      if (mechanicalComponent instanceof HealthMechanicalComponentModel healthMechanicalComponent) {
+
+         // get the thresholds of the current mechanical component
+         Map<String, Indicator> indicators = healthMechanicalComponent.getHealthComponent().getIndicators();
+         if (indicators != null) {
+            for (Indicator indicator : indicators.values()) {
+               if (hasLearnedThresholdConfs(indicator)) {
+                  return true;
+               }
+            }
+         }
+         return false;
+      }
+
+      // get the thresholds for the sub-components
+      List<MechanicalComponentModel> subComponents = mechanicalComponent.getSubComponents();
+      if (subComponents != null) {
+         for (MechanicalComponentModel subComponent : subComponents) {
+            if (hasLearnedThresholdConfs(subComponent)) {
+               return true;
+            }
+         }
+      }
+      return false;
+   }
+
+   /**
+    * Return the learned thresholds of a mechanical component.
+    *
+    * @param mechanicalComponent
+    *           the mechanical component
+    * @return the learned thresholds of the mechanical component
+    */
+   private List<LearnedThresholdConfiguration> getLearnedThresholdConfs(MechanicalComponentModel mechanicalComponent) {
+      List<LearnedThresholdConfiguration> learnedThresholds = new ArrayList<>();
+
+      if (mechanicalComponent instanceof HealthMechanicalComponentModel healthMechanicalComponent) {
+
+         // get the thresholds of the current mechanical component
+         Map<String, Indicator> indicators = healthMechanicalComponent.getHealthComponent().getIndicators();
+         if (indicators != null) {
+            for (Indicator indicator : indicators.values()) {
+               learnedThresholds.addAll(getLearnedThresholdConfs(indicator));
+            }
+         }
+      }
+
+      // get the thresholds for the sub-components
+      List<MechanicalComponentModel> subComponents = mechanicalComponent.getSubComponents();
+      if (subComponents != null) {
+         for (MechanicalComponentModel subComponent : subComponents) {
+            learnedThresholds.addAll(getLearnedThresholdConfs(subComponent));
+         }
+      }
+
+      return learnedThresholds;
+   }
+
+   /**
+    * Get the learned thresholds of an indicator.
+    *
+    * @param indicator
+    *           the indicator
     * @param model
-    *           the threshold learning model
+    * @return the learned thresholds of the indicator
     */
-   public ThresholdLearningDialog(long defaultHistoryDuration) {
-      super(Display.getCurrent().getActiveShell());
-      this.model = new ThresholdLearningModel();
-      this.defaultHistoryDuration = defaultHistoryDuration;
-   }
+   private List<LearnedThresholdConfiguration> getLearnedThresholdConfs(Indicator indicator) {
+      // Get the latest threshold of the indicator
+      try {
+         return healthBusiness.getIndicatorLatestLearnedThresholds(MgsSession.getInstance().getAircraft().getId(), indicator.getId());
+      } catch (EntityNotFoundException e) {
+         LOGGER.warn("Unable to retrieve learned thresholds", e);
+      }
+      return Collections.emptyList();
 
-   /**
-    * {@inheritDoc}
-    *
-    * @see org.eclipse.jface.dialogs.Dialog#createDialogArea(org.eclipse.swt.widgets.Composite)
-    */
-   @Override
-   protected Control createDialogArea(Composite parent) {
-      parent.setBackground(Display.getDefault().getSystemColor(SWT.COLOR_WHITE));
-      parent.setBackgroundMode(SWT.INHERIT_FORCE);
-      composite = new ThresholdLearningComposite(parent, model, defaultHistoryDuration);
-      composite.pack();
-      return composite;
-   }
-
-   /**
-    * {@inheritDoc}
-    *
-    * @see org.eclipse.jface.dialogs.Dialog#createButtonsForButtonBar(org.eclipse.swt.widgets.Composite)
-    */
-   @Override
-   protected void createButtonsForButtonBar(Composite parent) {
-      Button okButton = createButton(parent, IDialogConstants.OK_ID, Messages.CORE.getMnemonicEscapedString("OK"), true);
-      createButton(parent, IDialogConstants.CANCEL_ID, Messages.CORE.getMnemonicEscapedString("Cancel_Button_Label"), false);
-      composite.setLearningThresholdDialogOKButton(okButton);
-   }
-
-   public ThresholdLearningModel getModel() {
-      return model;
    }
 }
+
+
+===================================================================
+
+/***************************************/
+/** Copyright Airbus Helicopters 2019 **/
+/***************************************/
+package com.eurocopter.mgs.health.presentation.composite;
+
+import java.awt.Color;
+import java.awt.Frame;
+import java.io.File;
+import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Properties;
+import java.util.Set;
+
+import javax.swing.SwingUtilities;
+
+import org.apache.commons.lang.UnhandledException;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.eclipse.core.databinding.Binding;
+import org.eclipse.core.databinding.DataBindingContext;
+import org.eclipse.core.databinding.beans.typed.PojoProperties;
+import org.eclipse.core.databinding.observable.value.IObservableValue;
+import org.eclipse.core.runtime.IStatus;
+import org.eclipse.core.runtime.Status;
+import org.eclipse.jface.action.IAction;
+import org.eclipse.jface.databinding.swt.typed.WidgetProperties;
+import org.eclipse.jface.databinding.util.JFaceProperties;
+import org.eclipse.jface.dialogs.MessageDialog;
+import org.eclipse.jface.resource.JFaceResources;
+import org.eclipse.jface.window.Window;
+import org.eclipse.swt.SWT;
+import org.eclipse.swt.awt.SWT_AWT;
+import org.eclipse.swt.custom.BusyIndicator;
+import org.eclipse.swt.events.SelectionAdapter;
+import org.eclipse.swt.events.SelectionEvent;
+import org.eclipse.swt.layout.GridData;
+import org.eclipse.swt.layout.GridLayout;
+import org.eclipse.swt.widgets.Button;
+import org.eclipse.swt.widgets.Composite;
+import org.eclipse.swt.widgets.Display;
+import org.eclipse.swt.widgets.Label;
+import org.eclipse.ui.forms.widgets.FormToolkit;
+import org.eclipse.ui.statushandlers.StatusManager;
+import org.joda.time.Duration;
+import org.osgi.framework.BundleContext;
+import org.osgi.framework.FrameworkUtil;
+
+import com.eurocopter.mgs.business.aircraft.api.IAircraftBusiness;
+import com.eurocopter.mgs.business.configuration.api.IConfigurationBusiness;
+import com.eurocopter.mgs.business.fdcr.api.IFdcrBusiness;
+import com.eurocopter.mgs.business.fdcr.api.model.FdcrParameterSelectionModel;
+import com.eurocopter.mgs.business.flight.api.IFlightBusiness;
+import com.eurocopter.mgs.business.health.api.IHealthCommonBusiness;
+import com.eurocopter.mgs.business.health.api.IHealthSignalBusiness;
+import com.eurocopter.mgs.business.user.api.IUserBusiness;
+import com.eurocopter.mgs.chart.ChartElementModel;
+import com.eurocopter.mgs.chart.MainChart;
+import com.eurocopter.mgs.chart.MainChartConfig;
+import com.eurocopter.mgs.chart.SamplingDoubleChartElementModel;
+import com.eurocopter.mgs.chart.axis.AxisAdapteur;
+import com.eurocopter.mgs.chart.axis.RunnableAxisChangeListener;
+import com.eurocopter.mgs.chart.event.ChartElementAddedListener;
+import com.eurocopter.mgs.chart.event.ChartElementRemovedListener;
+import com.eurocopter.mgs.chart.event.ChartElementSelectedListener;
+import com.eurocopter.mgs.chart.event.ChartPlotClickedOnCurveListener;
+import com.eurocopter.mgs.chart.event.FlightBackgroundChangeListener;
+import com.eurocopter.mgs.chart.exception.ChartException;
+import com.eurocopter.mgs.chart.util.ChartType;
+import com.eurocopter.mgs.core.presentation.i18n.Messages;
+import com.eurocopter.mgs.datamodel.aircraft.Aircraft;
+import com.eurocopter.mgs.datamodel.aircraft.AircraftType;
+import com.eurocopter.mgs.datamodel.aircraft.Avionic;
+import com.eurocopter.mgs.datamodel.configuration.MgsConfigurationKey;
+import com.eurocopter.mgs.datamodel.flight.Flight;
+import com.eurocopter.mgs.datamodel.health.monitoring.Indicator;
+import com.eurocopter.mgs.datamodel.user.User;
+import com.eurocopter.mgs.health.activator.Activator;
+import com.eurocopter.mgs.health.presentation.HealthMonitoringUtil;
+import com.eurocopter.mgs.health.presentation.action.DeselectAllIndicatorNodesAction;
+import com.eurocopter.mgs.health.presentation.action.HealthIndicatorManager;
+import com.eurocopter.mgs.health.presentation.action.HealthTreeViewNodeAction;
+import com.eurocopter.mgs.health.presentation.action.IndicatorTrendMarkerHandler;
+import com.eurocopter.mgs.health.presentation.action.SelectFFTSampleAction;
+import com.eurocopter.mgs.health.presentation.chart.ChartParameter;
+import com.eurocopter.mgs.health.presentation.chart.UpdateIndicatorChartJob;
+import com.eurocopter.mgs.health.presentation.dialog.SelectContextualDataDialog;
+import com.eurocopter.mgs.health.presentation.dialog.ThresholdLearningDialog;
+import com.eurocopter.mgs.health.presentation.extension.HealthIndicatorChartView;
+import com.eurocopter.mgs.health.presentation.extension.ToolTipListener;
+import com.eurocopter.mgs.health.presentation.model.IHealthTreeViewNodeModel;
+import com.eurocopter.mgs.health.presentation.model.IndicatorChartModelData;
+import com.eurocopter.mgs.health.presentation.model.IndicatorHmcModel;
+import com.eurocopter.mgs.health.presentation.model.MechanicalComponentModel;
+import com.eurocopter.mgs.health.presentation.model.ThresholdLearningData;
+import com.eurocopter.mgs.healthsignal.presentation.chart.ColorGenerator;
+import com.eurocopter.mgs.parameter.health.contextual.ContextualParameterCategory;
+import com.eurocopter.mgs.parameter.health.contextual.DisplayedContextualParameter;
+import com.eurocopter.mgs.presentation.aircraft.main.tree.model.CheckableTreeViewNodeElement;
+import com.eurocopter.mgs.presentation.chart.ChartFactory;
+import com.eurocopter.mgs.presentation.chart.FdcrGraphContext;
+import com.eurocopter.mgs.presentation.chart.FdcrGraphManager;
+import com.eurocopter.mgs.presentation.chart.GraphType;
+import com.eurocopter.mgs.presentation.chart.IFdcrAnalysisInProgressHandler;
+import com.eurocopter.mgs.presentation.common.MgsSession;
+import com.eurocopter.mgs.presentation.common.exception.details.MgsDetailsLogException;
+import com.eurocopter.mgs.presentation.configuration.preferences.fdcr.selection.FdcrParameterSelectionDialog;
+import com.eurocopter.mgs.presentation.core.extension.NodeChangeEvent;
+import com.eurocopter.mgs.presentation.core.extension.NodeChangeEvent.EventType;
+import com.eurocopter.mgs.presentation.event.FlightSelectionEvent;
+import com.eurocopter.mgs.presentation.event.LearningThresholdUpdated;
+import com.eurocopter.mgs.presentation.event.MgsEvent;
+import com.eurocopter.mgs.presentation.event.MgsEventListener;
+import com.eurocopter.mgs.presentation.event.MgsEventManager;
+import com.eurocopter.mgs.presentation.event.MgsEventType;
+import com.eurocopter.mgs.presentation.flight.model.FlightModel;
+import com.eurocopter.mgs.presentation.status.GenericStatus;
+import com.eurocopter.mgs.presentation.utils.AircraftExceptionHandler;
+import com.eurocopter.mgs.service.aircraft.exception.AircraftConcurrentAccessException;
+import com.eurocopter.mgs.service.aircraft.exception.AircraftFrozenException;
+import com.eurocopter.mgs.service.exception.EntityNotFoundException;
+import com.eurocopter.mgs.service.exception.ServiceException;
+
+/**
+ * The indicator trend display.
+ */
+public class IndicatorTrendComposite extends Composite implements MgsEventListener, IIndicatorComposite {
+
+   /** Width Bound. */
+   private static final int WIDTH = 75;
+
+   /** Height Bound. */
+   private static final int HEIGHT = 25;
+
+   /** Class logger. */
+   private static final Logger LOGGER = LogManager.getLogger(IndicatorTrendComposite.class);
+
+   private IndicatorTrendMarkerHandler indicatorTrendMarkerHandler;
+
+   /** Color generator. */
+   private final ColorGenerator colorGenerator = new ColorGenerator();
+
+   /** data binding context. */
+   private final DataBindingContext bindingContext;
+
+   /** deselect all binding. */
+   private Binding deselectAllBinding;
+
+   /** deselect all binding 2. */
+   private Binding deselectAllBinding2;
+
+   /** deselect all binding 3. */
+   private Binding deselectAllBinding3;
+
+   /** deselect all binding 4. */
+   private Binding deselectAllBinding4;
+
+   /** Toolkit. */
+   private final FormToolkit toolkit;
+
+   /** chart. */
+   private MainChart<Double> chart;
+
+   /** Chart Parameters*. */
+   private ChartParameter chartParameter;
+
+   /** chart composite. */
+   private final Composite chartComposite;
+
+   /** show Y axis button. */
+   private final Button btnShowYAxis;
+
+   /** show marker button. */
+   private final Button btnShowMarker;
+
+   /** deselect all action. */
+   private DeselectAllIndicatorNodesAction deselectAllIndicatorNodesAction;
+
+   /** remove all button. */
+   private final Button btnRemoveAll;
+
+   /** the chart frame. */
+   private Frame chartFrame;
+
+   /** the show location bar button. */
+   private final Button btnShowLocationBar;
+
+   /** the show success rate button. */
+   private final Button btnShowSuccessRate;
+
+   private Button btnSelectContextualData;
+   private Boolean contextualDataAvailable;
+
+   /** indicators model */
+   private List<ChartElementModel<Double>> indicators;
+
+   /** the success rate chart model. */
+   private ChartElementModel<Double> successRateModel;
+
+   /** the main view. */
+   private final HealthIndicatorChartView view;
+
+   /** the display selected sample button. */
+   private final Button btnDisplaySelectedSample;
+
+   /** used to display the select FDCR parameters dialog box. */
+   private Button btnSelectFdcrData;
+
+   /** used to display the FDCR Curves data for the selected parameters. */
+   private Button btnDisplayFdcrData;
+
+   private final boolean fdcrDataAvailable;
+
+   private boolean showFdcrData = false;
+
+   private final int fdcrMaxNbFlightHours;
+
+   /** the title. */
+   private String title;
+
+   /** Zoom out button. */
+   private final Button btnZoomOut;
+
+   /** ChartElementRemovedListener. */
+   private ChartElementRemovedListener<Double> chartElementRemovedListener;
+
+   private FdcrParameterSelectionDialog fdcrSelectComposite;
+
+   /** Comment for <code>backupUpSubCurves</code>. */
+   private final Map<String, Set<ChartElementModel<Double>>> backupUpSubCurves = new HashMap<>();
+
+   private Map<String, FdcrParameterSelectionModel> currentFdcrParameterSelectionsModels = new HashMap<>();
+
+   /** The event manager. */
+   private final MgsEventManager eventManager;
+
+   private final ChartFactory chartFactory;
+
+   private FdcrGraphManager fdcrGraphManager;
+
+   private List<ContextualParameterCategory> contextualParameters;
+
+   private List<DisplayedContextualParameter> selectedContextualData = new ArrayList<>();
+
+   private ToolTipListener toolTipListener;
+
+   private Label labelFdcrInProgress;
+
+   private RunnableAxisChangeListener domainAxisChangeListener = new RunnableAxisChangeListener(() -> Display.getDefault().asyncExec(() -> {
+      if (showFdcrData) {
+         displayFdcrData();
+      }
+   }));
+
+   private FlightBackgroundChangeListener flightBackgroundChangeListener;
+   private ChartPlotClickedOnCurveListener<Double> curveClickListener;
+   private ChartElementAddedListener<Double> chartElementAddedListener;
+   private ChartElementSelectedListener<Double> chartElementSelectedListener;
+
+   /**
+    * Default constructor. Builds a IndicatorTrendComposite.
+    * 
+    * @param view
+    *           the main view.
+    * @param parent
+    *           the parent container.
+    * @param style
+    *           the SWT style.
+    */
+   public IndicatorTrendComposite(final HealthIndicatorChartView view, final Composite parent) {
+      super(parent, SWT.NONE);
+      this.view = view;
+      eventManager = MgsEventManager.getInstance();
+      eventManager.registerEventListener(this);
+      toolkit = new FormToolkit(getDisplay());
+      toolkit.setBackground(Display.getCurrent().getSystemColor(SWT.COLOR_WHITE));
+      setLayout(new GridLayout(1, false));
+      Composite menuComposite = toolkit.createComposite(this, SWT.NONE);
+      menuComposite.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, false, false));
+      toolkit.paintBordersFor(menuComposite);
+      GridLayout menuGridLayout = new GridLayout(1, false);
+      menuComposite.setLayout(menuGridLayout);
+
+      fdcrDataAvailable = isFdcrConfigurationAvailable();
+      fdcrMaxNbFlightHours = getFdcrMxNbFlightHours();
+      BundleContext bundleContext = FrameworkUtil.getBundle(IUserBusiness.class).getBundleContext();
+      IUserBusiness userBusiness = bundleContext.getService(bundleContext.getServiceReference(IUserBusiness.class));
+
+      Properties properties = userBusiness.getUserConfigurationProperties(MgsSession.getInstance().getUser().getId());
+      chartFactory = new ChartFactory(properties);
+      
+      Composite firstLineMenuComposite = toolkit.createComposite(menuComposite, SWT.NONE);
+      firstLineMenuComposite.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false, 1, 1));
+      toolkit.paintBordersFor(firstLineMenuComposite);
+      firstLineMenuComposite.setLayout(new GridLayout(6, false));
+
+      btnRemoveAll = createRemoveAllButton(firstLineMenuComposite);
+      btnDisplaySelectedSample = createDisplaySampleButton(view, firstLineMenuComposite);
+      btnSelectContextualData = createContextualDataButton(firstLineMenuComposite);
+      createFiller(firstLineMenuComposite);
+
+      btnZoomOut = createZoomOutButton(firstLineMenuComposite);
+      Composite checkboxCompopsite = toolkit.createComposite(firstLineMenuComposite, SWT.NONE);
+      toolkit.paintBordersFor(checkboxCompopsite);
+      checkboxCompopsite.setLayout(new GridLayout(2, true));
+      
+      btnShowMarker = createMarkerCheckbox(checkboxCompopsite);
+      btnShowSuccessRate = createSuccessRateCheckbox(checkboxCompopsite);
+      btnShowLocationBar = createLocationBarCheckbox(checkboxCompopsite);
+      btnShowYAxis = createYAxisChecbkbox(checkboxCompopsite);
+
+      chartComposite = toolkit.createComposite(this, SWT.EMBEDDED | SWT.NO_BACKGROUND);
+      chartComposite.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true, 1, 1));
+      toolkit.adapt(chartComposite);
+      toolkit.paintBordersFor(chartComposite);
+
+      if (fdcrDataAvailable) {
+         Composite lastLineMenuComposite = toolkit.createComposite(menuComposite, SWT.NONE);
+         lastLineMenuComposite.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false, 1, 1));
+         toolkit.paintBordersFor(menuComposite);
+         lastLineMenuComposite.setLayout(new GridLayout(5, false));
+
+         final IFdcrAnalysisInProgressHandler analysisInProgressHandler = inProgress -> Display.getDefault().asyncExec(() -> {
+            if (labelFdcrInProgress != null && !labelFdcrInProgress.isDisposed()) {
+               labelFdcrInProgress.setText(inProgress ? Messages.REPORT.getString("fdcr.analysis_in_progress.label") : "");
+            }
+         });
+         fdcrGraphManager = new FdcrGraphManager(chartFactory, analysisInProgressHandler, false);
+
+         btnSelectFdcrData = toolkit.createButton(lastLineMenuComposite, Messages.CORE.getMnemonicEscapedString("SelectFdcrData"), SWT.NONE);
+         btnSelectFdcrData.setEnabled(true);
+
+         btnDisplayFdcrData = toolkit.createButton(lastLineMenuComposite, Messages.CORE.getMnemonicEscapedString("DisplayFdcrData"), SWT.CHECK);
+         btnDisplayFdcrData.setEnabled(true);
+
+         if (MgsSession.getInstance().getUser().getProfile().canSeeFdcrData()) {
+            btnSelectFdcrData.addSelectionListener(new SelectionAdapter() {
+               @Override
+               public void widgetSelected(SelectionEvent e) {
+                  int ret = fdcrSelectComposite.open();
+                  if (ret == Window.OK && btnDisplayFdcrData.getSelection()) {
+                     displayFdcrData();
+                  }
+               }
+            });
+
+            btnDisplayFdcrData.addSelectionListener(new SelectionAdapter() {
+               @Override
+               public void widgetSelected(SelectionEvent e) {
+                  if (btnDisplayFdcrData.getSelection()) {
+                     showFdcrData = true;
+                     displayFdcrData();
+                  } else {
+                     showFdcrData = false;
+                     clearFdcrData();
+                     analysisInProgressHandler.hasAnalysisInProgress(false);
+                  }
+               }
+            });
+         } else {
+            btnSelectFdcrData.setVisible(false);
+            btnDisplayFdcrData.setVisible(false);
+         }
+
+         labelFdcrInProgress = toolkit.createLabel(lastLineMenuComposite, "", SWT.NONE);
+         labelFdcrInProgress.setFont(JFaceResources.getFontRegistry().getItalic(JFaceResources.DEFAULT_FONT));
+         labelFdcrInProgress.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false, 1, 1));
+      }
+
+      initChart();
+
+      bindingContext = new DataBindingContext();
+   }
+
+   private Button createYAxisChecbkbox(Composite lineComposite) {
+      Button button = toolkit.createButton(lineComposite, Messages.CORE.getMnemonicEscapedString("ShowYAxis"), SWT.CHECK);
+      button.setBounds(0, 0, WIDTH, HEIGHT);
+      button.setSelection(true);
+      return button;
+   }
+
+   private Button createLocationBarCheckbox(Composite lineComposite) {
+      Button button = toolkit.createButton(lineComposite, Messages.CORE.getMnemonicEscapedString("ShowLocationBar"), SWT.CHECK);
+      button.setEnabled(true);
+      button.addSelectionListener(new SelectionAdapter() {
+         @Override
+         public void widgetSelected(SelectionEvent e) {
+            if (chart != null) {
+               chart.setLocationBarsVisible(button.getSelection());
+            }
+         }
+      });
+
+      button.setBounds(0, 0, WIDTH, HEIGHT);
+      return button;
+   }
+
+   private Button createSuccessRateCheckbox(Composite lineComposite) {
+      Button button = toolkit.createButton(lineComposite, Messages.CORE.getMnemonicEscapedString("IndicatorTrendComposite_3"), SWT.CHECK);
+      button.setVisible(MgsSession.getInstance().getUser().getProfile().canSeeHealthSuccessRate());
+      button.setEnabled(false);
+      button.setBounds(0, 0, WIDTH, HEIGHT);
+      button.addSelectionListener(new SelectionAdapter() {
+         @Override
+         public void widgetSelected(SelectionEvent e) {
+            showSuccessRate(button.getSelection());
+         }
+      });
+      return button;
+   }
+
+   private Button createMarkerCheckbox(Composite lineComposite) {
+      return createCheckboxButton(lineComposite, "show.marker.visibility", true);
+   }
+
+   private Button createZoomOutButton(Composite lineComposite) {
+      Button button = toolkit.createButton(lineComposite, Messages.CORE.getMnemonicEscapedString("ZOOM_OUT"), SWT.NONE);
+      button.addSelectionListener(new SelectionAdapter() {
+         @Override
+         public void widgetSelected(SelectionEvent e) {
+            if (chart != null) {
+               chart.zoomBack();
+            }
+         }
+      });
+      return button;
+   }
+
+   private void createFiller(Composite lineComposite) {
+      Label labelFirstLine = toolkit.createLabel(lineComposite, "", SWT.NONE);
+      labelFirstLine.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false, 1, 1));
+   }
+
+   private Button createContextualDataButton(Composite lineComposite) {
+      Button button = toolkit.createButton(lineComposite, Messages.CORE.getString("SelectContextualData"), SWT.NONE);
+      button.setBackground(Display.getCurrent().getSystemColor(SWT.COLOR_WHITE));
+      button.addSelectionListener(new SelectionAdapter() {
+         @Override
+         public void widgetSelected(SelectionEvent e) {
+            SelectContextualDataDialog selectContextualDataDialog = new SelectContextualDataDialog(Display.getCurrent().getActiveShell(), selectedContextualData, contextualParameters);
+            if (selectContextualDataDialog.open() == 0) {
+               selectedContextualData = selectContextualDataDialog.getSelectedContextualData();
+               if (toolTipListener != null) {
+                  toolTipListener.setSelectedContextualData(selectedContextualData);
+               }
+            }
+         }
+      });
+      button.setVisible(false);
+      return button;
+   }
+
+   private Button createDisplaySampleButton(final HealthIndicatorChartView view, Composite lineComposite) {
+      Button button = toolkit.createButton(lineComposite, Messages.CORE.getMnemonicEscapedString("IndicatorTrendComposite_1"), SWT.NONE);
+      button.setEnabled(false);
+      if (!MgsSession.getInstance().getUser().getProfile().canSeeHealthAdvancedData()) {
+         button.setVisible(false);
+      }
+      button.addSelectionListener(new SelectionAdapter() {
+         @Override
+         public void widgetSelected(SelectionEvent e) {
+            view.getSelectFFTSampleAction().run();
+            MgsEventManager.getInstance().publishEvent(null, new FlightSelectionEvent(view.getSelectFFTSampleAction().getFlight()));
+         }
+      });
+      return button;
+   }
+
+   private Button createRemoveAllButton(Composite lineComposite) {
+      Button button = toolkit.createButton(lineComposite, Messages.CORE.getMnemonicEscapedString("REMOVE_ALL"), SWT.NONE);
+      button.addSelectionListener(new SelectionAdapter() {
+         @Override
+         public void widgetSelected(SelectionEvent e) {
+            if (chart != null && chart.isDataDisplayed()) {
+               deselectAllIndicatorNodesAction.run();
+               btnShowSuccessRate.setSelection(false);
+               btnShowLocationBar.setSelection(false);
+            }
+         }
+      });
+      return button;
+   }
+
+   private boolean areContextualDataAvailable() {
+      Aircraft aircraft = MgsSession.getInstance().getAircraft();
+      AircraftType aircraftType = aircraft.getAircraftType();
+      if (aircraftType.getAvionic() == Avionic.CIGALHE) {
+         return true;
+      }
+      // On M'ARMS aircraft, contextual data are only available if the mechanical component contains a "Read" indicator
+      final BundleContext healthBundleContext = FrameworkUtil.getBundle(IHealthCommonBusiness.class).getBundleContext();
+      final IHealthCommonBusiness healthBusiness = healthBundleContext.getService(healthBundleContext.getServiceReference(IHealthCommonBusiness.class));
+      return healthBusiness.hasReadIndicators(aircraft.getId(), ((MechanicalComponentModel) view.getNodeModel().getObject()).getId());
+   }
+
+   /**
+    * 
+    * Create a button on a top of health graph
+    * 
+    * @param firstLineMenuComposite
+    */
+   private Button createCheckboxButton(Composite firstLineMenuComposite, String buttonName, boolean isVisible) {
+      final Button buttonToDisplay = toolkit.createButton(firstLineMenuComposite, Messages.CORE.getMnemonicEscapedString(buttonName), SWT.CHECK);
+      buttonToDisplay.setVisible(isVisible);
+      buttonToDisplay.setEnabled(true);
+      buttonToDisplay.setSelection(true);
+      buttonToDisplay.setBounds(0, 0, WIDTH, HEIGHT);
+      buttonToDisplay.addSelectionListener(new SelectionAdapter() {
+         @Override
+         public void widgetSelected(SelectionEvent e) {
+            if (chart != null) {
+               chart.setMarkerVisible(buttonToDisplay.getSelection());
+               chart.refreshMarkers(new ArrayList<>());
+            }
+         }
+      });
+      return buttonToDisplay;
+   }
+
+   /**
+    * Gets the chartParameter.
+    * 
+    * @return the chartParameter.
+    */
+   public ChartParameter getChartParameter() {
+      if (chartParameter == null) {
+         chartParameter = new ChartParameter();
+      }
+      return chartParameter;
+   }
+
+   private boolean isFdcrConfigurationAvailable() {
+      final BundleContext bundleContext = FrameworkUtil.getBundle(IAircraftBusiness.class).getBundleContext();
+      final IAircraftBusiness aircraftBusiness = bundleContext.getService(bundleContext.getServiceReference(IAircraftBusiness.class));
+      try {
+         return aircraftBusiness.isFdcrConfigurationAvailable(MgsSession.getInstance().getAircraft().getId());
+      } catch (EntityNotFoundException e) {
+         // nothing
+         LOGGER.error("Cannot retrieve fdcr configuration for the selected aircraft: {}", e.getMessage(), e);
+      }
+      return false;
+   }
+
+   private int getFdcrMxNbFlightHours() {
+      final BundleContext configurationBundleContext = FrameworkUtil.getBundle(IConfigurationBusiness.class).getBundleContext();
+      IConfigurationBusiness configurationBusiness = configurationBundleContext.getService(configurationBundleContext.getServiceReference(IConfigurationBusiness.class));
+      String mgsConfigurationProperty = configurationBusiness.getConfigurationProperty(MgsConfigurationKey.FDCR_NB_FLIGHT_HOURS.getKey());
+      if (mgsConfigurationProperty != null && !mgsConfigurationProperty.isEmpty()) {
+         return Integer.parseInt(mgsConfigurationProperty);
+      }
+      return -1;
+   }
+
+   private void refreshFdcrGraphManager() {
+      Map<String, FdcrParameterSelectionModel> newFdcrParameterSelectionsModels = new HashMap<>();
+      List<FdcrParameterSelectionModel> fdcrParameterSelectionsModelsToAdd = new ArrayList<>();
+      // Put the new FDCR parameter selections models for search convenience
+      for (FdcrParameterSelectionModel model : fdcrSelectComposite.getFdcrParameterSelectionsModel()) {
+         if (model.isSelected()) {
+            newFdcrParameterSelectionsModels.put(model.getFunctionalId(), model);
+         }
+      }
+      // Find and remove the FDCR parameter models that are not in the new models list
+      for (Entry<String, FdcrParameterSelectionModel> entry : currentFdcrParameterSelectionsModels.entrySet()) {
+         if (!newFdcrParameterSelectionsModels.containsKey(entry.getKey())) {
+            FdcrParameterSelectionModel fdcrParameterSelectionModel = entry.getValue();
+            removeFdcrData(fdcrParameterSelectionModel.getFunctionalId());
+         }
+      }
+      // Find and add the FDCR selection models that are not in the current models list
+      for (Entry<String, FdcrParameterSelectionModel> entry : newFdcrParameterSelectionsModels.entrySet()) {
+         if (!currentFdcrParameterSelectionsModels.containsKey(entry.getKey())) {
+            fdcrParameterSelectionsModelsToAdd.add(entry.getValue());
+         }
+      }
+
+      fdcrGraphManager.setFdcrParameterSelections(fdcrParameterSelectionsModelsToAdd);
+
+      currentFdcrParameterSelectionsModels = newFdcrParameterSelectionsModels;
+
+      AxisAdapteur<?> domainAxisAdapter = chart.getPlotManager().getPlot().getDomainAxisAdapteur();
+      fdcrGraphManager.updateGraph((Double) domainAxisAdapter.getLowerBoundWithoutMargin(), (Double) domainAxisAdapter.getUpperBoundWithoutMargin());
+   }
+
+   private void displayFdcrData() {
+      if (chart != null && fdcrSelectComposite != null) {
+         if (!showFdcrData) {
+            return;
+         }
+
+         // Take into account 2% margin on each side
+         AxisAdapteur<Double> domainAxisAdapteur = chart.getPlotManager().getPlot().getDomainAxisAdapteur();
+         double displayedFlightHours = domainAxisAdapteur.getUpperBoundWithoutMargin() - domainAxisAdapteur.getLowerBoundWithoutMargin();
+         if (fdcrMaxNbFlightHours > 0 && displayedFlightHours > fdcrMaxNbFlightHours) {
+            clearFdcrData();
+            showFdcrData = false;
+            btnDisplayFdcrData.setSelection(false);
+            MessageDialog.openInformation(Display.getDefault().getActiveShell(), Messages.CORE.getString("FdcrDisplay"),
+                  Messages.CORE.getString("FdcrMaxFlightHoursError") + " (" + fdcrMaxNbFlightHours + ")");
+            return;
+         }
+         // TODO : delimit the fdcr date time range between the selected indicator start date and the end date.
+         updateFdcrDateTimeRange();
+         fdcrGraphManager.resetData(MgsSession.getInstance().getFlights());
+         refreshFdcrGraphManager();
+         Map<String, ChartElementModel<Double>> fdcrChartElements = fdcrGraphManager.getGraphModel().getChartElements();
+         for (Entry<String, ChartElementModel<Double>> fdcrChartElement : fdcrChartElements.entrySet()) {
+            try {
+               chart.addCurve(fdcrChartElement.getValue());
+            } catch (ChartException e) {
+               LOGGER.warn("", e);
+               MessageDialog.openError(Display.getCurrent().getActiveShell(), "Add FDCR curve",
+                     "Cannot add fdcr curve : " + e.getMessage());
+            }
+         }
+         registerSamplingDoubleChartElementModelOnDomainAxisChangeEvent(fdcrChartElements.values());
+      }
+   }
+
+   private void registerSamplingDoubleChartElementModelOnDomainAxisChangeEvent(final Collection<ChartElementModel<Double>> chartElementModels) {
+      for (ChartElementModel<?> chartElementModel : chartElementModels) {
+         if (chartElementModel instanceof SamplingDoubleChartElementModel) {
+            chart.getPlotManager().addDomainAxisChangeListener((SamplingDoubleChartElementModel) chartElementModel);
+         }
+      }
+   }
+
+   private void unregisterSamplingDoubleChartElementModelOnDomainAxisChangeEvent(final Collection<ChartElementModel<Double>> chartElementModels) {
+      Collection<ChartElementModel<Double>> chartElementModelCollection = chartElementModels;
+      for (ChartElementModel<Double> chartElementModel : chartElementModelCollection) {
+         if (chartElementModel instanceof SamplingDoubleChartElementModel) {
+            chart.getPlotManager().removeDomainAxisChangeListener((SamplingDoubleChartElementModel) chartElementModel);
+            ((SamplingDoubleChartElementModel) chartElementModel).setValueLoader(null);
+         }
+      }
+   }
+
+   private void clearFdcrData() {
+      if (chart != null) {
+         unregisterSamplingDoubleChartElementModelOnDomainAxisChangeEvent(fdcrGraphManager.getGraphModel().getChartElements().values());
+         chart.removeCurves(fdcrGraphManager.getGraphModel().getChartElements().keySet(), false);
+         fdcrGraphManager.getGraphModel().removeAllChartElements();
+         currentFdcrParameterSelectionsModels.clear();
+      }
+   }
+
+   private void removeFdcrData(String title) {
+      if (chart != null) {
+         ChartElementModel<Double> chartElementModelToRemove = fdcrGraphManager.getGraphModel().getChartElement(title);
+         unregisterSamplingDoubleChartElementModelOnDomainAxisChangeEvent(Collections.singletonList(chartElementModelToRemove));
+         chart.removeCurve(title);
+         fdcrGraphManager.getGraphModel().removeChartElement(title);
+      }
+   }
+
+   private void updateFdcrGraphModel() {
+      if (fdcrSelectComposite == null) {
+         fdcrSelectComposite = new FdcrParameterSelectionDialog(getParent());
+      }
+
+      List<IndicatorHmcModel> checkedIndicators = UpdateIndicatorChartJob.getCheckedIndicator(view.getNodeModel());
+      Set<String> indicatorIds = new HashSet<>();
+      for (IndicatorHmcModel indicatorModel : checkedIndicators) {
+         indicatorIds.add(indicatorModel.getIndicator().getId());
+      }
+
+      final BundleContext fdcrBundleContext = FrameworkUtil.getBundle(IFdcrBusiness.class).getBundleContext();
+      final IFdcrBusiness fdcrBusiness = fdcrBundleContext.getService(fdcrBundleContext.getServiceReference(IFdcrBusiness.class));
+      String aircraftId = MgsSession.getInstance().getAircraft().getId();
+      Set<FdcrParameterSelectionModel> fdcrParameters = fdcrBusiness.getFdcrParametersForIndicator(aircraftId, indicatorIds);
+      fdcrSelectComposite.addSelectedFdcrParameters(fdcrParameters);
+
+      if (btnDisplayFdcrData.getSelection()) {
+         displayFdcrData();
+      }
+   }
+
+   private void updateFdcrDateTimeRange() {
+      boolean groundAcquisitionMode = false;
+      List<IndicatorHmcModel> checkedIndicators = UpdateIndicatorChartJob.getCheckedIndicator(view.getNodeModel());
+      for (IndicatorHmcModel checkedIndicator : checkedIndicators) {
+         groundAcquisitionMode |= checkedIndicator.getParentComponent().isGroundAcquisition();
+      }
+
+      List<FlightModel> flightModels = HealthMonitoringUtil.getFlightsDisplayed(groundAcquisitionMode);
+      fdcrGraphManager.setGraphContext(new FdcrGraphContext(flightModels, chart.getPlotManager().getMainChartConfig().getFlightBackGroundDataModelList(), GraphType.HEALTH, groundAcquisitionMode));
+   }
+
+   /**
+    * Initialize chart.
+    */
+   private void initChart() {
+      chartFrame = SWT_AWT.new_Frame(chartComposite);
+      chartFrame.setBackground(Color.WHITE);
+      // focus fixing
+      ChartFactory.configureChartCompositeListeners(this, chartFrame);
+   }
+
+   /**
+    * Initialize the data binding context.
+    * 
+    * @return the data binding context
+    */
+   protected DataBindingContext initDataBindings() {
+      if (chart != null) {
+         IObservableValue<Boolean> btnShowYAxisObserveSelectionObserveWidget = WidgetProperties.buttonSelection().observe(btnShowYAxis);
+         IObservableValue<Boolean> chartYAxisEnabledObserveValue = PojoProperties.value("YAxisVisible", boolean.class).observe(chart);
+         bindingContext.bindValue(btnShowYAxisObserveSelectionObserveWidget, chartYAxisEnabledObserveValue);
+
+         IObservableValue<Boolean> btnShowMarkerObservable = WidgetProperties.buttonSelection().observe(btnShowMarker);
+         IObservableValue<Boolean> chartMarkerVisibilityObserveValue = PojoProperties.value("markerVisible", boolean.class).observe(chart);
+         bindingContext.bindValue(btnShowMarkerObservable, chartMarkerVisibilityObserveValue);
+
+         chart.setMarkerVisible(btnShowMarker.getSelection());
+         chart.setLocationBarsVisible(btnShowLocationBar.getSelection());
+         chart.setYAxisVisible(btnShowYAxis.getSelection());
+
+         if (MgsSession.getInstance().getUser().getProfile().canSeeHealthAdvancedData()) {
+            IObservableValue<Boolean> selectFFTSampleActionObservableValue = JFaceProperties.<SelectFFTSampleAction, Boolean> value(SelectFFTSampleAction.class, IAction.ENABLED, IAction.ENABLED)
+                  .observe(view.getSelectFFTSampleAction());
+            IObservableValue<Boolean> btnDisplaySelectedSampleEnabledObserveWidget = WidgetProperties.enabled().observe(btnDisplaySelectedSample);
+            bindingContext.bindValue(btnDisplaySelectedSampleEnabledObserveWidget, selectFFTSampleActionObservableValue);
+         }
+      }
+      return bindingContext;
+   }
+
+   /**
+    * Update the trend display.
+    * 
+    * @param flightModels
+    * 
+    * @param newIndicators
+    *           the list of indicators to be added to the display.
+    * @param successRateChartModel
+    *           the success rate chart model or <code>null</code> if none.
+    */
+   public void update(final List<FlightModel> flightModels, final List<ChartElementModel<Double>> newIndicators, final ChartElementModel<Double> successRateChartModel) {
+      BusyIndicator.showWhile(Display.getCurrent(), () -> {
+         try {
+            if (!isDisposed()) {
+               boolean init = chart == null;
+
+               // compute indicator chart to be removed here
+               final List<ChartElementModel<Double>> removed = retrieveModelToRemove(newIndicators);
+               final List<ChartElementModel<Double>> added = retrieveModelToAdd(newIndicators);
+
+               // Restore thresholds of added curves if missing (bug fix)
+               restoreSubCurves(added);
+
+               // call the chart component to update
+               SwingUtilities.invokeAndWait(() -> {
+                  if (!added.isEmpty() || !removed.isEmpty()) {
+                     updateChart(flightModels, added, removed);
+                  } else {
+                     refreshMarkers(newIndicators);
+                  }
+               });
+
+               // store indicators model
+               indicators = newIndicators;
+
+               /** success rate **/
+               if (successRateChartModel == null && !isDisposed()) {
+                  btnShowSuccessRate.setSelection(false);
+               }
+               btnShowSuccessRate.setEnabled(successRateChartModel != null);
+               showSuccessRate(false);
+               // store success rate
+               IndicatorTrendComposite.this.successRateModel = successRateChartModel;
+               showSuccessRate(btnShowSuccessRate.getSelection());
+
+               if (init) {
+                  initDataBindings();
+               }
+               // update Fdcr graph model if available
+               if (fdcrDataAvailable) {
+                  if (deselectAllIndicatorNodesAction != null && !deselectAllIndicatorNodesAction.isEnabled()) {
+                     return;
+                  }
+                  updateFdcrGraphModel();
+               }
+
+               if (contextualDataAvailable == null) {
+                  // Lazy initialization of the contextual data
+                  contextualDataAvailable = areContextualDataAvailable();
+                  if (contextualDataAvailable) {
+                     initContextualParameters();
+                  }
+               }
+               btnSelectContextualData.setVisible(contextualDataAvailable);
+            }
+         } catch (InterruptedException e) {
+            LOGGER.error(e.getMessage(), e);
+            MgsDetailsLogException detailsLogException = new MgsDetailsLogException(Messages.CORE.getString("Details_log")); // #1687
+            Thread.currentThread().interrupt();
+            StatusManager.getManager().handle(new Status(IStatus.ERROR, Activator.PLUGIN_ID, Messages.CORE.getString("IndicatorTrendComposite_7"), detailsLogException), StatusManager.SHOW);
+         } catch (InvocationTargetException e) {
+            LOGGER.error(e.getMessage(), e);
+            MgsDetailsLogException detailsLogException = new MgsDetailsLogException(Messages.CORE.getString("Details_log")); // #1687
+            StatusManager.getManager().handle(new Status(IStatus.ERROR, Activator.PLUGIN_ID, Messages.CORE.getString("IndicatorTrendComposite_8"), detailsLogException), StatusManager.SHOW);
+         }
+      });
+   }
+
+   /**
+    * Refresh markers of given indicators.
+    * 
+    * @param newIndicators
+    *           the new indicators
+    */
+   private void refreshMarkers(List<ChartElementModel<Double>> newIndicators) {
+      if (newIndicators != null && !newIndicators.isEmpty()) {
+         chart.refreshMarkers(newIndicators);
+      }
+   }
+
+   /**
+    * Bug fix : this method retrieves the sub curves (thresholds) of previously removed models.
+    * The previously removed sub curves are saved in the backupUpSubCurves map.
+    * 
+    * @param newModels new models to be added to the graph
+    * 
+    */
+   private void restoreSubCurves(List<ChartElementModel<Double>> newModels) {	   
+	   List<ChartElementModel<Double>> subCurves = new ArrayList<>();
+	   if (newModels != null && !newModels.isEmpty()) {
+         for (ChartElementModel<Double> model : newModels) {
+            if (!model.isFlagIsSubCurve()) {
+               Set<ChartElementModel<Double>> listSubCurves = backupUpSubCurves.get(model.getYTitle());
+               if (listSubCurves != null && !listSubCurves.isEmpty()) {
+                  for (ChartElementModel<Double> subCurve : listSubCurves) {
+                	  if (!newModels.contains(subCurve)) { 
+                		  subCurves.add(subCurve);
+                	  }
+                  }
+               }
+            }
+         }
+      }
+      newModels.addAll(subCurves);
+   }
+
+   /**
+    * Retrieve models to be added.
+    * 
+    * @param newModels
+    *           models to be added
+    * @return the list of models to be added
+    */
+   private List<ChartElementModel<Double>> retrieveModelToAdd(
+         List<ChartElementModel<Double>> newModels) {
+      List<ChartElementModel<Double>> added = new ArrayList<>();
+      // to added
+      for (ChartElementModel<Double> indicator : newModels) {
+         ChartElementModel<Double> tmp = getChartElement(indicator.getYTitle(), indicators);
+         if (tmp == null) {
+            if (indicator.getColor() == null) {
+               if (!indicator.isFlagIsSubCurve()) {
+                  indicator.setColor(colorGenerator.getNextColor());
+               } else {
+                  // Need to retrieve color from parent
+                  Color parentColor = retrieveColorFromParent(indicator.getMainTitle(), newModels);
+                  if (parentColor == null) {
+                     throw new IllegalStateException("No parent color found");
+                  }
+                  indicator.setColor(parentColor);
+               }
+            }
+            added.add(indicator);
+            if (indicator.isFlagIsSubCurve()) {
+               // backup sub curve
+               Set<ChartElementModel<Double>> listSubCurves = backupUpSubCurves.get(indicator.getMainTitle());
+               if (listSubCurves == null) {
+                  listSubCurves = new HashSet<>();
+               }
+               listSubCurves.add(indicator);
+               backupUpSubCurves.put(indicator.getMainTitle(), listSubCurves);
+            }
+         } else {
+            indicator.setColor(tmp.getColor());
+         }
+      }
+      return added;
+   }
+
+   /**
+    * Retrieve models to be removed.
+    * 
+    * @param newModels
+    *           models to be added
+    * @return the list of models to be removed
+    */
+   private List<ChartElementModel<Double>> retrieveModelToRemove(List<ChartElementModel<Double>> newModels) {
+      List<ChartElementModel<Double>> removed = new ArrayList<>();
+      // to be removed
+      if (indicators != null) {
+         for (ChartElementModel<Double> indicator : indicators) {
+            ChartElementModel<Double> tmp = getChartElement(indicator.getYTitle(), newModels);
+            if (tmp == null) {
+               removed.add(indicator);
+               if (!indicator.isFlagIsSubCurve()) {
+                  // Mark the color user by indicator as available
+                  colorGenerator.addColor(indicator.getColor());
+               } else {
+                  // remove sub curves from backup
+                  backupUpSubCurves.remove(indicator.getYTitle());
+               }
+            } else {
+               // Mark the color user by indicator as used
+               if (!indicator.isFlagIsSubCurve()) {
+                  colorGenerator.removeColor(indicator.getColor());
+               }
+            }
+         }
+      }
+      return removed;
+   }
+
+   /**
+    * Search for ChartElementModel contained in the list with the name.
+    * 
+    * @param name
+    *           the name searched
+    * @param list
+    *           the list of ChartElementModel
+    * @return ChartElementModel is found, null other whise
+    */
+   private static ChartElementModel<Double> getChartElement(String name, List<ChartElementModel<Double>> list) {
+      ChartElementModel<Double> result = null;
+      if (list != null && name != null) {
+         for (ChartElementModel<Double> chartElementModel : list) {
+            if (name.equals(chartElementModel.getYTitle())) {
+               result = chartElementModel;
+               break;
+            }
+         }
+      }
+      return result;
+   }
+
+   /**
+    * Retrieve color form the indicator of the list who has the name.
+    * 
+    * @param pTitle
+    *           to search
+    * @param chartElementModels
+    *           to search inside
+    * @return the color found or null
+    */
+   private Color retrieveColorFromParent(String pTitle, List<ChartElementModel<Double>> chartElementModels) {
+      for (ChartElementModel<Double> chartElementModel : chartElementModels) {
+         if (!chartElementModel.isFlagIsSubCurve() && chartElementModel.getYTitle().equals(pTitle)) {
+            return chartElementModel.getColor();
+         }
+      }
+      return null;
+   }
+
+   /**
+    * * Create the chart with data <strong>To be called in AWT thread !</strong>.
+    * 
+    * @param flightModels
+    * 
+    * @param model
+    *           model
+    * @throws ChartException
+    *            the chart exception
+    */
+   private void createChart(List<FlightModel> flightModels, ChartElementModel<Double> model) {
+      MainChartConfig<Double> config = chartFactory.getMainChartConfigDouble(ChartType.XYCHART, true);
+      // Create flightBackGround
+      Map<FlightModel, Duration> fhAtBeginningOfFlight = new HashMap<>();
+      Map<FlightModel, Duration> fhAtEndingOfFlight = new HashMap<>();
+      for (FlightModel healthFlightModel : flightModels) {
+         fhAtBeginningOfFlight.put(healthFlightModel, healthFlightModel.getBeginningOfFlightForDisplay(chartParameter.isGroundAcquisitionMode()));
+         fhAtEndingOfFlight.put(healthFlightModel, healthFlightModel.getEndOfFlightForDisplay(chartParameter.isGroundAcquisitionMode()));
+      }
+      config.setFlightBackGroundDataModelList(chartFactory.createFlightBackGroundFlightHours(flightModels, fhAtBeginningOfFlight, fhAtEndingOfFlight));
+
+      config.setVerticalCursorFlightHours(true);
+
+      chart = chartFactory.getMainChart(model, config);
+
+      indicatorTrendMarkerHandler = new IndicatorTrendMarkerHandler(view.getNodeModel(), chart, chartParameter, flightModels);
+      chart.getMainChartPanel().setRightClickMouseListener(indicatorTrendMarkerHandler);
+      toolTipListener = new ToolTipListener(config);
+      toolTipListener.setSelectedContextualData(selectedContextualData);
+      chart.addChartTooltipListener(toolTipListener);
+      chartElementRemovedListener = new ChartElementRemovedListener<>() {
+         @Override
+         public void chartRemoved(ChartElementModel<Double> chartElementRemoved) {
+            if (showFdcrData && chartElementRemoved.getyTitleUninternationalized() != null) {
+               fdcrSelectComposite.removeSelectedFdcrParameter(chartElementRemoved.getyTitleUninternationalized());
+            }
+            indicators.remove(chartElementRemoved);
+            removeSelectionIfNecessary(chartElementRemoved);
+            uncheckIndicator(chartElementRemoved);
+         }
+
+         @Override
+         public void chartRemovedAll() {
+            if (indicators != null && !indicators.isEmpty()) {
+               for (ChartElementModel<Double> chartElementModel : indicators) {
+                  uncheckIndicator(chartElementModel);
+               }
+               indicators.clear();
+            }
+            view.unselectSample();
+         }
+      };
+      chart.addChartElementRemoveListener(chartElementRemovedListener);
+
+      chartElementAddedListener = chartElementAdded -> {
+         if (chart.getNumberMasterCurveDisplay() > 1) {
+            getDisplay().asyncExec(() -> {
+               if (!isDisposed()) {
+                  btnShowLocationBar.setSelection(true);
+                  // Configure chart axis
+                  if (chart != null) {
+                     chart.setYAxisVisible(btnShowYAxis.getSelection());
+                     chart.setLocationBarsVisible(btnShowLocationBar.getSelection());
+                  }
+               }
+            });
+         }
+      };
+      chart.addChartElementAddedListener(chartElementAddedListener);
+
+      chartElementSelectedListener = (pointSelected, chartElementSelected) -> {
+         Object data = chartElementSelected.getData();
+         if (data instanceof IndicatorChartModelData indicatorChartModelData) {
+            indicatorChartModelData.setColor(chartElementSelected
+                  .getColor());
+            view.selectSample(indicatorChartModelData, pointSelected.x);
+         } else {
+            view.unselectSample();
+         }
+      };
+      chart.addChartElementSelectedListener(chartElementSelectedListener);
+
+      // add an event listener to manage the selection of the learned threshold curves
+      curveClickListener = new ChartPlotClickedOnCurveListener<>() {
+         @Override
+         public void clickedOnCurve(final ChartElementModel<Double> chartElement, final String s,
+               final String s1) {
+            final BundleContext healthBundleContext = FrameworkUtil.getBundle(IHealthCommonBusiness.class).getBundleContext();
+            final IHealthCommonBusiness healthBusiness = healthBundleContext.getService(healthBundleContext.getServiceReference(IHealthCommonBusiness.class));
+            final Display defaultDisplay = Display.getDefault();
+            if (chartElement.getData() == null) {
+               return;
+            }
+            Runnable threadLearning = new Runnable() {
+               @Override
+               public void run() {
+                  LOGGER.debug("Starting threshold learning."); //$NON-NLS-1$
+                  try {
+                     // create the threshold learning dialog window
+                     ThresholdLearningData thresholdLearningData = (ThresholdLearningData) chartElement.getData();
+                     final ThresholdLearningDialog dialog = new ThresholdLearningDialog(thresholdLearningData.getLearningTime());
+                     if (dialog.open() == Window.OK) {
+                        synchronized (this) {
+                           // get the learned threshold
+                           List<String> learnedThresholdIds = new ArrayList<>(thresholdLearningData.getThresholdIds());
+                           // create the threshold learning requests
+                           String learningReason = dialog.getModel().getLearningReason();
+                           long historyLearningTime = dialog.getModel().getHistoryLearningTime();
+                           final User currentUser = MgsSession.getInstance().getUser();
+                           final Aircraft aircraft = MgsSession.getInstance().getAircraft();
+                           healthBusiness.createRelearnThresholdRequests(aircraft.getId(), learnedThresholdIds, historyLearningTime, learningReason, currentUser.getLoginName());
+                        }
+                        MgsEventManager.getInstance().publishEvent(null, new LearningThresholdUpdated());
+                     }
+                  } catch (AircraftConcurrentAccessException e) {
+                     StatusManager.getManager().handle(AircraftExceptionHandler.getStatusForAircraftException(e, "relearn", Activator.PLUGIN_ID), StatusManager.BLOCK);
+                  } catch (AircraftFrozenException e) {
+                     StatusManager.getManager().handle(new GenericStatus(IStatus.ERROR, Activator.PLUGIN_ID, Messages.CORE.getString("relearn.aborted.aircraftFrozen"), e), StatusManager.BLOCK); //$NON-NLS-1$
+                  } catch (ServiceException e) {
+                     StatusManager.getManager().handle(new GenericStatus(IStatus.ERROR, Activator.PLUGIN_ID, Messages.CORE.getString("relearn.aborted"), e), StatusManager.BLOCK); //$NON-NLS-1$
+                  }
+                  LOGGER.debug("Ending threshold learning."); //$NON-NLS-1$
+               }
+            };
+            defaultDisplay.asyncExec(threadLearning);
+         }
+      };
+      chart.addChartPlotClickedOnCurveListener(curveClickListener);
+
+      // add an event listener to select in the flight list the displayed fight in the chart background
+      flightBackgroundChangeListener = flightId -> {
+         final BundleContext flightBundleContext = FrameworkUtil.getBundle(IFlightBusiness.class).getBundleContext();
+         final IFlightBusiness flightBusiness = flightBundleContext.getService(flightBundleContext.getServiceReference(IFlightBusiness.class));
+         final Flight flight = flightBusiness.getFlight(flightId, MgsSession.getInstance().isConnected());
+
+         Runnable backgroundChangeThread = () -> {
+            // initialize the event to send
+            MgsSession.getInstance().setFlight(flight);
+            // publish to event to select the flight in the flight list
+            MgsEventManager.getInstance().publishEvent(null, new FlightSelectionEvent(
+                  flight));
+         };
+         Display.getDefault().asyncExec(backgroundChangeThread);
+      };
+      chart.addFlightBackgroundChangeListener(flightBackgroundChangeListener);
+      chart.getPlotManager().addDomainAxisChangeListener(domainAxisChangeListener);
+
+      chartFrame.add(chart.getMainPanel());
+      chartFrame.validate();
+   }
+
+   /**
+    * Update the trend display.
+    * 
+    * <br />
+    * <strong>To be called in AWT thread !</strong>
+    * 
+    * @param flightModels
+    * 
+    * @param added
+    *           the list of indicators to be added to the display.
+    * @param removed
+    *           the list of indicators to be removed from the display.
+    * @throws ChartException
+    *            the chart exception
+    */
+   private void updateChart(List<FlightModel> flightModels, final List<ChartElementModel<Double>> added, final List<ChartElementModel<Double>> removed) {
+      for (ChartElementModel<Double> model : added) {
+         try {
+            if (chart == null) {
+               // first time
+               createChart(flightModels, model);
+            } else {
+               if (!model.isFlagIsSubCurve()) {
+                  chart.addCurve(model);
+               } else {
+                  chart.addSubCurve(model.getMainTitle(), model);
+               }
+            }
+         } catch (ChartException e) {
+            LOGGER.warn(e.getMessage(), e);
+            throw new UnhandledException(e);
+         }
+      }
+
+      refreshMarkers();
+
+      //
+      for (ChartElementModel<Double> model : removed) {
+         removeSelectionIfNecessary(model);
+         chart.removeCurve(model.getYTitle());
+      }
+   }
+
+   /**
+    * Show the indicator success rate.
+    * 
+    * @param show
+    *           <code>true</code> to show it, <code>false</code> to hide it.
+    */
+   private void showSuccessRate(final boolean show) {
+      if (chart != null) {
+         try {
+            SwingUtilities.invokeAndWait(() -> {
+               try {
+                  if (successRateModel != null) {
+                     if (show) {
+                        chart.addCurve(successRateModel);
+                     } else {
+                        chart.removeCurve(successRateModel.getYTitle());
+                     }
+                  }
+               } catch (ChartException e) {
+                  LOGGER.error(e.getMessage(), e);
+                  throw new UnhandledException(e);
+               }
+            });
+         } catch (InterruptedException e) {
+            LOGGER.error(e.getMessage(), e);
+            MgsDetailsLogException detailsLogException = new MgsDetailsLogException(Messages.CORE.getString("Details_log")); // #1687
+            Thread.currentThread().interrupt();
+            StatusManager.getManager().handle(new Status(IStatus.ERROR, Activator.PLUGIN_ID, Messages.CORE.getString("IndicatorTrendComposite_4"), detailsLogException), StatusManager.SHOW);
+         } catch (InvocationTargetException e) {
+            LOGGER.error(e.getMessage(), e);
+            MgsDetailsLogException detailsLogException = new MgsDetailsLogException(Messages.CORE.getString("Details_log")); // #1687
+            StatusManager.getManager().handle(new Status(IStatus.ERROR, Activator.PLUGIN_ID, Messages.CORE.getString("IndicatorTrendComposite_5"), detailsLogException), StatusManager.SHOW);
+         }
+      }
+   }
+
+   /**
+    * Sets the deselect all indicators action.
+    * 
+    * @param deselectAllIndicatorNodesAction
+    *           the action.
+    */
+   public void setDeselectAllIndicatorNodesAction(DeselectAllIndicatorNodesAction deselectAllIndicatorNodesAction) {
+      if (deselectAllIndicatorNodesAction != null) {
+         IObservableValue<Boolean> deselectAllIndicatorNodesActionEnabledObserveValue = JFaceProperties
+               .<DeselectAllIndicatorNodesAction, Boolean> value(DeselectAllIndicatorNodesAction.class, IAction.ENABLED, IAction.ENABLED)
+               .observe(deselectAllIndicatorNodesAction);
+         IObservableValue<Boolean> btnRemoveAllObserveEnabledObserveWidget = WidgetProperties.enabled().observe(btnRemoveAll);
+         IObservableValue<Boolean> btnZoomOutObserveEnabledObserveWidget = WidgetProperties.enabled().observe(btnZoomOut);
+
+         if (fdcrDataAvailable) {
+            IObservableValue<Boolean> btnSelectFdcrDataObserveEnabledObserveWidget = WidgetProperties.enabled().observe(btnSelectFdcrData);
+            IObservableValue<Boolean> btnDisplayFdcrDataObserveEnabledObserveWidget = WidgetProperties.enabled().observe(btnDisplayFdcrData);
+            if (deselectAllBinding3 != null) {
+               deselectAllBinding3.dispose();
+            }
+            if (deselectAllBinding4 != null) {
+               deselectAllBinding4.dispose();
+            }
+            deselectAllBinding3 = bindingContext.bindValue(btnSelectFdcrDataObserveEnabledObserveWidget,
+                  deselectAllIndicatorNodesActionEnabledObserveValue);
+            deselectAllBinding4 = bindingContext.bindValue(btnDisplayFdcrDataObserveEnabledObserveWidget,
+                  deselectAllIndicatorNodesActionEnabledObserveValue);
+         }
+
+         if (deselectAllBinding != null) {
+            deselectAllBinding.dispose();
+         }
+         if (deselectAllBinding2 != null) {
+            deselectAllBinding2.dispose();
+         }
+
+         deselectAllBinding = bindingContext.bindValue(btnRemoveAllObserveEnabledObserveWidget,
+               deselectAllIndicatorNodesActionEnabledObserveValue, null, null);
+         deselectAllBinding2 = bindingContext.bindValue(btnZoomOutObserveEnabledObserveWidget,
+               deselectAllIndicatorNodesActionEnabledObserveValue, null, null);
+
+         if (fdcrDataAvailable && !deselectAllIndicatorNodesAction.isEnabled()) {
+            clearFdcrData();
+         }
+      }
+
+      this.deselectAllIndicatorNodesAction = deselectAllIndicatorNodesAction;
+   }
+
+   @Override
+   public void dispose() {
+      bindingContext.dispose();
+      toolkit.dispose();
+      eventManager.unregisterEventListener(this);
+      if (this.deselectAllIndicatorNodesAction != null) {
+         this.deselectAllIndicatorNodesAction.dispose();
+      }
+      if (this.chart != null) {
+         chart.getPlotManager().removeDomainAxisChangeListener(domainAxisChangeListener);
+         chart.removeFlightBackgroundChangeListener(flightBackgroundChangeListener);
+         chart.removeChartPlotClickedOnCurveListener(curveClickListener);
+         chart.removeChartElementAddedListener(chartElementAddedListener);
+         chart.removeChartElementSelectedistener(chartElementSelectedListener);
+         chart.removeChartElementRemoveListener(chartElementRemovedListener);
+         chart.removeChartTooltipListener(toolTipListener);
+         chart.getMainChartPanel().setRightClickMouseListener(null);
+
+         this.chart.getMainChartPanel().dispose();
+         this.chart.getPlotManager().dispose();
+
+         this.chart = null;
+      }
+   }
+
+   /**
+    * Gets the trend display title.
+    * 
+    * @return the title.
+    */
+   @Override
+   public String getTitle() {
+      return title;
+   }
+
+   /**
+    * Sets the trend display title.
+    * 
+    * @param name
+    *           the title.
+    */
+   public void setTitle(String name) {
+      title = name;
+   }
+
+   /**
+    * 
+    * {@inheritDoc}
+    * 
+    * @see com.eurocopter.mgs.health.presentation.composite.IIndicatorComposite#getPngChartFile()
+    */
+   @Override
+   public File getPngChartFile() throws IOException {
+      File result = null;
+      if (chart != null) {
+         result = chart.getMainChartPanel().getPngChartFile();
+      }
+      return result;
+   }
+
+   /**
+    * {@inheritDoc}
+    * 
+    * @see com.eurocopter.mgs.core.presentation.event.MgsEventListener# onEvent(com.eurocopter.mgs.core.presentation.event.MgsEvent)
+    */
+   @Override
+   public void onEvent(MgsEvent event) {
+      if (event.getEventType() == MgsEventType.LEARNING_THRESHOLD_REFRESHED) {
+         HealthIndicatorManager.launchUpdateIndicatorChartJob(view.getNodeModel(), view, view.getNodeModel());
+      }
+   }
+
+   public void removeAll() {
+      if (!isDisposed()) {
+         try {
+            List<ChartElementModel<Double>> newIndicators = new ArrayList<>();
+
+            // compute indicator chart to be removed here
+            final List<ChartElementModel<Double>> removed = retrieveModelToRemove(newIndicators);
+            final List<ChartElementModel<Double>> added = retrieveModelToAdd(newIndicators);
+
+            // call the chart component to update
+            SwingUtilities.invokeAndWait(new Runnable() {
+               /**
+                * {@inheritDoc}
+                * 
+                * @see java.lang.Runnable#run()
+                */
+               @Override
+               public void run() {
+                  if (!added.isEmpty() || !removed.isEmpty()) {
+                     chart.removeAllCurves();
+                  }
+               }
+            });
+
+            // store indicators model
+            indicators = newIndicators;
+            successRateModel = null;
+         } catch (InterruptedException e) {
+            LOGGER.error(e.getMessage(), e);
+            MgsDetailsLogException detailsLogException = new MgsDetailsLogException(Messages.CORE.getString("Details_log")); // #1687
+            Thread.currentThread().interrupt();
+            StatusManager.getManager().handle(new Status(IStatus.ERROR, Activator.PLUGIN_ID, Messages.CORE.getString("IndicatorTrendComposite_7"), detailsLogException), StatusManager.SHOW);
+         } catch (InvocationTargetException e) {
+            LOGGER.error(e.getMessage(), e);
+            MgsDetailsLogException detailsLogException = new MgsDetailsLogException(Messages.CORE.getString("Details_log")); // #1687
+            StatusManager.getManager().handle(new Status(IStatus.ERROR, Activator.PLUGIN_ID, Messages.CORE.getString("IndicatorTrendComposite_8"), detailsLogException), StatusManager.SHOW);
+         }
+      }
+   }
+
+   public void refreshMarkers() {
+      if (indicatorTrendMarkerHandler != null) {
+         indicatorTrendMarkerHandler.removeAllMarkersChart();
+         indicatorTrendMarkerHandler.fillIndicatorMarkers();
+         chart.displayMarker();
+      }
+   }
+
+   private void initContextualParameters() {
+      final BundleContext aircraftBundleContext = FrameworkUtil.getBundle(IAircraftBusiness.class).getBundleContext();
+      final IAircraftBusiness aircraftBusiness = aircraftBundleContext.getService(aircraftBundleContext.getServiceReference(IAircraftBusiness.class));
+      Aircraft aircraft = MgsSession.getInstance().getAircraft();
+      String healthVersion;
+      try {
+         healthVersion = aircraftBusiness.getHealthVersion(aircraft);
+      } catch (EntityNotFoundException e) {
+         throw new RuntimeException(e);
+      }
+      final BundleContext healthBundleContext = FrameworkUtil.getBundle(IHealthSignalBusiness.class).getBundleContext();
+      IHealthSignalBusiness healthSignalBusiness = healthBundleContext.getService(healthBundleContext.getServiceReference(IHealthSignalBusiness.class));
+      contextualParameters = healthSignalBusiness.getContextualParameterByHealthVersion(healthVersion);
+   }
+
+   private void removeSelectionIfNecessary(ChartElementModel<Double> model) {
+      if (model.getData() instanceof IndicatorChartModelData icmd) {
+         IndicatorHmcModel indicator = icmd.getIndicator();
+         IndicatorHmcModel selectedIndicator = view.getSelectFFTSampleAction().getIndicator();
+         if (selectedIndicator != null && selectedIndicator.equals(indicator)) {
+            // The curve with a selected point has been removed, unselect the point
+            view.unselectSample();
+         }
+      }
+   }
+
+   private void uncheckIndicator(ChartElementModel<Double> model) {
+      if (model.getData() instanceof IndicatorChartModelData indicatorChartModelData) {
+         Indicator indicator = indicatorChartModelData.getIndicator().getIndicator();
+         IHealthTreeViewNodeModel node = HealthTreeViewNodeAction.getNodeOf(indicator);
+         if (node instanceof CheckableTreeViewNodeElement) {
+            ((CheckableTreeViewNodeElement) node).setChecked(false);
+            NodeChangeEvent event = new NodeChangeEvent(EventType.UPDATE, node, false);
+            node.notifyListeners(event);
+         }
+      }
+   }
+}
+
+
