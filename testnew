@@ -1,48 +1,147 @@
 
-package com.eurocopter.mgs.presentation.configuration.preferences.pages;
+package com.eurocopter.mgs.health.presentation.composite;
 
-import org.eclipse.jface.preference.FieldEditorPreferencePage;
-import org.eclipse.ui.IWorkbench;
-import org.eclipse.ui.IWorkbenchPreferencePage;
+import java.beans.PropertyChangeListener;
+import java.beans.PropertyChangeSupport;
 
-/**
- * MGS PREFERENCES PAGES : MGS Configuration and User Preferences Settings.
- *
- */
-public abstract class MgsPreferencePage extends FieldEditorPreferencePage implements
-      IWorkbenchPreferencePage {
+import org.eclipse.swt.SWT;
+import org.eclipse.swt.events.SelectionAdapter;
+import org.eclipse.swt.layout.GridData;
+import org.eclipse.swt.layout.GridLayout;
+import org.eclipse.swt.widgets.Button;
+import org.eclipse.swt.widgets.Composite;
+import org.eclipse.swt.widgets.Group;
+import org.eclipse.swt.widgets.Label;
+import org.eclipse.swt.widgets.Text;
 
-   /**
-    *
-    * Default constructor. Builds a MGSPreferencePages.
-    */
-   public MgsPreferencePage() {
-      super();
+import com.eurocopter.mgs.core.presentation.i18n.Messages;
+
+public class LearningPastHoursSelectionComposite extends Composite {
+
+   private PropertyChangeSupport propertyChangeSupport = new PropertyChangeSupport(this);
+
+   // observable value
+   private long selectedTime;
+
+   public LearningPastHoursSelectionComposite(Composite parent, long initValue) {
+      super(parent, SWT.NONE);
+      setLayout(new GridLayout());
+
+      Group root = new Group(this, SWT.NONE);
+      // root.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
+
+      root.setLayoutData(new GridData(SWT.FILL, SWT.TOP, true, false));
+
+      root.setText(Messages.CORE.getString("ThresholdLearningPastHourLabel"));
+      root.setLayout(new GridLayout(2, false));
+
+      final Button zeroButton = new Button(root, SWT.RADIO);
+      zeroButton.setSelection(true);
+      zeroButton.addSelectionListener(new SelectionAdapter() {
+         @Override
+         public void widgetSelected(org.eclipse.swt.events.SelectionEvent e) {
+            setSelectedTime(0L);
+         }
+      });
+      Label zeroTextLabel = new Label(root, SWT.NONE);
+      zeroTextLabel.setText(Messages.CORE.getString("ThresholdLearningNoPastHours"));
+      zeroTextLabel.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, true));
+
+      final Button xButton = new Button(root, SWT.RADIO);
+
+      Composite xLabelComposite = new Composite(root, SWT.NONE);
+      xLabelComposite.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
+      xLabelComposite.setLayout(new GridLayout(2, false));
+      final Text nbHoursInputField = new Text(xLabelComposite, SWT.BORDER | SWT.CENTER);
+      nbHoursInputField.setText(String.valueOf(initValue / 3600000));
+
+      nbHoursInputField.setLayoutData(new GridData(20, -1));
+
+      nbHoursInputField.setEditable(true);
+
+      nbHoursInputField.setTextLimit(3);
+      nbHoursInputField.addListener(SWT.Verify, e -> {
+         String string = e.text;
+         char[] chars = new char[string.length()];
+         string.getChars(0, chars.length, chars, 0);
+         for (char aChar : chars) {
+            if (!('0' <= aChar && aChar <= '9')) {
+               e.doit = false;
+            } else {
+               zeroButton.setSelection(false);
+               xButton.setSelection(true);
+            }
+         }
+      });
+
+      nbHoursInputField.addListener(SWT.Modify, e -> {
+         zeroButton.setSelection(false);
+         xButton.setSelection(true);
+         if (nbHoursInputField.getText().isEmpty()) {
+            setSelectedTime(0L);
+         } else {
+            setSelectedTime(Long.parseLong(nbHoursInputField.getText()) * 3600000);
+         }
+      });
+
+      xButton.addSelectionListener(new SelectionAdapter() {
+         @Override
+         public void widgetSelected(org.eclipse.swt.events.SelectionEvent e) {
+            if (nbHoursInputField.getText().isEmpty()) {
+               setSelectedTime(0L);
+            } else {
+               setSelectedTime(Long.parseLong(nbHoursInputField.getText()) * 3600000);
+            }
+         }
+      });
+
+      xLabelComposite.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
+      // Label xTextLabel = new Label(xLabelComposite, SWT.NONE);
+      // xTextLabel.setText(Messages.CORE.getString("ThresholdLearningLastDownloadedHours"));
+      // xTextLabel.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, true));
+
+      // BCR-6605
+      // Label deviationNote = new Label(this, SWT.WRAP);
+      // deviationNote.setText(Messages.CORE.getString("deviationRelearnNote"));
+      // GridData noteData = new GridData(SWT.FILL, SWT.BEGINNING, true, false);
+      // noteData.widthHint = 420;
+      // deviationNote.setLayoutData(noteData);
+
+      xLabelComposite.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
+      Label xTextLabel = new Label(xLabelComposite, SWT.NONE);
+      xTextLabel.setText(Messages.CORE.getString("ThresholdLearningLastDownloadedHours"));
+      xTextLabel.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, true));
+      Label deviationNote = new Label(this, SWT.WRAP);
+      deviationNote.setText(Messages.CORE.getString("deviationRelearnNote"));
+      GridData noteData = new GridData(SWT.FILL, SWT.BEGINNING, true, false);
+      noteData.widthHint = 420;
+      deviationNote.setLayoutData(noteData);
+
+      this.pack();
    }
 
-   /**
-    *
-    * Default constructor. Builds a MGSPreferencePages.
-    *
-    * @param title
-    *           the title
-    * @param style
-    *           the style
-    */
-   public MgsPreferencePage(String title, int style) {
-      super(title, style);
+   public long getSelectedTime() {
+      return selectedTime;
    }
 
-   @Override
-   protected void createFieldEditors() {
+   public void setSelectedTime(long selectedHours) {
+      long oldValue = getSelectedTime();
+      this.selectedTime = selectedHours;
+      firePropertyChange("selectedTime", oldValue, this.selectedTime);
    }
 
-   @Override
-   public void init(IWorkbench workbench) {
+   public void addPropertyChangeListener(String propertyName, PropertyChangeListener listener) {
+      propertyChangeSupport.addPropertyChangeListener(propertyName, listener);
    }
 
-   @Override
-   public void performDefaults() {
-      super.performDefaults();
+   public void removePropertyChangeListener(String propertyName,
+         PropertyChangeListener listener) {
+      propertyChangeSupport.removePropertyChangeListener(propertyName, listener);
+   }
+
+   private void firePropertyChange(String propertyName,
+         Object oldValue,
+         Object newValue) {
+      propertyChangeSupport.firePropertyChange(propertyName, oldValue, newValue);
    }
 }
