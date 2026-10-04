@@ -1,60 +1,70 @@
 
-package com.eurocopter.mgs.health.presentation.model;
+package com.eurocopter.mgs.health.presentation.dialog;
 
-import java.beans.PropertyChangeListener;
-import java.beans.PropertyChangeSupport;
+import org.eclipse.jface.dialogs.Dialog;
+import org.eclipse.jface.dialogs.IDialogConstants;
+import org.eclipse.swt.SWT;
+import org.eclipse.swt.widgets.Button;
+import org.eclipse.swt.widgets.Composite;
+import org.eclipse.swt.widgets.Control;
+import org.eclipse.swt.widgets.Display;
+
+import com.eurocopter.mgs.core.presentation.i18n.Messages;
+import com.eurocopter.mgs.health.presentation.composite.ThresholdLearningComposite;
+import com.eurocopter.mgs.health.presentation.model.ThresholdLearningModel;
 
 /**
- * Threshold learning model.
+ * Threshold learning dialog window.
  */
-public class ThresholdLearningModel {
+public class ThresholdLearningDialog extends Dialog {
+
+   /** Content composite of the dialog window. */
+   private ThresholdLearningComposite composite;
+
+   /** Threshold learning model. */
+   private final ThresholdLearningModel model;
+
+   private final long defaultHistoryDuration;
 
    /**
-    * Reason of the threshold learning.
+    * Builds a ThresholdLearningDialog.
+    *
+    * @param model
+    *           the threshold learning model
     */
-   private String learningReason = "";
-
-   private final PropertyChangeSupport propertyChangeSupport = new PropertyChangeSupport(this);
-
-   private long historyLearningTime;
-
-   /**
-    * Default constructor. Builds a ThresholdLearningModel.
-    */
-   public ThresholdLearningModel() {
-      super();
+   public ThresholdLearningDialog(long defaultHistoryDuration) {
+      super(Display.getCurrent().getActiveShell());
+      this.model = new ThresholdLearningModel();
+      this.defaultHistoryDuration = defaultHistoryDuration;
    }
 
    /**
     * {@inheritDoc}
     *
-    * @see com.eurocopter.mgs.health.presentation.model.IThresholdLearningModel#getLearningReason()
+    * @see org.eclipse.jface.dialogs.Dialog#createDialogArea(org.eclipse.swt.widgets.Composite)
     */
-   public String getLearningReason() {
-      return learningReason;
+   @Override
+   protected Control createDialogArea(Composite parent) {
+      parent.setBackground(Display.getDefault().getSystemColor(SWT.COLOR_WHITE));
+      parent.setBackgroundMode(SWT.INHERIT_FORCE);
+      composite = new ThresholdLearningComposite(parent, model, defaultHistoryDuration);
+      composite.pack();
+      return composite;
    }
 
    /**
-    * Sets the learningReason.
+    * {@inheritDoc}
     *
-    * @param learningReason
-    *           the learningReason to set.
+    * @see org.eclipse.jface.dialogs.Dialog#createButtonsForButtonBar(org.eclipse.swt.widgets.Composite)
     */
-   public void setLearningReason(String learningReason) {
-      String old = this.learningReason;
-      this.learningReason = learningReason;
-      propertyChangeSupport.firePropertyChange("learningReason", old, this.learningReason);
+   @Override
+   protected void createButtonsForButtonBar(Composite parent) {
+      Button okButton = createButton(parent, IDialogConstants.OK_ID, Messages.CORE.getMnemonicEscapedString("OK"), true);
+      createButton(parent, IDialogConstants.CANCEL_ID, Messages.CORE.getMnemonicEscapedString("Cancel_Button_Label"), false);
+      composite.setLearningThresholdDialogOKButton(okButton);
    }
 
-   public void setHistoryLearningTime(long historyLearningTime) {
-      this.historyLearningTime = historyLearningTime;
-   }
-
-   public long getHistoryLearningTime() {
-      return historyLearningTime;
-   }
-
-   public void addPropertyChangeListener(PropertyChangeListener listener) {
-      propertyChangeSupport.addPropertyChangeListener(listener);
+   public ThresholdLearningModel getModel() {
+      return model;
    }
 }
