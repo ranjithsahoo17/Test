@@ -1,1 +1,438 @@
+package com.eurocopter.mgs.download.analysis.health.impl;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.SortedSet;
+import java.util.TreeSet;
+import java.util.UUID;
+import java.util.regex.Pattern;
+
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
+import com.eurocopter.mgs.datamodel.aircraft.Aircraft;
+import com.eurocopter.mgs.datamodel.alarm.Acknowledgement;
+import com.eurocopter.mgs.datamodel.alarm.AlarmStatus;
+import com.eurocopter.mgs.datamodel.alarm.CloseMonitoredAcknowledgement;
+import com.eurocopter.mgs.datamodel.alarm.CloseMonitoring;
+import com.eurocopter.mgs.datamodel.alarm.Severity;
+import com.eurocopter.mgs.datamodel.flight.Flight;
+import com.eurocopter.mgs.datamodel.flight.FlightIndicatorValue;
+import com.eurocopter.mgs.datamodel.health.common.EngineAcquisition;
+import com.eurocopter.mgs.datamodel.health.common.IndicatorValue;
+import com.eurocopter.mgs.datamodel.health.monitoring.FixedThresholdConfiguration;
+import com.eurocopter.mgs.datamodel.health.monitoring.FlightConfiguration;
+import com.eurocopter.mgs.datamodel.health.monitoring.HealthAlarm;
+import com.eurocopter.mgs.datamodel.health.monitoring.HealthMechanicalComponent;
+import com.eurocopter.mgs.datamodel.health.monitoring.HealthMechanicalComponentConfiguration;
+import com.eurocopter.mgs.datamodel.health.monitoring.HealthMonitoringConfiguration;
+import com.eurocopter.mgs.datamodel.health.monitoring.Indicator;
+import com.eurocopter.mgs.datamodel.health.monitoring.IndicatorConfiguration;
+import com.eurocopter.mgs.datamodel.health.monitoring.IndicatorDeviation;
+import com.eurocopter.mgs.datamodel.health.monitoring.LearnedThresholdConfiguration;
+import com.eurocopter.mgs.datamodel.health.monitoring.RelearnThresholdRequest;
+import com.eurocopter.mgs.datamodel.health.monitoring.RelearnThresholdRequestComparator;
+import com.eurocopter.mgs.datamodel.health.monitoring.ThresholdConfiguration;
+import com.eurocopter.mgs.datamodel.health.monitoring.ThresholdLevel;
+import com.eurocopter.mgs.datamodel.util.PhysicalValue;
+import com.eurocopter.mgs.download.analysis.health.api.IHealthHistoryProvider;
+import com.eurocopter.mgs.download.analysis.health.api.IndicatorValueHolder;
+import com.eurocopter.mgs.download.analysis.health.util.IndicatorValueHolderComparator;
+
+public class RedAmberAlarmAnalyzer {
+   private static final Logger LOGGER = LogManager.getLogger(RedAmberAlarmAnalyzer.class);
+
+   private static final Comparator<IndicatorValueHolder> INDICATOR_VALUE_COMPARATOR = new IndicatorValueHolderComparator();
+
+   /**
+    * Compute red amber alarms.
+    *
+    * @param aircraft
+    *           the aircraft
+    * @param sortedFlights
+    *           the sorted flights
+    * @param currentFlightIndex
+    *           the current flight index
+    * @param defaultNbSuccessiveValues
+    *           the default nb successive values
+    * @param healthConfiguration
+    *           the health configuration
+    * @param flightIndicatorValues
+    *           the flight indicator values
+    */
+   void computeRedAmberAlarms(final Aircraft aircraft, final List<Flight> sortedFlights, final int currentFlightIndex, final int defaultNbSuccessiveValues,
+         IHealthHistoryProvider healthHistoryProvider, final HealthMonitoringConfiguration healthConfiguration,
+         final Map<Indicator, FlightIndicatorValue> flightIndicatorValues) {
+      Map<Indicator, Map<Flight, HealthAlarm>> indicatorAlarms = new HashMap<>(healthHistoryProvider.getExistingHealthAlarms());
+      Map<Indicator, HealthAlarm> latestCloseMonitoredAlarms = healthHistoryProvider.getLatestCloseMonitoredAlarms();
+
+      // BCR-6605 every deviation of this aircraft, applied below when the session date matches
+      Map<String, IndicatorDeviation> deviations = healthHistoryProvider.getDeviations();
+
+      // Compute RED/AMBER alarms
+      for (final HealthMechanicalComponent healthMechanicalComponent : aircraft.getHealthComponents()) {
+         if (healthMechanicalComponent.isActive()) {
+            final HealthMechanicalComponentConfiguration hmcc = healthConfiguration.getMechanicalComponentConfigurations().get(healthMechanicalComponent);
+            if (hmcc != null) {
+               for (final Indicator indicator : healthMechanicalComponent.getIndicators().values()) {
+                  if (indicator.isActive()) {
+                     final IndicatorConfiguration indicatorConfiguration = hmcc.getIndicatorConfigurations().get(indicator);
+                     if (indicatorConfiguration != null) {
+                        final FlightIndicatorValue flightIndicatorValue = flightIndicatorValues.get(indicator);
+                        if (flightIndicatorValue != null && !flightIndicatorValue.getValues().isEmpty()) {
+                           int maxNbSuccessivePoints = getMaxNumberSuccessivePoints(defaultNbSuccessiveValues, indicatorConfiguration);
+
+                           // Grab values before and after for this indicator
+                           final Map<IndicatorValueHolder, Flight> indicatorValuesFlight = new HashMap<>();
+                           final List<IndicatorValueHolder> computationValues = new ArrayList<>();
+
+                           // First, values before current flight
+                           for (int i = currentFlightIndex - 1; i >= 0 && computationValues.size() < maxNbSuccessivePoints; i--) {
+                              Set<IndicatorValueHolder> indicatorValues = healthHistoryProvider.getIndicatorValues(sortedFlights.get(i), indicator);
+                              for (final IndicatorValueHolder value : indicatorValues) {
+                                 indicatorValuesFlight.put(value, sortedFlights.get(i));
+                              }
+                              computationValues.addAll(indicatorValues);
+                           }
+
+                           final int currentFlightStartIndex = computationValues.size();
+
+                           // Then, values for current flight
+                           final Flight currentFlight = sortedFlights.get(currentFlightIndex);
+                           for (IndicatorValue indicatorValue : flightIndicatorValue.getValues()) {
+                              IndicatorValueHolder indicatorValueHolder = new IndicatorValueAdapter(indicator, indicatorValue);
+                              indicatorValuesFlight.put(indicatorValueHolder, currentFlight);
+                              computationValues.add(indicatorValueHolder);
+                           }
+
+                           final int currentFlightEndIndex = computationValues.size() - 1;
+
+                           // Finally, values after current flight
+                           int valuesCount = 0;
+                           for (int i = currentFlightIndex + 1; i < sortedFlights.size() && valuesCount < maxNbSuccessivePoints; i++) {
+                              Set<IndicatorValueHolder> indicatorValues = healthHistoryProvider.getIndicatorValues(sortedFlights.get(i), indicator);
+                              for (final IndicatorValueHolder value : indicatorValues) {
+                                 indicatorValuesFlight.put(value, sortedFlights.get(i));
+                              }
+                              computationValues.addAll(indicatorValues);
+                              valuesCount += indicatorValues.size();
+                           }
+
+                           computationValues.sort(INDICATOR_VALUE_COMPARATOR);
+
+                           for (final ThresholdConfiguration thresholdConfiguration : indicatorConfiguration.getThresholdConfigurations()) {
+
+                              // BCR-6605 which deviation, if any, governs this threshold for this session
+                              final IndicatorDeviation deviation = getApplicableDeviation(deviations, indicator,
+                                    thresholdConfiguration.getThreshold().getSeverity(), currentFlight);
+
+                              // BCR-6605 the work card stamped on any alarm raised below
+                              String workcard = thresholdConfiguration.getWorkcard();
+                              if (deviation != null && deviation.getWorkcard() != null) {
+                                 workcard = deviation.getWorkcard();
+                              }
+
+                              Integer nbSuccessiveValues = thresholdConfiguration.getNbSuccessivePoints();
+                              if (deviation != null && deviation.getNbSuccessivePoints() != null) {
+                                 // BCR-6605 the deviated number of successive points
+                                 nbSuccessiveValues = deviation.getNbSuccessivePoints();
+                              }
+                              if (nbSuccessiveValues == null) {
+                                 nbSuccessiveValues = defaultNbSuccessiveValues;
+                              }
+                              if (nbSuccessiveValues == 0) {
+                                 // Dumb configuration with 0 successive points shall behave as if 1 successive point was configured
+                                 nbSuccessiveValues = 1;
+                              }
+                              if (computationValues.size() >= nbSuccessiveValues) {
+
+                                 // BCR-6605 the deviated level decides the direction of the comparison
+                                 ThresholdLevel level = thresholdConfiguration.getThresholdLevel();
+                                 if (deviation != null && deviation.getThresholdLevel() != null) {
+                                    level = ThresholdLevel.valueOf(deviation.getThresholdLevel());
+                                 }
+                                 int signum = (level == ThresholdLevel.HIGH) ? 1 : -1;
+
+                                 final double thresholdValue;
+                                 if (deviation != null && deviation.getThresholdValue() != null) {
+                                    // BCR-6605 an approved deviation replaces the configured value for this session
+                                    thresholdValue = deviation.getThresholdValue();
+                                 } else if (thresholdConfiguration instanceof FixedThresholdConfiguration) {
+                                    thresholdValue = thresholdConfiguration.getValue();
+                                 } else if (thresholdConfiguration instanceof LearnedThresholdConfiguration) {
+                                    // Search applicable threshold value wrt relearning requests
+                                    RelearnThresholdRequest relearnRequest = getApplicableRelearnRequest(currentFlight, thresholdConfiguration);
+
+                                    if (relearnRequest != null) {
+                                       thresholdValue = relearnRequest.getLearnedValue();
+                                    } else {
+                                       final Double defaultValue = thresholdConfiguration.getValue();
+                                       if (defaultValue != null) {
+                                          thresholdValue = defaultValue;
+                                       } else {
+                                          // No default value defined for threshold in relearning mode
+                                          // --> Skip this threshold
+                                          LOGGER.info("Skipping learning threshold '{}': no default value defined", thresholdConfiguration.getThreshold().getFunctionalId());
+                                          continue;
+                                       }
+                                    }
+                                 } else {
+                                    throw new IllegalStateException();
+                                 }
+
+                                 int nbValuesAboveThreshold = 0;
+
+                                 // Map between flight and indicator values that generate an alarm
+                                 final Map<Flight, IndicatorValueHolder> alarmIndicatorValues = new HashMap<>();
+
+                                 // Take only nbSuccessiveValues - 1 values before and after current flight
+                                 // --> avoid to raise unexpected alarms on other flights
+                                 final int startIndex = Math.max(0, currentFlightStartIndex - (nbSuccessiveValues - 1));
+                                 final int endIndex = Math.min(computationValues.size() - 1, currentFlightEndIndex + (nbSuccessiveValues - 1));
+
+                                 for (int i = startIndex; i <= endIndex; i++) {
+                                    final IndicatorValueHolder indicatorValue = computationValues.get(i);
+
+                                    // check if the indicator value is above/below the threshold
+                                    if (indicatorValue.getValue() * signum > thresholdValue * signum) {
+                                       nbValuesAboveThreshold++;
+                                       if (nbValuesAboveThreshold >= nbSuccessiveValues) {
+                                          final Flight alarmFlight = indicatorValuesFlight.get(indicatorValue);
+                                          if (!filterPowerUpAlarm(hmcc.getFlightConfiguration(), alarmFlight, thresholdConfiguration)
+                                                && !alarmIndicatorValues.containsKey(alarmFlight)) {
+                                             alarmIndicatorValues.put(alarmFlight, indicatorValue);
+                                          }
+                                       }
+                                    } else {
+                                       nbValuesAboveThreshold = 0;
+                                    }
+                                 }
+
+                                 for (final Map.Entry<Flight, IndicatorValueHolder> entry : alarmIndicatorValues.entrySet()) {
+                                    final Flight alarmFlight = entry.getKey();
+                                    final IndicatorValueHolder indicatorValue = entry.getValue();
+
+                                    final Map<Flight, HealthAlarm> alarmMap = indicatorAlarms.get(indicator);
+                                    final HealthAlarm previousAlarm;
+                                    if (alarmMap == null || !alarmMap.containsKey(alarmFlight)) {
+                                       // No previous alarm
+                                       previousAlarm = new HealthAlarm(UUID.randomUUID().toString());
+                                       previousAlarm.setSeverity(thresholdConfiguration.getThreshold().getSeverity());
+                                       previousAlarm.setHealthMechanicalComponent(healthMechanicalComponent);
+                                       previousAlarm.setDate(indicatorValue.getDate());
+                                       previousAlarm.setCumulatedFlightTime(indicatorValue.getCumulatedFlightTime());
+                                       previousAlarm.setIndicator(indicator);
+                                       // BCR-6605 the deviated work card when the deviation changed it
+                                       previousAlarm.setWorkcardReference(workcard);
+                                       final String alarmShortDescription = computeAlarmShortDescription(indicator, healthMechanicalComponent);
+                                       previousAlarm.setShortDescription(alarmShortDescription);
+                                       final String alarmLongDescription = computeAlarmLongDescription(indicator, healthMechanicalComponent, alarmShortDescription);
+                                       previousAlarm.setLongDescription(alarmLongDescription);
+                                       alarmFlight.getAlarms().add(previousAlarm);
+                                       if (alarmMap == null) {
+                                          indicatorAlarms.put(indicator, new HashMap<>());
+                                       }
+                                       indicatorAlarms.get(indicator).put(alarmFlight, previousAlarm);
+                                    } else {
+                                       previousAlarm = alarmMap.get(alarmFlight);
+                                       if (previousAlarm.getSeverity() == Severity.AMBER && thresholdConfiguration.getThreshold().getSeverity() == Severity.RED) {
+                                          // Previous alarm is amber
+                                          previousAlarm.setSeverity(Severity.RED);
+                                          previousAlarm.setDate(indicatorValue.getDate());
+                                          previousAlarm.setCumulatedFlightTime(indicatorValue.getCumulatedFlightTime());
+                                          // BCR-6605 the deviated work card when the deviation changed it
+                                          previousAlarm.setWorkcardReference(workcard);
+                                       } else {
+                                          // Previous alarm is with red severity and not Ack status (alarms with Ack status are excluded), so no need to create a new one
+                                       }
+                                    }
+                                    // SRS_UC_HEA_0111 §7.2.1 : close monitoring management :
+                                    final HealthAlarm closeMonitoredAlarm = latestCloseMonitoredAlarms.get(previousAlarm.getIndicator());
+                                    if (closeMonitoredAlarm != null) {
+                                       if (sortedFlights.get(currentFlightIndex).getAlarms().contains(previousAlarm)) {
+                                          // It is a new downloaded alarm that has previously been close monitored
+                                          previousAlarm.setCloseMonitoringStatus(CloseMonitoring.ALREADY_CLOSE_MONITORED);
+                                          final Acknowledgement acknowledgement = closeMonitoredAlarm.getAcknowledgement();
+                                          if (acknowledgement instanceof CloseMonitoredAcknowledgement) {
+                                             CloseMonitoredAcknowledgement newAck = new CloseMonitoredAcknowledgement(UUID.randomUUID().toString());
+                                             newAck.setDate(acknowledgement.getDate());
+                                             newAck.setCloseMonitoringDuration(((CloseMonitoredAcknowledgement) acknowledgement).getCloseMonitoringDuration());
+                                             newAck.setFlightHoursAtBeginning(((CloseMonitoredAcknowledgement) acknowledgement).getFlightHoursAtBeginning());
+                                             newAck.setRemainingDuration(((CloseMonitoredAcknowledgement) acknowledgement).getRemainingDuration());
+                                             newAck.setDescription(acknowledgement.getDescription());
+                                             previousAlarm.setAcknowledgement(newAck);
+                                          }
+                                          previousAlarm.setAlarmStatus(AlarmStatus.CLOSEMONITORED);
+                                       } else if (previousAlarm.getCloseMonitoringStatus() == CloseMonitoring.ALREADY_CLOSE_MONITORED) {
+                                          previousAlarm.setCloseMonitoringStatus(null);
+                                       }
+                                    }
+                                 }
+                              }
+                           }
+                        }
+                     }
+                  }
+               }
+            }
+         }
+      }
+      LOGGER.info("Red amber [End health alarm computing]");
+   }
+
+   /**
+    * BCR-6605 the deviation that governs this threshold for this session, or null.
+    *
+    * A deviation applies when it started on or before the session's data date, and is either still
+    * open or was closed on or after it. The date used is the session's own data date, never the
+    * download date: a flight offloaded weeks later must still be judged against the deviation that
+    * was in force when it was flown.
+    *
+    * @param deviations
+    *           every deviation of the aircraft, keyed by indicator id and severity
+    * @param indicator
+    *           the indicator being analyzed
+    * @param severity
+    *           the severity of the threshold being analyzed
+    * @param currentFlight
+    *           the session being analyzed
+    * @return the applicable deviation, or null when the configuration applies
+    */
+   private IndicatorDeviation getApplicableDeviation(final Map<String, IndicatorDeviation> deviations,
+         final Indicator indicator, final Severity severity, final Flight currentFlight) {
+      if (deviations == null || deviations.isEmpty()) {
+         return null;
+      }
+      final IndicatorDeviation deviation = deviations.get(indicator.getId() + "|" + severity.name());
+      if (deviation == null) {
+         return null;
+      }
+
+      final Date sessionDate = currentFlight.getHealthStartDate() != null
+            ? currentFlight.getHealthStartDate()
+            : currentFlight.getUsageStartDate();
+      if (sessionDate == null) {
+         // Nothing to compare against, so the configuration applies
+         return null;
+      }
+
+      if (deviation.getStartDate() == null || deviation.getStartDate().after(sessionDate)) {
+         // The session predates the deviation
+         return null;
+      }
+      if (deviation.getEndDate() != null && deviation.getEndDate().before(sessionDate)) {
+         // The deviation was already closed when this session was flown
+         return null;
+      }
+      return deviation;
+   }
+
+   private boolean filterPowerUpAlarm(FlightConfiguration flightConfiguration, Flight flight, ThresholdConfiguration thresholdConfiguration) {
+      // for EVM Power-Up, alarms will be filtered if the oil engine temperature is lower than the specified threshold
+      if (FlightConfiguration.POWER_UP == flightConfiguration && thresholdConfiguration.getMinimumEngineOilTemperature() != null) {
+         for (EngineAcquisition engineAcquisition : flight.getEngineAcquisition()) {
+            PhysicalValue oilTemperature = engineAcquisition.getOilTemperature();
+            if (oilTemperature != null && oilTemperature.getValue() < thresholdConfiguration.getMinimumEngineOilTemperature()) {
+               return true;
+            }
+         }
+      }
+      return false;
+   }
+
+   private RelearnThresholdRequest getApplicableRelearnRequest(final Flight currentFlight, final ThresholdConfiguration thresholdConfiguration) {
+      SortedSet<RelearnThresholdRequest> sortedRequests = new TreeSet<>(Collections.reverseOrder(new RelearnThresholdRequestComparator()));
+      sortedRequests.addAll(((LearnedThresholdConfiguration) thresholdConfiguration).getRelearnRequests());
+
+      for (RelearnThresholdRequest request : sortedRequests) {
+         boolean flightDownloadedAfterRequest = request.getStartDate().before(currentFlight.getLastDownloadDate());
+         boolean requestLaunchedBeforeFlight = request.getStartFlightDate().before(currentFlight.getUsageStartDate());
+         if (flightDownloadedAfterRequest && requestLaunchedBeforeFlight) {
+            // That's an appropriate request, but we have to check if the request is completed
+            // If so, the applicable flight date must be before the current flight
+            boolean requestCompleted = request.isHandled() && request.getLearnedValue() != null;
+            if (requestCompleted && currentFlight.getUsageStartDate().after(request.getApplicableFlightDate())) {
+               return request;
+            } else {
+               break;
+            }
+         }
+         // Otherwise, explore other relearn requests
+      }
+      return null;
+   }
+
+   /**
+    * Compute alarm short description.
+    *
+    * @param indicator
+    *           the indicator
+    * @param healthMechanicalComponent
+    *           the health mechanical component
+    * @return the string
+    */
+   private String computeAlarmShortDescription(final Indicator indicator, final HealthMechanicalComponent healthMechanicalComponent) {
+      if (indicator != null && healthMechanicalComponent != null) {
+         final String hmcSeparator = HealthMechanicalComponent.HMC_PATH_SEPARATOR;
+         final String[] hmcPath = healthMechanicalComponent.getPath().split(hmcSeparator);
+         String shortDescription = hmcPath[hmcPath.length - 1] + hmcSeparator + indicator.getName();
+         return shortDescription.replaceAll(hmcSeparator, HealthAlarm.ALARM_SEPARATOR);
+      }
+      return null;
+   }
+
+   /**
+    * Compute alarm long description.
+    *
+    * @param indicator
+    *           the indicator
+    * @param healthMechanicalComponent
+    *           the health mechanical component
+    * @param alarmShortDescription
+    *           the alarm short description
+    * @return the string
+    */
+   private String computeAlarmLongDescription(final Indicator indicator, final HealthMechanicalComponent healthMechanicalComponent, final String alarmShortDescription) {
+      if (indicator != null && healthMechanicalComponent != null) {
+         final String hmcSeparator = HealthMechanicalComponent.HMC_PATH_SEPARATOR;
+         final String[] hmcPath = healthMechanicalComponent.getPath().split(hmcSeparator);
+         String longDescription;
+         if (hmcPath[hmcPath.length - 1].isEmpty()) {
+            // Has no parent
+            longDescription = alarmShortDescription;
+         } else {
+            longDescription = healthMechanicalComponent.getPath().replaceFirst(Pattern.quote(hmcSeparator), "") + hmcSeparator + indicator.getName();
+            longDescription = longDescription.replaceAll(hmcSeparator, HealthAlarm.ALARM_SEPARATOR);
+         }
+         return longDescription;
+      }
+      return null;
+   }
+
+   /**
+    * Compute the maximum number of successive points needed to compute an alarm, based on all thresholds of a given indicator.
+    *
+    * @param defaultNumber
+    *           default number of successive points
+    * @param indicatorConfiguration
+    *           indicator configuration
+    * @return number of points
+    */
+   private int getMaxNumberSuccessivePoints(int defaultNumber, IndicatorConfiguration indicatorConfiguration) {
+      int nbPoints = defaultNumber;
+      for (ThresholdConfiguration thresholdConfiguration : indicatorConfiguration.getThresholdConfigurations()) {
+         final Integer nbSuccessivePoints = thresholdConfiguration.getNbSuccessivePoints();
+         if (nbSuccessivePoints != null && nbSuccessivePoints > nbPoints) {
+            nbPoints = nbSuccessivePoints;
+         }
+      }
+      return nbPoints;
+   }
+
+}
