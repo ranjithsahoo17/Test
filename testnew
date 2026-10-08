@@ -1,335 +1,581 @@
-WARNING: Using incubator modules: jdk.incubator.vector
-2026-10-08 11:21:34.402 [Start Level: Equinox Container: d764e6fe-5717-49de-b779-d54bfa745417] WARN  com.eurocopter.mgs.business.activator.Activator - URLStreamHandlerFactory was already set: factory already defined
-2026-10-08 11:21:34.414 [Start Level: Equinox Container: d764e6fe-5717-49de-b779-d54bfa745417] DEBUG com.eurocopter.mgs.business.activator.Activator - Start context: mgs-proxy
-2026-10-08 11:21:34.495 [Start Level: Equinox Container: d764e6fe-5717-49de-b779-d54bfa745417] DEBUG com.eurocopter.mgs.core.activator.Activator - Start context: mgs-glassfish-client
-[EL Warning]: 2026-10-08 11:21:34.85--Java SE '21' is not fully supported yet. Report this error to the EclipseLink open source project. (There is no English translation for this message.)
-[EL Warning]: metadata: 2026-10-08 11:21:36.065--ServerSession(412772922)--Reverting the lazy setting on the OneToOne or ManyToOne attribute [signal] for the entity class [class com.eurocopter.mgs.datamodel.health.common.ComponentAcquisition] since weaving was not enabled or did not occur.
-[EL Warning]: metadata: 2026-10-08 11:21:36.066--ServerSession(412772922)--Reverting the lazy setting on the OneToOne or ManyToOne attribute [signal] for the entity class [class com.eurocopter.mgs.datamodel.health.common.ContextualParameterAcquisition] since weaving was not enabled or did not occur.
-Exception in thread "Thread-4" java.lang.RuntimeException: java.io.IOException: Cannot run program "C:\PROGRA~1\AIRBUS~1\MGS\tools\windriver\jre\bin\java.exe": CreateProcess error=2, The system cannot find the file specified
-	at com.eurocopter.api.windriver.remote.RemoteWindriverFactory$1.run(RemoteWindriverFactory.java:48)
-	at java.base/java.lang.Thread.run(Thread.java:1583)
-Caused by: java.io.IOException: Cannot run program "C:\PROGRA~1\AIRBUS~1\MGS\tools\windriver\jre\bin\java.exe": CreateProcess error=2, The system cannot find the file specified
-	at java.base/java.lang.ProcessBuilder.start(ProcessBuilder.java:1170)
-	at java.base/java.lang.ProcessBuilder.start(ProcessBuilder.java:1089)
-	at com.eurocopter.api.windriver.remote.WindriverRemoteRunner.run(WindriverRemoteRunner.java:64)
-	at com.eurocopter.api.windriver.remote.RemoteWindriverFactory$1.run(RemoteWindriverFactory.java:46)
-	... 1 more
-Caused by: java.io.IOException: CreateProcess error=2, The system cannot find the file specified
-	at java.base/java.lang.ProcessImpl.create(Native Method)
-	at java.base/java.lang.ProcessImpl.<init>(ProcessImpl.java:506)
-	at java.base/java.lang.ProcessImpl.start(ProcessImpl.java:159)
-	at java.base/java.lang.ProcessBuilder.start(ProcessBuilder.java:1126)
-	... 4 more
-2026-10-08 11:21:36.733 [Start Level: Equinox Container: d764e6fe-5717-49de-b779-d54bfa745417] INFO  com.eurocopter.mgs.business.aircraft.impl.SftpUrlStreamHandlerService - Registered sftp:// URLStreamHandlerService with OSGi (bundle: mgs-proxy)
-2026-10-08 11:21:37.401 [main] INFO  com.eurocopter.mgs.app.Activator - Starting MGS client application
-2026-10-08 11:21:38.091 [pool-3-thread-1] INFO  org.apache.sshd.common.io.DefaultIoServiceFactoryFactory - No detected/configured IoServiceFactoryFactory; using Nio2ServiceFactoryFactory
-2026-10-08 11:21:38.120 [pool-3-thread-1] DEBUG com.eurocopter.mgs.business.connection.ConnectionManager - Start scheduler
-Oct 08, 2026 11:21:38 AM com.sun.enterprise.v3.server.CommonClassLoaderServiceImpl findDerbyClient
-INFO: Cannot find javadb client jar file, derby jdbc driver will not be available by default.
-Oct 08, 2026 11:21:43 AM org.glassfish.enterprise.iiop.impl.GlassFishORBManager getORB
-INFO: ORB initialization succeeded: com.sun.corba.ee.impl.orb.ORBImpl@6dcbf5aa
-2026-10-08 11:21:44.375 [main] INFO  com.eurocopter.mgs.app.ApplicationWorkbenchAdvisor - Error during login
-javax.security.auth.login.LoginException: Failed to log in.
-	at org.eclipse.equinox.internal.security.auth.SecureContext.login(SecureContext.java:61) ~[?:?]
-	at com.eurocopter.mgs.app.ApplicationWorkbenchAdvisor.lambda$0(ApplicationWorkbenchAdvisor.java:234) ~[?:?]
-	at org.eclipse.swt.widgets.RunnableLock.run(RunnableLock.java:40) ~[?:?]
-	at org.eclipse.swt.widgets.Synchronizer.runAsyncMessages(Synchronizer.java:132) ~[?:?]
-	at org.eclipse.swt.widgets.Display.runAsyncMessages(Display.java:4099) ~[?:?]
-	at org.eclipse.swt.widgets.Display.readAndDispatch(Display.java:3715) ~[?:?]
-	at org.eclipse.e4.ui.internal.workbench.swt.PartRenderingEngine$5.run(PartRenderingEngine.java:1151) ~[?:?]
-	at org.eclipse.core.databinding.observable.Realm.runWithDefault(Realm.java:339) ~[?:?]
-	at org.eclipse.e4.ui.internal.workbench.swt.PartRenderingEngine.run(PartRenderingEngine.java:1042) ~[?:?]
-	at org.eclipse.e4.ui.internal.workbench.E4Workbench.createAndRunUI(E4Workbench.java:153) ~[?:?]
-	at org.eclipse.ui.internal.Workbench.lambda$3(Workbench.java:639) ~[?:?]
-	at org.eclipse.core.databinding.observable.Realm.runWithDefault(Realm.java:339) ~[?:?]
-	at org.eclipse.ui.internal.Workbench.createAndRunWorkbench(Workbench.java:546) ~[?:?]
-	at org.eclipse.ui.PlatformUI.createAndRunWorkbench(PlatformUI.java:173) ~[?:?]
-	at com.eurocopter.mgs.app.Application.openWorkbench(Application.java:154) ~[?:?]
-	at com.eurocopter.mgs.app.Application.start(Application.java:115) ~[?:?]
-	at org.eclipse.equinox.internal.app.EclipseAppHandle.run(EclipseAppHandle.java:208) ~[?:?]
-	at org.eclipse.core.runtime.internal.adaptor.EclipseAppLauncher.runApplication(EclipseAppLauncher.java:143) ~[?:?]
-	at org.eclipse.core.runtime.internal.adaptor.EclipseAppLauncher.start(EclipseAppLauncher.java:109) ~[?:?]
-	at org.eclipse.core.runtime.adaptor.EclipseStarter.run(EclipseStarter.java:439) ~[?:?]
-	at org.eclipse.core.runtime.adaptor.EclipseStarter.run(EclipseStarter.java:271) ~[?:?]
-	at jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103) ~[?:?]
-	at java.lang.reflect.Method.invoke(Method.java:580) ~[?:?]
-	at org.eclipse.equinox.launcher.Main.invokeFramework(Main.java:668) ~[org.eclipse.equinox.launcher_1.6.900.v20240613-2009.jar:?]
-	at org.eclipse.equinox.launcher.Main.basicRun(Main.java:605) ~[org.eclipse.equinox.launcher_1.6.900.v20240613-2009.jar:?]
-	at org.eclipse.equinox.launcher.Main.run(Main.java:1481) ~[org.eclipse.equinox.launcher_1.6.900.v20240613-2009.jar:?]
-	at org.eclipse.equinox.launcher.Main.main(Main.java:1454) ~[org.eclipse.equinox.launcher_1.6.900.v20240613-2009.jar:?]
-Caused by: javax.security.auth.login.LoginException: java.lang.IllegalArgumentException: Unknown Entity bean class: class com.eurocopter.mgs.datamodel.configuration.MgsConfigurationProperty, please verify that this class has been marked with the @Entity annotation.
-	at org.eclipse.persistence.internal.jpa.EntityManagerImpl.find(EntityManagerImpl.java:805)
-	at org.eclipse.persistence.internal.jpa.EntityManagerImpl.find(EntityManagerImpl.java:691)
-	at com.eurocopter.mgs.business.configuration.impl.ConfigurationBusiness.getLocalConfigurationProperty(ConfigurationBusiness.java:96)
-	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103)
-	at java.base/java.lang.reflect.Method.invoke(Method.java:580)
-	at com.eurocopter.mgs.business.proxy.BusinessManager$BusinessInvocationHandler.lambda$0(BusinessManager.java:71)
-	at com.eurocopter.mgs.core.persistence.PersistenceManager$PersistenceCallable.call(PersistenceManager.java:46)
-	at java.base/java.util.concurrent.FutureTask.run(FutureTask.java:317)
-	at java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1144)
-	at java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:642)
-	at java.base/java.lang.Thread.run(Thread.java:1583)
+package com.eurocopter.mgs.download.analysis.health.impl;
 
-	at javax.security.auth.login.LoginContext.invoke(LoginContext.java:849) ~[?:?]
-	at javax.security.auth.login.LoginContext$4.run(LoginContext.java:678) ~[?:?]
-	at javax.security.auth.login.LoginContext$4.run(LoginContext.java:676) ~[?:?]
-	at java.security.AccessController.doPrivileged(AccessController.java:714) ~[?:?]
-	at javax.security.auth.login.LoginContext.invokePriv(LoginContext.java:676) ~[?:?]
-	at javax.security.auth.login.LoginContext.login(LoginContext.java:587) ~[?:?]
-	at org.eclipse.equinox.internal.security.auth.SecureContext.login(SecureContext.java:54) ~[?:?]
-	... 26 more
-2026-10-08 11:21:44.779 [pool-6-thread-1] ERROR com.eurocopter.mgs.business.connection.ConnectionManager - Connection KO: unexpected java.lang.LinkageError
-java.util.concurrent.ExecutionException: java.lang.LinkageError: loader constraint violation: loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @2ebbd1e6 wants to load class com.eurocopter.mgs.datamodel.core.GroundStation. A different class with the same name was previously loaded by org.eclipse.osgi.internal.loader.EquinoxClassLoader @71304555. (com.eurocopter.mgs.datamodel.core.GroundStation is in unnamed module of loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @71304555, parent loader 'platform')
-	at java.util.concurrent.FutureTask.report(FutureTask.java:122) ~[?:?]
-	at java.util.concurrent.FutureTask.get(FutureTask.java:205) ~[?:?]
-	at com.eurocopter.mgs.business.connection.ConnectionManager$CheckConnectionRunnableWithTimeOut.run(ConnectionManager.java:177) ~[?:?]
-	at java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:572) ~[?:?]
-	at java.util.concurrent.FutureTask.run(FutureTask.java:317) ~[?:?]
-	at java.util.concurrent.ScheduledThreadPoolExecutor$ScheduledFutureTask.run(ScheduledThreadPoolExecutor.java:304) ~[?:?]
-	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1144) ~[?:?]
-	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:642) ~[?:?]
-	at java.lang.Thread.run(Thread.java:1583) ~[?:?]
-Caused by: java.lang.LinkageError: loader constraint violation: loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @2ebbd1e6 wants to load class com.eurocopter.mgs.datamodel.core.GroundStation. A different class with the same name was previously loaded by org.eclipse.osgi.internal.loader.EquinoxClassLoader @71304555. (com.eurocopter.mgs.datamodel.core.GroundStation is in unnamed module of loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @71304555, parent loader 'platform')
-	at com.eurocopter.mgs.business.connection.ConnectionManager.ping(ConnectionManager.java:138) ~[?:?]
-	at com.eurocopter.mgs.business.connection.ConnectionManager$CheckConnectionCallable.call(ConnectionManager.java:157) ~[?:?]
-	at com.eurocopter.mgs.business.connection.ConnectionManager$CheckConnectionCallable.call(ConnectionManager.java:1) ~[?:?]
-	at java.util.concurrent.FutureTask.run(FutureTask.java:317) ~[?:?]
-	... 3 more
-2026-10-08 11:21:49.795 [pool-6-thread-2] ERROR com.eurocopter.mgs.business.connection.ConnectionManager - Connection KO: unexpected java.lang.LinkageError
-java.util.concurrent.ExecutionException: java.lang.LinkageError: loader constraint violation: loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @2ebbd1e6 wants to load class com.eurocopter.mgs.datamodel.core.GroundStation. A different class with the same name was previously loaded by org.eclipse.osgi.internal.loader.EquinoxClassLoader @71304555. (com.eurocopter.mgs.datamodel.core.GroundStation is in unnamed module of loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @71304555, parent loader 'platform')
-	at java.util.concurrent.FutureTask.report(FutureTask.java:122) ~[?:?]
-	at java.util.concurrent.FutureTask.get(FutureTask.java:205) ~[?:?]
-	at com.eurocopter.mgs.business.connection.ConnectionManager$CheckConnectionRunnableWithTimeOut.run(ConnectionManager.java:177) ~[?:?]
-	at java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:572) ~[?:?]
-	at java.util.concurrent.FutureTask.run(FutureTask.java:317) ~[?:?]
-	at java.util.concurrent.ScheduledThreadPoolExecutor$ScheduledFutureTask.run(ScheduledThreadPoolExecutor.java:304) ~[?:?]
-	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1144) ~[?:?]
-	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:642) ~[?:?]
-	at java.lang.Thread.run(Thread.java:1583) ~[?:?]
-Caused by: java.lang.LinkageError: loader constraint violation: loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @2ebbd1e6 wants to load class com.eurocopter.mgs.datamodel.core.GroundStation. A different class with the same name was previously loaded by org.eclipse.osgi.internal.loader.EquinoxClassLoader @71304555. (com.eurocopter.mgs.datamodel.core.GroundStation is in unnamed module of loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @71304555, parent loader 'platform')
-	at com.eurocopter.mgs.business.connection.ConnectionManager.ping(ConnectionManager.java:138) ~[?:?]
-	at com.eurocopter.mgs.business.connection.ConnectionManager$CheckConnectionCallable.call(ConnectionManager.java:157) ~[?:?]
-	at com.eurocopter.mgs.business.connection.ConnectionManager$CheckConnectionCallable.call(ConnectionManager.java:1) ~[?:?]
-	at java.util.concurrent.FutureTask.run(FutureTask.java:317) ~[?:?]
-	... 3 more
-2026-10-08 11:21:54.809 [pool-6-thread-3] ERROR com.eurocopter.mgs.business.connection.ConnectionManager - Connection KO: unexpected java.lang.LinkageError
-java.util.concurrent.ExecutionException: java.lang.LinkageError: loader constraint violation: loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @2ebbd1e6 wants to load class com.eurocopter.mgs.datamodel.core.GroundStation. A different class with the same name was previously loaded by org.eclipse.osgi.internal.loader.EquinoxClassLoader @71304555. (com.eurocopter.mgs.datamodel.core.GroundStation is in unnamed module of loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @71304555, parent loader 'platform')
-	at java.util.concurrent.FutureTask.report(FutureTask.java:122) ~[?:?]
-	at java.util.concurrent.FutureTask.get(FutureTask.java:205) ~[?:?]
-	at com.eurocopter.mgs.business.connection.ConnectionManager$CheckConnectionRunnableWithTimeOut.run(ConnectionManager.java:177) ~[?:?]
-	at java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:572) ~[?:?]
-	at java.util.concurrent.FutureTask.run(FutureTask.java:317) ~[?:?]
-	at java.util.concurrent.ScheduledThreadPoolExecutor$ScheduledFutureTask.run(ScheduledThreadPoolExecutor.java:304) ~[?:?]
-	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1144) ~[?:?]
-	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:642) ~[?:?]
-	at java.lang.Thread.run(Thread.java:1583) ~[?:?]
-Caused by: java.lang.LinkageError: loader constraint violation: loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @2ebbd1e6 wants to load class com.eurocopter.mgs.datamodel.core.GroundStation. A different class with the same name was previously loaded by org.eclipse.osgi.internal.loader.EquinoxClassLoader @71304555. (com.eurocopter.mgs.datamodel.core.GroundStation is in unnamed module of loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @71304555, parent loader 'platform')
-	at com.eurocopter.mgs.business.connection.ConnectionManager.ping(ConnectionManager.java:138) ~[?:?]
-	at com.eurocopter.mgs.business.connection.ConnectionManager$CheckConnectionCallable.call(ConnectionManager.java:157) ~[?:?]
-	at com.eurocopter.mgs.business.connection.ConnectionManager$CheckConnectionCallable.call(ConnectionManager.java:1) ~[?:?]
-	at java.util.concurrent.FutureTask.run(FutureTask.java:317) ~[?:?]
-	... 3 more
-2026-10-08 11:21:59.819 [pool-6-thread-4] ERROR com.eurocopter.mgs.business.connection.ConnectionManager - Connection KO: unexpected java.lang.LinkageError
-java.util.concurrent.ExecutionException: java.lang.LinkageError: loader constraint violation: loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @2ebbd1e6 wants to load class com.eurocopter.mgs.datamodel.core.GroundStation. A different class with the same name was previously loaded by org.eclipse.osgi.internal.loader.EquinoxClassLoader @71304555. (com.eurocopter.mgs.datamodel.core.GroundStation is in unnamed module of loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @71304555, parent loader 'platform')
-	at java.util.concurrent.FutureTask.report(FutureTask.java:122) ~[?:?]
-	at java.util.concurrent.FutureTask.get(FutureTask.java:205) ~[?:?]
-	at com.eurocopter.mgs.business.connection.ConnectionManager$CheckConnectionRunnableWithTimeOut.run(ConnectionManager.java:177) ~[?:?]
-	at java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:572) ~[?:?]
-	at java.util.concurrent.FutureTask.run(FutureTask.java:317) ~[?:?]
-	at java.util.concurrent.ScheduledThreadPoolExecutor$ScheduledFutureTask.run(ScheduledThreadPoolExecutor.java:304) ~[?:?]
-	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1144) ~[?:?]
-	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:642) ~[?:?]
-	at java.lang.Thread.run(Thread.java:1583) ~[?:?]
-Caused by: java.lang.LinkageError: loader constraint violation: loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @2ebbd1e6 wants to load class com.eurocopter.mgs.datamodel.core.GroundStation. A different class with the same name was previously loaded by org.eclipse.osgi.internal.loader.EquinoxClassLoader @71304555. (com.eurocopter.mgs.datamodel.core.GroundStation is in unnamed module of loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @71304555, parent loader 'platform')
-	at com.eurocopter.mgs.business.connection.ConnectionManager.ping(ConnectionManager.java:138) ~[?:?]
-	at com.eurocopter.mgs.business.connection.ConnectionManager$CheckConnectionCallable.call(ConnectionManager.java:157) ~[?:?]
-	at com.eurocopter.mgs.business.connection.ConnectionManager$CheckConnectionCallable.call(ConnectionManager.java:1) ~[?:?]
-	at java.util.concurrent.FutureTask.run(FutureTask.java:317) ~[?:?]
-	... 3 more
-2026-10-08 11:22:04.828 [pool-6-thread-5] ERROR com.eurocopter.mgs.business.connection.ConnectionManager - Connection KO: unexpected java.lang.LinkageError
-java.util.concurrent.ExecutionException: java.lang.LinkageError: loader constraint violation: loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @2ebbd1e6 wants to load class com.eurocopter.mgs.datamodel.core.GroundStation. A different class with the same name was previously loaded by org.eclipse.osgi.internal.loader.EquinoxClassLoader @71304555. (com.eurocopter.mgs.datamodel.core.GroundStation is in unnamed module of loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @71304555, parent loader 'platform')
-	at java.util.concurrent.FutureTask.report(FutureTask.java:122) ~[?:?]
-	at java.util.concurrent.FutureTask.get(FutureTask.java:205) ~[?:?]
-	at com.eurocopter.mgs.business.connection.ConnectionManager$CheckConnectionRunnableWithTimeOut.run(ConnectionManager.java:177) ~[?:?]
-	at java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:572) ~[?:?]
-	at java.util.concurrent.FutureTask.run(FutureTask.java:317) ~[?:?]
-	at java.util.concurrent.ScheduledThreadPoolExecutor$ScheduledFutureTask.run(ScheduledThreadPoolExecutor.java:304) ~[?:?]
-	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1144) ~[?:?]
-	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:642) ~[?:?]
-	at java.lang.Thread.run(Thread.java:1583) ~[?:?]
-Caused by: java.lang.LinkageError: loader constraint violation: loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @2ebbd1e6 wants to load class com.eurocopter.mgs.datamodel.core.GroundStation. A different class with the same name was previously loaded by org.eclipse.osgi.internal.loader.EquinoxClassLoader @71304555. (com.eurocopter.mgs.datamodel.core.GroundStation is in unnamed module of loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @71304555, parent loader 'platform')
-	at com.eurocopter.mgs.business.connection.ConnectionManager.ping(ConnectionManager.java:138) ~[?:?]
-	at com.eurocopter.mgs.business.connection.ConnectionManager$CheckConnectionCallable.call(ConnectionManager.java:157) ~[?:?]
-	at com.eurocopter.mgs.business.connection.ConnectionManager$CheckConnectionCallable.call(ConnectionManager.java:1) ~[?:?]
-	at java.util.concurrent.FutureTask.run(FutureTask.java:317) ~[?:?]
-	... 3 more
-2026-10-08 11:22:09.840 [pool-6-thread-6] ERROR com.eurocopter.mgs.business.connection.ConnectionManager - Connection KO: unexpected java.lang.LinkageError
-java.util.concurrent.ExecutionException: java.lang.LinkageError: loader constraint violation: loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @2ebbd1e6 wants to load class com.eurocopter.mgs.datamodel.core.GroundStation. A different class with the same name was previously loaded by org.eclipse.osgi.internal.loader.EquinoxClassLoader @71304555. (com.eurocopter.mgs.datamodel.core.GroundStation is in unnamed module of loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @71304555, parent loader 'platform')
-	at java.util.concurrent.FutureTask.report(FutureTask.java:122) ~[?:?]
-	at java.util.concurrent.FutureTask.get(FutureTask.java:205) ~[?:?]
-	at com.eurocopter.mgs.business.connection.ConnectionManager$CheckConnectionRunnableWithTimeOut.run(ConnectionManager.java:177) ~[?:?]
-	at java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:572) ~[?:?]
-	at java.util.concurrent.FutureTask.run(FutureTask.java:317) ~[?:?]
-	at java.util.concurrent.ScheduledThreadPoolExecutor$ScheduledFutureTask.run(ScheduledThreadPoolExecutor.java:304) ~[?:?]
-	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1144) ~[?:?]
-	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:642) ~[?:?]
-	at java.lang.Thread.run(Thread.java:1583) ~[?:?]
-Caused by: java.lang.LinkageError: loader constraint violation: loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @2ebbd1e6 wants to load class com.eurocopter.mgs.datamodel.core.GroundStation. A different class with the same name was previously loaded by org.eclipse.osgi.internal.loader.EquinoxClassLoader @71304555. (com.eurocopter.mgs.datamodel.core.GroundStation is in unnamed module of loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @71304555, parent loader 'platform')
-	at com.eurocopter.mgs.business.connection.ConnectionManager.ping(ConnectionManager.java:138) ~[?:?]
-	at com.eurocopter.mgs.business.connection.ConnectionManager$CheckConnectionCallable.call(ConnectionManager.java:157) ~[?:?]
-	at com.eurocopter.mgs.business.connection.ConnectionManager$CheckConnectionCallable.call(ConnectionManager.java:1) ~[?:?]
-	at java.util.concurrent.FutureTask.run(FutureTask.java:317) ~[?:?]
-	... 3 more
-2026-10-08 11:22:14.850 [pool-6-thread-7] ERROR com.eurocopter.mgs.business.connection.ConnectionManager - Connection KO: unexpected java.lang.LinkageError
-java.util.concurrent.ExecutionException: java.lang.LinkageError: loader constraint violation: loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @2ebbd1e6 wants to load class com.eurocopter.mgs.datamodel.core.GroundStation. A different class with the same name was previously loaded by org.eclipse.osgi.internal.loader.EquinoxClassLoader @71304555. (com.eurocopter.mgs.datamodel.core.GroundStation is in unnamed module of loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @71304555, parent loader 'platform')
-	at java.util.concurrent.FutureTask.report(FutureTask.java:122) ~[?:?]
-	at java.util.concurrent.FutureTask.get(FutureTask.java:205) ~[?:?]
-	at com.eurocopter.mgs.business.connection.ConnectionManager$CheckConnectionRunnableWithTimeOut.run(ConnectionManager.java:177) ~[?:?]
-	at java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:572) ~[?:?]
-	at java.util.concurrent.FutureTask.run(FutureTask.java:317) ~[?:?]
-	at java.util.concurrent.ScheduledThreadPoolExecutor$ScheduledFutureTask.run(ScheduledThreadPoolExecutor.java:304) ~[?:?]
-	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1144) ~[?:?]
-	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:642) ~[?:?]
-	at java.lang.Thread.run(Thread.java:1583) ~[?:?]
-Caused by: java.lang.LinkageError: loader constraint violation: loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @2ebbd1e6 wants to load class com.eurocopter.mgs.datamodel.core.GroundStation. A different class with the same name was previously loaded by org.eclipse.osgi.internal.loader.EquinoxClassLoader @71304555. (com.eurocopter.mgs.datamodel.core.GroundStation is in unnamed module of loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @71304555, parent loader 'platform')
-	at com.eurocopter.mgs.business.connection.ConnectionManager.ping(ConnectionManager.java:138) ~[?:?]
-	at com.eurocopter.mgs.business.connection.ConnectionManager$CheckConnectionCallable.call(ConnectionManager.java:157) ~[?:?]
-	at com.eurocopter.mgs.business.connection.ConnectionManager$CheckConnectionCallable.call(ConnectionManager.java:1) ~[?:?]
-	at java.util.concurrent.FutureTask.run(FutureTask.java:317) ~[?:?]
-	... 3 more
-2026-10-08 11:22:19.861 [pool-6-thread-8] ERROR com.eurocopter.mgs.business.connection.ConnectionManager - Connection KO: unexpected java.lang.LinkageError
-java.util.concurrent.ExecutionException: java.lang.LinkageError: loader constraint violation: loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @2ebbd1e6 wants to load class com.eurocopter.mgs.datamodel.core.GroundStation. A different class with the same name was previously loaded by org.eclipse.osgi.internal.loader.EquinoxClassLoader @71304555. (com.eurocopter.mgs.datamodel.core.GroundStation is in unnamed module of loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @71304555, parent loader 'platform')
-	at java.util.concurrent.FutureTask.report(FutureTask.java:122) ~[?:?]
-	at java.util.concurrent.FutureTask.get(FutureTask.java:205) ~[?:?]
-	at com.eurocopter.mgs.business.connection.ConnectionManager$CheckConnectionRunnableWithTimeOut.run(ConnectionManager.java:177) ~[?:?]
-	at java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:572) ~[?:?]
-	at java.util.concurrent.FutureTask.run(FutureTask.java:317) ~[?:?]
-	at java.util.concurrent.ScheduledThreadPoolExecutor$ScheduledFutureTask.run(ScheduledThreadPoolExecutor.java:304) ~[?:?]
-	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1144) ~[?:?]
-	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:642) ~[?:?]
-	at java.lang.Thread.run(Thread.java:1583) ~[?:?]
-Caused by: java.lang.LinkageError: loader constraint violation: loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @2ebbd1e6 wants to load class com.eurocopter.mgs.datamodel.core.GroundStation. A different class with the same name was previously loaded by org.eclipse.osgi.internal.loader.EquinoxClassLoader @71304555. (com.eurocopter.mgs.datamodel.core.GroundStation is in unnamed module of loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @71304555, parent loader 'platform')
-	at com.eurocopter.mgs.business.connection.ConnectionManager.ping(ConnectionManager.java:138) ~[?:?]
-	at com.eurocopter.mgs.business.connection.ConnectionManager$CheckConnectionCallable.call(ConnectionManager.java:157) ~[?:?]
-	at com.eurocopter.mgs.business.connection.ConnectionManager$CheckConnectionCallable.call(ConnectionManager.java:1) ~[?:?]
-	at java.util.concurrent.FutureTask.run(FutureTask.java:317) ~[?:?]
-	... 3 more
-2026-10-08 11:22:24.888 [pool-6-thread-9] ERROR com.eurocopter.mgs.business.connection.ConnectionManager - Connection KO: unexpected java.lang.LinkageError
-java.util.concurrent.ExecutionException: java.lang.LinkageError: loader constraint violation: loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @2ebbd1e6 wants to load class com.eurocopter.mgs.datamodel.core.GroundStation. A different class with the same name was previously loaded by org.eclipse.osgi.internal.loader.EquinoxClassLoader @71304555. (com.eurocopter.mgs.datamodel.core.GroundStation is in unnamed module of loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @71304555, parent loader 'platform')
-	at java.util.concurrent.FutureTask.report(FutureTask.java:122) ~[?:?]
-	at java.util.concurrent.FutureTask.get(FutureTask.java:205) ~[?:?]
-	at com.eurocopter.mgs.business.connection.ConnectionManager$CheckConnectionRunnableWithTimeOut.run(ConnectionManager.java:177) ~[?:?]
-	at java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:572) ~[?:?]
-	at java.util.concurrent.FutureTask.run(FutureTask.java:317) ~[?:?]
-	at java.util.concurrent.ScheduledThreadPoolExecutor$ScheduledFutureTask.run(ScheduledThreadPoolExecutor.java:304) ~[?:?]
-	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1144) ~[?:?]
-	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:642) ~[?:?]
-	at java.lang.Thread.run(Thread.java:1583) ~[?:?]
-Caused by: java.lang.LinkageError: loader constraint violation: loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @2ebbd1e6 wants to load class com.eurocopter.mgs.datamodel.core.GroundStation. A different class with the same name was previously loaded by org.eclipse.osgi.internal.loader.EquinoxClassLoader @71304555. (com.eurocopter.mgs.datamodel.core.GroundStation is in unnamed module of loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @71304555, parent loader 'platform')
-	at com.eurocopter.mgs.business.connection.ConnectionManager.ping(ConnectionManager.java:138) ~[?:?]
-	at com.eurocopter.mgs.business.connection.ConnectionManager$CheckConnectionCallable.call(ConnectionManager.java:157) ~[?:?]
-	at com.eurocopter.mgs.business.connection.ConnectionManager$CheckConnectionCallable.call(ConnectionManager.java:1) ~[?:?]
-	at java.util.concurrent.FutureTask.run(FutureTask.java:317) ~[?:?]
-	... 3 more
-2026-10-08 11:22:29.899 [pool-6-thread-10] ERROR com.eurocopter.mgs.business.connection.ConnectionManager - Connection KO: unexpected java.lang.LinkageError
-java.util.concurrent.ExecutionException: java.lang.LinkageError: loader constraint violation: loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @2ebbd1e6 wants to load class com.eurocopter.mgs.datamodel.core.GroundStation. A different class with the same name was previously loaded by org.eclipse.osgi.internal.loader.EquinoxClassLoader @71304555. (com.eurocopter.mgs.datamodel.core.GroundStation is in unnamed module of loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @71304555, parent loader 'platform')
-	at java.util.concurrent.FutureTask.report(FutureTask.java:122) ~[?:?]
-	at java.util.concurrent.FutureTask.get(FutureTask.java:205) ~[?:?]
-	at com.eurocopter.mgs.business.connection.ConnectionManager$CheckConnectionRunnableWithTimeOut.run(ConnectionManager.java:177) ~[?:?]
-	at java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:572) ~[?:?]
-	at java.util.concurrent.FutureTask.run(FutureTask.java:317) ~[?:?]
-	at java.util.concurrent.ScheduledThreadPoolExecutor$ScheduledFutureTask.run(ScheduledThreadPoolExecutor.java:304) ~[?:?]
-	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1144) ~[?:?]
-	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:642) ~[?:?]
-	at java.lang.Thread.run(Thread.java:1583) ~[?:?]
-Caused by: java.lang.LinkageError: loader constraint violation: loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @2ebbd1e6 wants to load class com.eurocopter.mgs.datamodel.core.GroundStation. A different class with the same name was previously loaded by org.eclipse.osgi.internal.loader.EquinoxClassLoader @71304555. (com.eurocopter.mgs.datamodel.core.GroundStation is in unnamed module of loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @71304555, parent loader 'platform')
-	at com.eurocopter.mgs.business.connection.ConnectionManager.ping(ConnectionManager.java:138) ~[?:?]
-	at com.eurocopter.mgs.business.connection.ConnectionManager$CheckConnectionCallable.call(ConnectionManager.java:157) ~[?:?]
-	at com.eurocopter.mgs.business.connection.ConnectionManager$CheckConnectionCallable.call(ConnectionManager.java:1) ~[?:?]
-	at java.util.concurrent.FutureTask.run(FutureTask.java:317) ~[?:?]
-	... 3 more
-2026-10-08 11:22:34.920 [pool-6-thread-11] ERROR com.eurocopter.mgs.business.connection.ConnectionManager - Connection KO: unexpected java.lang.LinkageError
-java.util.concurrent.ExecutionException: java.lang.LinkageError: loader constraint violation: loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @2ebbd1e6 wants to load class com.eurocopter.mgs.datamodel.core.GroundStation. A different class with the same name was previously loaded by org.eclipse.osgi.internal.loader.EquinoxClassLoader @71304555. (com.eurocopter.mgs.datamodel.core.GroundStation is in unnamed module of loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @71304555, parent loader 'platform')
-	at java.util.concurrent.FutureTask.report(FutureTask.java:122) ~[?:?]
-	at java.util.concurrent.FutureTask.get(FutureTask.java:205) ~[?:?]
-	at com.eurocopter.mgs.business.connection.ConnectionManager$CheckConnectionRunnableWithTimeOut.run(ConnectionManager.java:177) ~[?:?]
-	at java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:572) ~[?:?]
-	at java.util.concurrent.FutureTask.run(FutureTask.java:317) ~[?:?]
-	at java.util.concurrent.ScheduledThreadPoolExecutor$ScheduledFutureTask.run(ScheduledThreadPoolExecutor.java:304) ~[?:?]
-	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1144) ~[?:?]
-	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:642) ~[?:?]
-	at java.lang.Thread.run(Thread.java:1583) ~[?:?]
-Caused by: java.lang.LinkageError: loader constraint violation: loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @2ebbd1e6 wants to load class com.eurocopter.mgs.datamodel.core.GroundStation. A different class with the same name was previously loaded by org.eclipse.osgi.internal.loader.EquinoxClassLoader @71304555. (com.eurocopter.mgs.datamodel.core.GroundStation is in unnamed module of loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @71304555, parent loader 'platform')
-	at com.eurocopter.mgs.business.connection.ConnectionManager.ping(ConnectionManager.java:138) ~[?:?]
-	at com.eurocopter.mgs.business.connection.ConnectionManager$CheckConnectionCallable.call(ConnectionManager.java:157) ~[?:?]
-	at com.eurocopter.mgs.business.connection.ConnectionManager$CheckConnectionCallable.call(ConnectionManager.java:1) ~[?:?]
-	at java.util.concurrent.FutureTask.run(FutureTask.java:317) ~[?:?]
-	... 3 more
-2026-10-08 11:22:39.931 [pool-6-thread-12] ERROR com.eurocopter.mgs.business.connection.ConnectionManager - Connection KO: unexpected java.lang.LinkageError
-java.util.concurrent.ExecutionException: java.lang.LinkageError: loader constraint violation: loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @2ebbd1e6 wants to load class com.eurocopter.mgs.datamodel.core.GroundStation. A different class with the same name was previously loaded by org.eclipse.osgi.internal.loader.EquinoxClassLoader @71304555. (com.eurocopter.mgs.datamodel.core.GroundStation is in unnamed module of loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @71304555, parent loader 'platform')
-	at java.util.concurrent.FutureTask.report(FutureTask.java:122) ~[?:?]
-	at java.util.concurrent.FutureTask.get(FutureTask.java:205) ~[?:?]
-	at com.eurocopter.mgs.business.connection.ConnectionManager$CheckConnectionRunnableWithTimeOut.run(ConnectionManager.java:177) ~[?:?]
-	at java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:572) ~[?:?]
-	at java.util.concurrent.FutureTask.run(FutureTask.java:317) ~[?:?]
-	at java.util.concurrent.ScheduledThreadPoolExecutor$ScheduledFutureTask.run(ScheduledThreadPoolExecutor.java:304) ~[?:?]
-	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1144) ~[?:?]
-	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:642) ~[?:?]
-	at java.lang.Thread.run(Thread.java:1583) ~[?:?]
-Caused by: java.lang.LinkageError: loader constraint violation: loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @2ebbd1e6 wants to load class com.eurocopter.mgs.datamodel.core.GroundStation. A different class with the same name was previously loaded by org.eclipse.osgi.internal.loader.EquinoxClassLoader @71304555. (com.eurocopter.mgs.datamodel.core.GroundStation is in unnamed module of loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @71304555, parent loader 'platform')
-	at com.eurocopter.mgs.business.connection.ConnectionManager.ping(ConnectionManager.java:138) ~[?:?]
-	at com.eurocopter.mgs.business.connection.ConnectionManager$CheckConnectionCallable.call(ConnectionManager.java:157) ~[?:?]
-	at com.eurocopter.mgs.business.connection.ConnectionManager$CheckConnectionCallable.call(ConnectionManager.java:1) ~[?:?]
-	at java.util.concurrent.FutureTask.run(FutureTask.java:317) ~[?:?]
-	... 3 more
-2026-10-08 11:22:44.946 [pool-6-thread-12] ERROR com.eurocopter.mgs.business.connection.ConnectionManager - Connection KO: unexpected java.lang.LinkageError
-java.util.concurrent.ExecutionException: java.lang.LinkageError: loader constraint violation: loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @2ebbd1e6 wants to load class com.eurocopter.mgs.datamodel.core.GroundStation. A different class with the same name was previously loaded by org.eclipse.osgi.internal.loader.EquinoxClassLoader @71304555. (com.eurocopter.mgs.datamodel.core.GroundStation is in unnamed module of loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @71304555, parent loader 'platform')
-	at java.util.concurrent.FutureTask.report(FutureTask.java:122) ~[?:?]
-	at java.util.concurrent.FutureTask.get(FutureTask.java:205) ~[?:?]
-	at com.eurocopter.mgs.business.connection.ConnectionManager$CheckConnectionRunnableWithTimeOut.run(ConnectionManager.java:177) ~[?:?]
-	at java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:572) ~[?:?]
-	at java.util.concurrent.FutureTask.run(FutureTask.java:317) ~[?:?]
-	at java.util.concurrent.ScheduledThreadPoolExecutor$ScheduledFutureTask.run(ScheduledThreadPoolExecutor.java:304) ~[?:?]
-	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1144) ~[?:?]
-	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:642) ~[?:?]
-	at java.lang.Thread.run(Thread.java:1583) ~[?:?]
-Caused by: java.lang.LinkageError: loader constraint violation: loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @2ebbd1e6 wants to load class com.eurocopter.mgs.datamodel.core.GroundStation. A different class with the same name was previously loaded by org.eclipse.osgi.internal.loader.EquinoxClassLoader @71304555. (com.eurocopter.mgs.datamodel.core.GroundStation is in unnamed module of loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @71304555, parent loader 'platform')
-	at com.eurocopter.mgs.business.connection.ConnectionManager.ping(ConnectionManager.java:138) ~[?:?]
-	at com.eurocopter.mgs.business.connection.ConnectionManager$CheckConnectionCallable.call(ConnectionManager.java:157) ~[?:?]
-	at com.eurocopter.mgs.business.connection.ConnectionManager$CheckConnectionCallable.call(ConnectionManager.java:1) ~[?:?]
-	at java.util.concurrent.FutureTask.run(FutureTask.java:317) ~[?:?]
-	... 3 more
-2026-10-08 11:22:49.975 [pool-6-thread-14] ERROR com.eurocopter.mgs.business.connection.ConnectionManager - Connection KO: unexpected java.lang.LinkageError
-java.util.concurrent.ExecutionException: java.lang.LinkageError: loader constraint violation: loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @2ebbd1e6 wants to load class com.eurocopter.mgs.datamodel.core.GroundStation. A different class with the same name was previously loaded by org.eclipse.osgi.internal.loader.EquinoxClassLoader @71304555. (com.eurocopter.mgs.datamodel.core.GroundStation is in unnamed module of loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @71304555, parent loader 'platform')
-	at java.util.concurrent.FutureTask.report(FutureTask.java:122) ~[?:?]
-	at java.util.concurrent.FutureTask.get(FutureTask.java:205) ~[?:?]
-	at com.eurocopter.mgs.business.connection.ConnectionManager$CheckConnectionRunnableWithTimeOut.run(ConnectionManager.java:177) ~[?:?]
-	at java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:572) ~[?:?]
-	at java.util.concurrent.FutureTask.run(FutureTask.java:317) ~[?:?]
-	at java.util.concurrent.ScheduledThreadPoolExecutor$ScheduledFutureTask.run(ScheduledThreadPoolExecutor.java:304) ~[?:?]
-	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1144) ~[?:?]
-	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:642) ~[?:?]
-	at java.lang.Thread.run(Thread.java:1583) ~[?:?]
-Caused by: java.lang.LinkageError: loader constraint violation: loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @2ebbd1e6 wants to load class com.eurocopter.mgs.datamodel.core.GroundStation. A different class with the same name was previously loaded by org.eclipse.osgi.internal.loader.EquinoxClassLoader @71304555. (com.eurocopter.mgs.datamodel.core.GroundStation is in unnamed module of loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @71304555, parent loader 'platform')
-	at com.eurocopter.mgs.business.connection.ConnectionManager.ping(ConnectionManager.java:138) ~[?:?]
-	at com.eurocopter.mgs.business.connection.ConnectionManager$CheckConnectionCallable.call(ConnectionManager.java:157) ~[?:?]
-	at com.eurocopter.mgs.business.connection.ConnectionManager$CheckConnectionCallable.call(ConnectionManager.java:1) ~[?:?]
-	at java.util.concurrent.FutureTask.run(FutureTask.java:317) ~[?:?]
-	... 3 more
-2026-10-08 11:22:54.990 [pool-6-thread-15] ERROR com.eurocopter.mgs.business.connection.ConnectionManager - Connection KO: unexpected java.lang.LinkageError
-java.util.concurrent.ExecutionException: java.lang.LinkageError: loader constraint violation: loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @2ebbd1e6 wants to load class com.eurocopter.mgs.datamodel.core.GroundStation. A different class with the same name was previously loaded by org.eclipse.osgi.internal.loader.EquinoxClassLoader @71304555. (com.eurocopter.mgs.datamodel.core.GroundStation is in unnamed module of loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @71304555, parent loader 'platform')
-	at java.util.concurrent.FutureTask.report(FutureTask.java:122) ~[?:?]
-	at java.util.concurrent.FutureTask.get(FutureTask.java:205) ~[?:?]
-	at com.eurocopter.mgs.business.connection.ConnectionManager$CheckConnectionRunnableWithTimeOut.run(ConnectionManager.java:177) ~[?:?]
-	at java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:572) ~[?:?]
-	at java.util.concurrent.FutureTask.run(FutureTask.java:317) ~[?:?]
-	at java.util.concurrent.ScheduledThreadPoolExecutor$ScheduledFutureTask.run(ScheduledThreadPoolExecutor.java:304) ~[?:?]
-	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1144) ~[?:?]
-	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:642) ~[?:?]
-	at java.lang.Thread.run(Thread.java:1583) ~[?:?]
-Caused by: java.lang.LinkageError: loader constraint violation: loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @2ebbd1e6 wants to load class com.eurocopter.mgs.datamodel.core.GroundStation. A different class with the same name was previously loaded by org.eclipse.osgi.internal.loader.EquinoxClassLoader @71304555. (com.eurocopter.mgs.datamodel.core.GroundStation is in unnamed module of loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @71304555, parent loader 'platform')
-	at com.eurocopter.mgs.business.connection.ConnectionManager.ping(ConnectionManager.java:138) ~[?:?]
-	at com.eurocopter.mgs.business.connection.ConnectionManager$CheckConnectionCallable.call(ConnectionManager.java:157) ~[?:?]
-	at com.eurocopter.mgs.business.connection.ConnectionManager$CheckConnectionCallable.call(ConnectionManager.java:1) ~[?:?]
-	at java.util.concurrent.FutureTask.run(FutureTask.java:317) ~[?:?]
-	... 3 more
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.Date;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
+import java.util.SortedSet;
+import java.util.TreeSet;
+
+import org.apache.commons.collections.primitives.ArrayDoubleList;
+import org.apache.commons.collections.primitives.DoubleList;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
+import com.eurocopter.mgs.datamodel.aircraft.Aircraft;
+import com.eurocopter.mgs.datamodel.aircraft.Avionic;
+import com.eurocopter.mgs.datamodel.flight.Flight;
+import com.eurocopter.mgs.datamodel.health.monitoring.HealthMechanicalComponent;
+import com.eurocopter.mgs.datamodel.health.monitoring.HealthMechanicalComponentConfiguration;
+import com.eurocopter.mgs.datamodel.health.monitoring.Indicator;
+import com.eurocopter.mgs.datamodel.health.monitoring.IndicatorConfiguration;
+import com.eurocopter.mgs.datamodel.health.monitoring.LearnedThresholdConfiguration;
+import com.eurocopter.mgs.datamodel.health.monitoring.RelearnThresholdRequest;
+import com.eurocopter.mgs.datamodel.health.monitoring.RelearnThresholdRequestComparator;
+import com.eurocopter.mgs.datamodel.health.monitoring.TakeoffLandingDateTime;
+import com.eurocopter.mgs.datamodel.health.monitoring.ThresholdConfiguration;
+import com.eurocopter.mgs.datamodel.health.monitoring.ThresholdLevel;
+import com.eurocopter.mgs.download.analysis.health.api.IHealthHistoryProvider;
+import com.eurocopter.mgs.download.analysis.health.api.IndicatorValueHolder;
+import com.eurocopter.mgs.parameter.health.monitoring.HealthMonitoringParameters;
+
+import corp.airbus.helicopters.algorithm.health.HealthAlgorithms;
+import corp.airbus.helicopters.algorithm.health.IHealthAlgorithms;
+
+public class LearnedThresholdAnalyzer {
+
+   private static final Logger LOGGER = LogManager.getLogger(LearnedThresholdAnalyzer.class);
+
+   /** The health algorithms */
+   private static final IHealthAlgorithms HEALTH_ALGORITHMS = new HealthAlgorithms();
+
+   private static final Comparator<Flight> FLIGHT_DOWNLOAD_COMPARATOR = Comparator.comparing(Flight::getLastDownloadDate).thenComparing(Flight::getUsageStartDate)
+         .thenComparingInt(Flight::getFlightId);
+
+   private static final Comparator<TakeoffLandingDateTime> TAKEOFF_LANDING_COMPARATOR = Comparator.comparing(TakeoffLandingDateTime::getTakeoffDateTime);
+
+   /**
+    * Update learned thresholds.
+    *
+    * @param aircraft
+    *           the aircraft
+    * @param latestHealthConfiguration
+    *           the latest health configuration
+    * @param commonParameters
+    *           the common parameters
+    */
+   void updateLearnedThresholds(final Aircraft aircraft, final Flight flight, final Map<HealthMechanicalComponent, HealthMechanicalComponentConfiguration> latestHealthConfiguration,
+         final HealthMonitoringParameters commonParameters, IHealthHistoryProvider healthHistoryProvider) {
+      for (final Map.Entry<HealthMechanicalComponent, HealthMechanicalComponentConfiguration> mechanicalComponentEntry : latestHealthConfiguration.entrySet()) {
+         for (final Entry<Indicator, IndicatorConfiguration> indicatorEntry : mechanicalComponentEntry.getValue().getIndicatorConfigurations().entrySet()) {
+            // Index threshold configuration by threshold
+            for (final ThresholdConfiguration thresholdConfiguration : indicatorEntry.getValue().getThresholdConfigurations()) {
+               if (thresholdConfiguration instanceof LearnedThresholdConfiguration) {
+                  // This is a learned threshold: retrieve latest relearn request if any
+                  final List<RelearnThresholdRequest> requests = new ArrayList<>(((LearnedThresholdConfiguration) thresholdConfiguration).getRelearnRequests());
+                  if (!requests.isEmpty()) {
+                     // Retrieve latest relearn request
+                     final RelearnThresholdRequest latestRequest = Collections.max(requests, new RelearnThresholdRequestComparator());
+                     if (!latestRequest.isHandled()) {
+                        computeThresholdLearning(aircraft, flight, indicatorEntry.getKey(), (LearnedThresholdConfiguration) thresholdConfiguration,
+                              latestRequest, commonParameters, healthHistoryProvider, mechanicalComponentEntry.getKey().isGroundAcquisition());
+                     }
+                     // Only the last request will be processed (no matter its state)
+                  }
+               }
+            }
+         }
+      }
+   }
+
+   /**
+    * Compute threshold learning.
+    *
+    * @param aircraft
+    *           the aircraft
+    * @param currentFlight
+    *           the flight
+    * @param indicator
+    *           the indicator
+    * @param thresholdConfiguration
+    *           the threshold configuration
+    * @param request
+    *           the request
+    * @param commonParameters
+    *           the common parameters
+    * @param groundAcquisitionMode
+    */
+   private void computeThresholdLearning(final Aircraft aircraft, final Flight currentFlight, final Indicator indicator, final LearnedThresholdConfiguration thresholdConfiguration,
+         final RelearnThresholdRequest request, final HealthMonitoringParameters commonParameters, final IHealthHistoryProvider healthHistoryProvider, boolean groundAcquisitionMode) {
+      LOGGER.debug("Compute threshold learning: begin flight retrieval");
+
+      Set<Flight> flightsWithValues = healthHistoryProvider.getFlightsWithValues(indicator);
+      if (flightsWithValues.isEmpty()) {
+         // There is no value for this indicator at all, shortcut for skipping the entire algorithm
+         LOGGER.debug("No value for indicator, skipping the learning process");
+         return;
+      }
+
+      // Sort flights for learning
+      final SortedSet<Flight> flightsBefore = new TreeSet<>(Collections.reverseOrder(FLIGHT_DOWNLOAD_COMPARATOR));
+      final SortedSet<Flight> flightsAfter = new TreeSet<>(FLIGHT_DOWNLOAD_COMPARATOR);
+      Flight lastFlight = currentFlight;
+
+      // All flights that contribute to the learning are those downloaded after the learning start date
+      for (final Flight flight : aircraft.getFlights()) {
+         if (flight.getLastDownloadDate().before(request.getStartDate())) {
+            flightsBefore.add(flight);
+         } else {
+            flightsAfter.add(flight);
+         }
+         if (flight.getUsageStartDate().after(lastFlight.getUsageStartDate())) {
+            lastFlight = flight;
+         }
+      }
+      LOGGER.debug("End flight retrieval");
+
+      Avionic avionic = aircraft.getAircraftType().getAvionic();
+      boolean isMarms = avionic == Avionic.MARMS;
+
+      // Values for learning
+      final DoubleList values = new ArrayDoubleList();
+
+      final long maxPastLearningTime = Math.min(request.getHistoryLearningTime(), thresholdConfiguration.getLearningTime());
+      long remainingPastLearningTime = maxPastLearningTime;
+      // Get values from download before request
+      for (final Flight flight : flightsBefore) {
+         if (remainingPastLearningTime == 0) {
+            // If history learning time has been reached then stop loop
+            break;
+         }
+         final Set<IndicatorValueHolder> indicatorValues = healthHistoryProvider.getIndicatorValues(flight, indicator);
+         if (!indicatorValues.isEmpty()) {
+            // If sensor acquisition contains acquisitions for concerned indicator
+            // then compute past learning time and get corresponding indicator values
+            if (groundAcquisitionMode) {
+               if (flight.getHealthStartDate() != null) {
+                  Date startDate = flight.getHealthStartDate();
+                  Date endDate = flight.getHealthEndDate();
+                  if (endDate.getTime() - startDate.getTime() > remainingPastLearningTime) {
+                     // If interval is too long, adjust end time
+                     startDate = new Date(endDate.getTime() - remainingPastLearningTime);
+                  }
+                  values.addAll(getIndicatorValuesBetweenDates(indicatorValues, startDate, endDate, isMarms));
+                  // Update the flight acquisition duration
+                  remainingPastLearningTime -= endDate.getTime() - startDate.getTime();
+               }
+            } else {
+               // Sort takeoffs/landings in reverse chronological order
+               List<TakeoffLandingDateTime> sortedTLDates = new ArrayList<>(flight.getFlightHourData().getTakeoffLandingDateTimes());
+               sortedTLDates.sort(Collections.reverseOrder(TAKEOFF_LANDING_COMPARATOR));
+
+               for (final TakeoffLandingDateTime takeoffLandingDateTime : sortedTLDates) {
+                  if (remainingPastLearningTime == 0) {
+                     break;
+                  }
+                  Date startDate = takeoffLandingDateTime.getTakeoffDateTime();
+                  final Date endDate = takeoffLandingDateTime.getLandingDateTime();
+                  if (endDate.getTime() - startDate.getTime() > remainingPastLearningTime) {
+                     // If interval is too long, adjust end time
+                     startDate = new Date(endDate.getTime() - remainingPastLearningTime);
+                  }
+                  values.addAll(getIndicatorValuesBetweenDates(indicatorValues, startDate, endDate, isMarms));
+                  // Update the flight acquisition duration
+                  remainingPastLearningTime -= endDate.getTime() - startDate.getTime();
+               }
+            }
+         }
+      }
+
+      // Remaining time for learning
+      int i = 1;
+      long remainingTime = thresholdConfiguration.getLearningTime() - (maxPastLearningTime - remainingPastLearningTime);
+      final long originalRemainingTime = remainingTime;
+      if (remainingTime == 0 && !values.isEmpty()) {
+         // learning completed with past hours data only. set end date equals to start date
+         request.setEndDate(request.getStartDate());
+         // Applicable to the current flight as well, so include it
+         request.setApplicableFlightDate(new Date(lastFlight.getUsageStartDate().getTime() - 1));
+      } else if (isLearningPossible(flightsAfter, remainingTime, groundAcquisitionMode)) {
+         // Boolean that indicates if all indicator values are processed (i.e. cannot extend further the learning time)
+         boolean endReached = false;
+         // Loop in order to extend the learning time when no values have been found
+         while (!endReached) {
+            endReached = true;
+            // Get values from downloads after request
+            for (final Flight flight : flightsAfter) {
+               if (remainingTime == 0) {
+                  // If learning time has been reached with values, then stop loop
+                  endReached = !values.isEmpty();
+                  break;
+               }
+               final Set<IndicatorValueHolder> indicatorValues = healthHistoryProvider.getIndicatorValues(flight, indicator);
+               if (groundAcquisitionMode) {
+                  if (flight.getHealthStartDate() != null) {
+                     final Date startDate = flight.getHealthStartDate();
+                     Date endDate = flight.getHealthEndDate();
+                     if (endDate.getTime() - startDate.getTime() > remainingTime) {
+                        // If interval is too long, adjust end time
+                        endDate = new Date(startDate.getTime() + remainingTime);
+                        endReached = false;
+                     }
+                     values.addAll(getIndicatorValuesBetweenDates(indicatorValues, startDate, endDate, isMarms));
+                     // Update the flight acquisition duration
+                     remainingTime -= endDate.getTime() - startDate.getTime();
+                  }
+               } else if (flight.getFlightHourData() != null) {
+                  // Sort takeoffs/landings in chronological order
+                  List<TakeoffLandingDateTime> sortedTLDates = new ArrayList<>(flight.getFlightHourData().getTakeoffLandingDateTimes());
+                  sortedTLDates.sort(TAKEOFF_LANDING_COMPARATOR);
+                  for (final TakeoffLandingDateTime takeoffLandingDateTime : sortedTLDates) {
+                     if (remainingTime == 0) {
+                        // If learning time has been reached with values, then stop loop
+                        endReached = !values.isEmpty();
+                        break;
+                     }
+                     final Date startDate = takeoffLandingDateTime.getTakeoffDateTime();
+                     Date endDate = takeoffLandingDateTime.getLandingDateTime();
+                     if (endDate.getTime() - startDate.getTime() > remainingTime) {
+                        // If interval is too long, adjust end time
+                        endDate = new Date(startDate.getTime() + remainingTime);
+                        endReached = false;
+                     }
+                     values.addAll(getIndicatorValuesBetweenDates(indicatorValues, startDate, endDate, isMarms));
+                     // Update the flight acquisition duration
+                     remainingTime -= endDate.getTime() - startDate.getTime();
+                  }
+               }
+            }
+            if (remainingTime == 0 && values.isEmpty()) {
+               if (endReached) {
+                  // Cannot extend the learning time (infinite loop, there won't be any more values)
+               } else if (thresholdConfiguration.getLearningTime() == 0) {
+                  // Infinite loop as well, if the configured learning time is 0
+                  endReached = true;
+               } else {
+                  // No values for the computation, need to extend the learning time
+                  remainingTime = originalRemainingTime + i * thresholdConfiguration.getLearningTime();
+                  // Loop again
+                  endReached = false;
+                  LOGGER.info("Extending learning time (since no point has been found during the learning time).");
+
+                  ++i;
+               }
+            }
+         }
+      }
+
+      if ((remainingTime == 0 || i > 1) && !values.isEmpty()) {
+         completeLearning(currentFlight, lastFlight, thresholdConfiguration, request, commonParameters, values);
+      }
+   }
+
+   private boolean isLearningPossible(SortedSet<Flight> flightsAfter, long originalRemainingTime, boolean groundAcquisitionMode) {
+      long remainingTime = originalRemainingTime;
+      for (final Flight flight : flightsAfter) {
+         if (groundAcquisitionMode) {
+            if (flight.getHealthStartDate() != null) {
+               final Date startDate = flight.getHealthStartDate();
+               Date endDate = flight.getHealthEndDate();
+               if (endDate.getTime() - startDate.getTime() > remainingTime) {
+                  endDate = new Date(startDate.getTime() + remainingTime);
+               }
+               remainingTime -= endDate.getTime() - startDate.getTime();
+               if (remainingTime == 0) {
+                  return true;
+               }
+            }
+         } else if (flight.getFlightHourData() != null) {
+            List<TakeoffLandingDateTime> sortedTLDates = new ArrayList<>(flight.getFlightHourData().getTakeoffLandingDateTimes());
+            sortedTLDates.sort(TAKEOFF_LANDING_COMPARATOR);
+            for (final TakeoffLandingDateTime takeoffLandingDateTime : sortedTLDates) {
+               final Date startDate = takeoffLandingDateTime.getTakeoffDateTime();
+               Date endDate = takeoffLandingDateTime.getLandingDateTime();
+               if (endDate.getTime() - startDate.getTime() > remainingTime) {
+                  endDate = new Date(startDate.getTime() + remainingTime);
+               }
+               remainingTime -= endDate.getTime() - startDate.getTime();
+               if (remainingTime == 0) {
+                  return true;
+               }
+            }
+         }
+      }
+      return remainingTime <= 0;
+   }
+
+   private void completeLearning(final Flight currentFlight, final Flight lastFlight, final LearnedThresholdConfiguration thresholdConfiguration, final RelearnThresholdRequest request,
+         final HealthMonitoringParameters commonParameters, final DoubleList values) {
+      final double mean = HEALTH_ALGORITHMS.mean(values.toArray());
+      double standardDeviation = HEALTH_ALGORITHMS.rms(values.toArray());
+      final Double minimumDeviation = thresholdConfiguration.getMinimumDeviation();
+      if (minimumDeviation != null && standardDeviation < minimumDeviation) {
+         standardDeviation = minimumDeviation;
+      }
+      Double deviationCoeff = thresholdConfiguration.getDeviationCoefficient();
+      double meanFactor = thresholdConfiguration.getMeanFactor();
+      if (deviationCoeff == null) {
+         // When absent from threshold configuration, get deviation coefficient from health parameters
+         deviationCoeff = switch (thresholdConfiguration.getThreshold().getSeverity()) {
+            case AMBER -> commonParameters.getLearningThresholdAlgorithmAmber();
+            case RED -> commonParameters.getLearningThresholdAlgorithmRed();
+            default -> 0.0;
+         };
+      }
+      double learnedValue = meanFactor * mean + deviationCoeff * standardDeviation;
+
+      learnedValue = ajustThresholdBounds(thresholdConfiguration, learnedValue);
+
+      request.setLearnedValue(learnedValue);
+
+      request.setHandled(true);
+      if (request.getEndDate() == null) {
+         // If the end date has not been set at the end of past flight hours analysis (see above)
+         request.setEndDate(currentFlight.getLastDownloadDate());
+         request.setApplicableFlightDate(lastFlight.getUsageStartDate());
+      }
+   }
+
+   /**
+    * Ajust learned value to min or max (depending on threshold type) of learned threshold if value is out of bounds.
+    * 
+    * To be launched after learning and after configuration update.
+    * 
+    * @param thresholdConfiguration
+    *           LearnedThresholdConfiguration
+    * @param learnedValue
+    *           initial value after learning time
+    * @return learnedValue corrected value
+    * 
+    */
+   public double ajustThresholdBounds(LearnedThresholdConfiguration thresholdConfiguration, double learnedValue) {
+      if (thresholdConfiguration.getThresholdLevel() == ThresholdLevel.HIGH) {
+         if (learnedValue > thresholdConfiguration.getMaximumThreshold()) {
+            learnedValue = thresholdConfiguration.getMaximumThreshold();
+         } else if (thresholdConfiguration.getMinimumThreshold() != null && learnedValue < thresholdConfiguration.getMinimumThreshold()) {
+            learnedValue = thresholdConfiguration.getMinimumThreshold();
+         }
+      } else if (thresholdConfiguration.getThresholdLevel() == ThresholdLevel.LOW) {
+         if (thresholdConfiguration.getMaximumThreshold() > learnedValue) {
+            learnedValue = thresholdConfiguration.getMaximumThreshold();
+         } else if (thresholdConfiguration.getMinimumThreshold() != null && thresholdConfiguration.getMinimumThreshold() < learnedValue) {
+            learnedValue = thresholdConfiguration.getMinimumThreshold();
+         }
+      }
+      return learnedValue;
+   }
+
+   /**
+    * Gets the indicator values between dates.
+    *
+    * @param indicatorValues
+    *           the indicator values
+    * @param startDate
+    *           the start date
+    * @param endDate
+    *           the end date
+    * @return the indicator values between dates
+    */
+   private ArrayDoubleList getIndicatorValuesBetweenDates(final Set<IndicatorValueHolder> indicatorValues, final Date startDate, final Date endDate, boolean isMarms) {
+      final ArrayDoubleList result = new ArrayDoubleList();
+      for (final IndicatorValueHolder indicatorValue : indicatorValues) {
+         if (isMarms) {
+            // no filter
+            result.add(indicatorValue.getValue());
+         } else if (!indicatorValue.getDate().before(startDate) && !indicatorValue.getDate().after(endDate)) {
+            result.add(indicatorValue.getValue());
+         }
+      }
+      return result;
+   }
+}
+
+==========================================MGS-jpa-Model=====================================================================
+
+
+package com.eurocopter.mgs.datamodel.health.monitoring;
+
+import java.io.Serializable;
+import java.util.Date;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.NamedQuery;
+import jakarta.persistence.Table;
+import jakarta.persistence.Temporal;
+import jakarta.persistence.TemporalType;
+
+/**
+ * Entity that represents a request to re-learn a threshold.
+ */
+@Entity
+@Table(name = "RELEARN_THRESHOLD_REQUEST")
+@NamedQuery(name = "findRelearnRequestsByThreshold", query = "SELECT rr FROM LearnedThresholdConfiguration ltc JOIN ltc.relearnRequests rr WHERE ltc.threshold.id = :thresholdId")
+public class RelearnThresholdRequest implements Serializable {
+
+   private static final long serialVersionUID = 1L;
+
+   /**
+    * Database ID
+    */
+   @Id
+   @Column(name = "ID", nullable = false)
+   private String id;
+
+   /**
+    * Textual description of the reason of the re-learn
+    */
+   @Column(name = "DESCRIPTION")
+   private String description;
+
+   /**
+    * Effective date/time of the launch of the re-learn process
+    */
+   @Temporal(TemporalType.TIMESTAMP)
+   private Date startDate;
+
+   /**
+    * Applicable date/time of the learned value. Flight download date shall be used for the comparison
+    */
+   @Temporal(TemporalType.TIMESTAMP)
+   private Date endDate;
+
+   @Temporal(TemporalType.TIMESTAMP)
+   @Column(name = "APPLICABLE_FLIGHT_DATE")
+   private Date applicableFlightDate;
+
+   @Temporal(TemporalType.TIMESTAMP)
+   @Column(name = "START_FLIGHT_DATE")
+   private Date startFlightDate;
+
+   /**
+    * Is handled
+    */
+   @Column(name = "HANDLED", nullable = false)
+   private boolean handled;
+
+   @Column(name = "HISTORY_LEARNING_TIME", nullable = false)
+   private long historyLearningTime;
+
+   /**
+    * Value computed after learning
+    */
+   @Column(name = "learnedValue")
+   private Double learnedValue;
+
+   @Column(name = "CREATE_MARKER")
+   private boolean createMarker;
+
+   RelearnThresholdRequest() {
+   }
+
+   public RelearnThresholdRequest(String id) {
+      this.id = id;
+      createMarker = true;
+   }
+
+   public String getId() {
+      return id;
+   }
+
+   public String getDescription() {
+      return description;
+   }
+
+   public void setDescription(String description) {
+      this.description = description;
+   }
+
+   public Date getStartDate() {
+      return startDate;
+   }
+
+   public void setStartDate(Date effectiveDate) {
+      startDate = effectiveDate;
+   }
+
+   public Date getEndDate() {
+      return endDate;
+   }
+
+   public void setEndDate(Date endDate) {
+      this.endDate = endDate;
+   }
+
+   public boolean isHandled() {
+      return handled;
+   }
+
+   public void setHandled(boolean handled) {
+      this.handled = handled;
+   }
+
+   public void setHistoryLearningTime(long historyLearningTime) {
+      this.historyLearningTime = historyLearningTime;
+   }
+
+   public long getHistoryLearningTime() {
+      return historyLearningTime;
+   }
+
+   public void setLearnedValue(Double learnedValue) {
+      this.learnedValue = learnedValue;
+   }
+
+   public Double getLearnedValue() {
+      return learnedValue;
+   }
+
+   public boolean isCreateMarker() {
+      return createMarker;
+   }
+
+   public void setCreateMarker(boolean createMarker) {
+      this.createMarker = createMarker;
+   }
+
+   public Date getApplicableFlightDate() {
+      return applicableFlightDate;
+   }
+
+   public void setApplicableFlightDate(Date applicableFlightDate) {
+      this.applicableFlightDate = applicableFlightDate;
+   }
+
+   public Date getStartFlightDate() {
+      return startFlightDate;
+   }
+
+   public void setStartFlightDate(Date startFlightDate) {
+      this.startFlightDate = startFlightDate;
+   }
+
+   @Override
+   public int hashCode() {
+      final int prime = 31;
+      int result = 1;
+      result = prime * result + ((id == null) ? 0 : id.hashCode());
+      return result;
+   }
+
+   @Override
+   public boolean equals(Object obj) {
+      if (this == obj) {
+         return true;
+      }
+      if (obj == null) {
+         return false;
+      }
+      if (getClass() != obj.getClass()) {
+         return false;
+      }
+      RelearnThresholdRequest other = (RelearnThresholdRequest) obj;
+      if (id == null) {
+         return other.id == null;
+      } else
+         return id.equals(other.id);
+   }
+
+   @Override
+   public String toString() {
+      return "RelearnThresholdRequest [id=" + id + ", description=" + description + ", effectiveDate=" + startDate + ", handled=" + handled + "]";
+   }
+}
+
+
+
