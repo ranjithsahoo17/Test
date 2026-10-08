@@ -1,25 +1,85 @@
+WARNING: Using incubator modules: jdk.incubator.vector
+2026-10-08 11:21:34.402 [Start Level: Equinox Container: d764e6fe-5717-49de-b779-d54bfa745417] WARN  com.eurocopter.mgs.business.activator.Activator - URLStreamHandlerFactory was already set: factory already defined
+2026-10-08 11:21:34.414 [Start Level: Equinox Container: d764e6fe-5717-49de-b779-d54bfa745417] DEBUG com.eurocopter.mgs.business.activator.Activator - Start context: mgs-proxy
+2026-10-08 11:21:34.495 [Start Level: Equinox Container: d764e6fe-5717-49de-b779-d54bfa745417] DEBUG com.eurocopter.mgs.core.activator.Activator - Start context: mgs-glassfish-client
+[EL Warning]: 2026-10-08 11:21:34.85--Java SE '21' is not fully supported yet. Report this error to the EclipseLink open source project. (There is no English translation for this message.)
+[EL Warning]: metadata: 2026-10-08 11:21:36.065--ServerSession(412772922)--Reverting the lazy setting on the OneToOne or ManyToOne attribute [signal] for the entity class [class com.eurocopter.mgs.datamodel.health.common.ComponentAcquisition] since weaving was not enabled or did not occur.
+[EL Warning]: metadata: 2026-10-08 11:21:36.066--ServerSession(412772922)--Reverting the lazy setting on the OneToOne or ManyToOne attribute [signal] for the entity class [class com.eurocopter.mgs.datamodel.health.common.ContextualParameterAcquisition] since weaving was not enabled or did not occur.
+Exception in thread "Thread-4" java.lang.RuntimeException: java.io.IOException: Cannot run program "C:\PROGRA~1\AIRBUS~1\MGS\tools\windriver\jre\bin\java.exe": CreateProcess error=2, The system cannot find the file specified
+	at com.eurocopter.api.windriver.remote.RemoteWindriverFactory$1.run(RemoteWindriverFactory.java:48)
+	at java.base/java.lang.Thread.run(Thread.java:1583)
+Caused by: java.io.IOException: Cannot run program "C:\PROGRA~1\AIRBUS~1\MGS\tools\windriver\jre\bin\java.exe": CreateProcess error=2, The system cannot find the file specified
+	at java.base/java.lang.ProcessBuilder.start(ProcessBuilder.java:1170)
+	at java.base/java.lang.ProcessBuilder.start(ProcessBuilder.java:1089)
+	at com.eurocopter.api.windriver.remote.WindriverRemoteRunner.run(WindriverRemoteRunner.java:64)
+	at com.eurocopter.api.windriver.remote.RemoteWindriverFactory$1.run(RemoteWindriverFactory.java:46)
+	... 1 more
+Caused by: java.io.IOException: CreateProcess error=2, The system cannot find the file specified
+	at java.base/java.lang.ProcessImpl.create(Native Method)
+	at java.base/java.lang.ProcessImpl.<init>(ProcessImpl.java:506)
+	at java.base/java.lang.ProcessImpl.start(ProcessImpl.java:159)
+	at java.base/java.lang.ProcessBuilder.start(ProcessBuilder.java:1126)
+	... 4 more
+2026-10-08 11:21:36.733 [Start Level: Equinox Container: d764e6fe-5717-49de-b779-d54bfa745417] INFO  com.eurocopter.mgs.business.aircraft.impl.SftpUrlStreamHandlerService - Registered sftp:// URLStreamHandlerService with OSGi (bundle: mgs-proxy)
+2026-10-08 11:21:37.401 [main] INFO  com.eurocopter.mgs.app.Activator - Starting MGS client application
+2026-10-08 11:21:38.091 [pool-3-thread-1] INFO  org.apache.sshd.common.io.DefaultIoServiceFactoryFactory - No detected/configured IoServiceFactoryFactory; using Nio2ServiceFactoryFactory
+2026-10-08 11:21:38.120 [pool-3-thread-1] DEBUG com.eurocopter.mgs.business.connection.ConnectionManager - Start scheduler
+Oct 08, 2026 11:21:38 AM com.sun.enterprise.v3.server.CommonClassLoaderServiceImpl findDerbyClient
+INFO: Cannot find javadb client jar file, derby jdbc driver will not be available by default.
+Oct 08, 2026 11:21:43 AM org.glassfish.enterprise.iiop.impl.GlassFishORBManager getORB
+INFO: ORB initialization succeeded: com.sun.corba.ee.impl.orb.ORBImpl@6dcbf5aa
+2026-10-08 11:21:44.375 [main] INFO  com.eurocopter.mgs.app.ApplicationWorkbenchAdvisor - Error during login
+javax.security.auth.login.LoginException: Failed to log in.
+	at org.eclipse.equinox.internal.security.auth.SecureContext.login(SecureContext.java:61) ~[?:?]
+	at com.eurocopter.mgs.app.ApplicationWorkbenchAdvisor.lambda$0(ApplicationWorkbenchAdvisor.java:234) ~[?:?]
+	at org.eclipse.swt.widgets.RunnableLock.run(RunnableLock.java:40) ~[?:?]
+	at org.eclipse.swt.widgets.Synchronizer.runAsyncMessages(Synchronizer.java:132) ~[?:?]
+	at org.eclipse.swt.widgets.Display.runAsyncMessages(Display.java:4099) ~[?:?]
+	at org.eclipse.swt.widgets.Display.readAndDispatch(Display.java:3715) ~[?:?]
+	at org.eclipse.e4.ui.internal.workbench.swt.PartRenderingEngine$5.run(PartRenderingEngine.java:1151) ~[?:?]
+	at org.eclipse.core.databinding.observable.Realm.runWithDefault(Realm.java:339) ~[?:?]
+	at org.eclipse.e4.ui.internal.workbench.swt.PartRenderingEngine.run(PartRenderingEngine.java:1042) ~[?:?]
+	at org.eclipse.e4.ui.internal.workbench.E4Workbench.createAndRunUI(E4Workbench.java:153) ~[?:?]
+	at org.eclipse.ui.internal.Workbench.lambda$3(Workbench.java:639) ~[?:?]
+	at org.eclipse.core.databinding.observable.Realm.runWithDefault(Realm.java:339) ~[?:?]
+	at org.eclipse.ui.internal.Workbench.createAndRunWorkbench(Workbench.java:546) ~[?:?]
+	at org.eclipse.ui.PlatformUI.createAndRunWorkbench(PlatformUI.java:173) ~[?:?]
+	at com.eurocopter.mgs.app.Application.openWorkbench(Application.java:154) ~[?:?]
+	at com.eurocopter.mgs.app.Application.start(Application.java:115) ~[?:?]
+	at org.eclipse.equinox.internal.app.EclipseAppHandle.run(EclipseAppHandle.java:208) ~[?:?]
+	at org.eclipse.core.runtime.internal.adaptor.EclipseAppLauncher.runApplication(EclipseAppLauncher.java:143) ~[?:?]
+	at org.eclipse.core.runtime.internal.adaptor.EclipseAppLauncher.start(EclipseAppLauncher.java:109) ~[?:?]
+	at org.eclipse.core.runtime.adaptor.EclipseStarter.run(EclipseStarter.java:439) ~[?:?]
+	at org.eclipse.core.runtime.adaptor.EclipseStarter.run(EclipseStarter.java:271) ~[?:?]
+	at jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103) ~[?:?]
+	at java.lang.reflect.Method.invoke(Method.java:580) ~[?:?]
+	at org.eclipse.equinox.launcher.Main.invokeFramework(Main.java:668) ~[org.eclipse.equinox.launcher_1.6.900.v20240613-2009.jar:?]
+	at org.eclipse.equinox.launcher.Main.basicRun(Main.java:605) ~[org.eclipse.equinox.launcher_1.6.900.v20240613-2009.jar:?]
+	at org.eclipse.equinox.launcher.Main.run(Main.java:1481) ~[org.eclipse.equinox.launcher_1.6.900.v20240613-2009.jar:?]
+	at org.eclipse.equinox.launcher.Main.main(Main.java:1454) ~[org.eclipse.equinox.launcher_1.6.900.v20240613-2009.jar:?]
+Caused by: javax.security.auth.login.LoginException: java.lang.IllegalArgumentException: Unknown Entity bean class: class com.eurocopter.mgs.datamodel.configuration.MgsConfigurationProperty, please verify that this class has been marked with the @Entity annotation.
+	at org.eclipse.persistence.internal.jpa.EntityManagerImpl.find(EntityManagerImpl.java:805)
+	at org.eclipse.persistence.internal.jpa.EntityManagerImpl.find(EntityManagerImpl.java:691)
+	at com.eurocopter.mgs.business.configuration.impl.ConfigurationBusiness.getLocalConfigurationProperty(ConfigurationBusiness.java:96)
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:580)
+	at com.eurocopter.mgs.business.proxy.BusinessManager$BusinessInvocationHandler.lambda$0(BusinessManager.java:71)
+	at com.eurocopter.mgs.core.persistence.PersistenceManager$PersistenceCallable.call(PersistenceManager.java:46)
+	at java.base/java.util.concurrent.FutureTask.run(FutureTask.java:317)
+	at java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1144)
+	at java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:642)
+	at java.base/java.lang.Thread.run(Thread.java:1583)
 
-2026-10-07 08:03:28.439 [Start Level: Equinox Container: e3f95070-c067-4b7c-8a9b-ef61d225cf57] WARN  com.eurocopter.mgs.business.activator.Activator - URLStreamHandlerFactory was already set: factory already defined
-2026-10-07 08:03:28.498 [Start Level: Equinox Container: e3f95070-c067-4b7c-8a9b-ef61d225cf57] DEBUG com.eurocopter.mgs.business.activator.Activator - Start context: mgs-proxy
-2026-10-07 08:03:28.640 [Start Level: Equinox Container: e3f95070-c067-4b7c-8a9b-ef61d225cf57] DEBUG com.eurocopter.mgs.core.activator.Activator - Start context: mgs-glassfish-client
-2026-10-07 08:03:31.715 [Start Level: Equinox Container: e3f95070-c067-4b7c-8a9b-ef61d225cf57] INFO  com.eurocopter.mgs.business.aircraft.impl.SftpUrlStreamHandlerService - Registered sftp:// URLStreamHandlerService with OSGi (bundle: mgs-proxy)
-2026-10-07 08:03:32.541 [main] INFO  com.eurocopter.mgs.app.Activator - Starting MGS client application
-2026-10-07 08:03:33.365 [pool-3-thread-1] INFO  org.apache.sshd.common.io.DefaultIoServiceFactoryFactory - No detected/configured IoServiceFactoryFactory; using Nio2ServiceFactoryFactory
-2026-10-07 08:03:33.395 [pool-3-thread-1] DEBUG com.eurocopter.mgs.business.connection.ConnectionManager - Start scheduler
-2026-10-07 08:03:38.682 [main] ERROR com.eurocopter.mgs.app.ApplicationWorkbenchAdvisor - class com.eurocopter.mgs.datamodel.user.AuthenticationConfiguration cannot be cast to class com.eurocopter.mgs.datamodel.user.AuthenticationConfiguration (com.eurocopter.mgs.datamodel.user.AuthenticationConfiguration is in unnamed module of loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @2ed5950c; com.eurocopter.mgs.datamodel.user.AuthenticationConfiguration is in unnamed module of loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @2926f02e)
-java.lang.ClassCastException: class com.eurocopter.mgs.datamodel.user.AuthenticationConfiguration cannot be cast to class com.eurocopter.mgs.datamodel.user.AuthenticationConfiguration (com.eurocopter.mgs.datamodel.user.AuthenticationConfiguration is in unnamed module of loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @2ed5950c; com.eurocopter.mgs.datamodel.user.AuthenticationConfiguration is in unnamed module of loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @2926f02e)
-	at com.eurocopter.mgs.business.user.impl.UserBusiness.getLocalAuthenticationConfiguration(UserBusiness.java:322) ~[?:?]
-	at com.eurocopter.mgs.business.user.impl.UserBusiness.getAuthenticationConfiguration(UserBusiness.java:441) ~[?:?]
-	at jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103) ~[?:?]
-	at java.lang.reflect.Method.invoke(Method.java:580) ~[?:?]
-	at com.eurocopter.mgs.business.proxy.BusinessManager$BusinessInvocationHandler.lambda$0(BusinessManager.java:71) ~[?:?]
-	at com.eurocopter.mgs.core.persistence.PersistenceManager$PersistenceCallable.call(PersistenceManager.java:46) ~[?:?]
-	at java.util.concurrent.FutureTask.run(FutureTask.java:317) ~[?:?]
-	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1144) ~[?:?]
-	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:642) ~[?:?]
-	at java.lang.Thread.run(Thread.java:1583) ~[?:?]
-2026-10-07 08:03:39.759 [pool-6-thread-1] ERROR com.eurocopter.mgs.business.connection.ConnectionManager - Connection KO: unexpected java.lang.LinkageError
-java.util.concurrent.ExecutionException: java.lang.LinkageError: loader constraint violation: loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @c83dc5e wants to load class com.eurocopter.mgs.datamodel.core.GroundStation. A different class with the same name was previously loaded by org.eclipse.osgi.internal.loader.EquinoxClassLoader @2ed5950c. (com.eurocopter.mgs.datamodel.core.GroundStation is in unnamed module of loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @2ed5950c, parent loader 'platform')
+	at javax.security.auth.login.LoginContext.invoke(LoginContext.java:849) ~[?:?]
+	at javax.security.auth.login.LoginContext$4.run(LoginContext.java:678) ~[?:?]
+	at javax.security.auth.login.LoginContext$4.run(LoginContext.java:676) ~[?:?]
+	at java.security.AccessController.doPrivileged(AccessController.java:714) ~[?:?]
+	at javax.security.auth.login.LoginContext.invokePriv(LoginContext.java:676) ~[?:?]
+	at javax.security.auth.login.LoginContext.login(LoginContext.java:587) ~[?:?]
+	at org.eclipse.equinox.internal.security.auth.SecureContext.login(SecureContext.java:54) ~[?:?]
+	... 26 more
+2026-10-08 11:21:44.779 [pool-6-thread-1] ERROR com.eurocopter.mgs.business.connection.ConnectionManager - Connection KO: unexpected java.lang.LinkageError
+java.util.concurrent.ExecutionException: java.lang.LinkageError: loader constraint violation: loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @2ebbd1e6 wants to load class com.eurocopter.mgs.datamodel.core.GroundStation. A different class with the same name was previously loaded by org.eclipse.osgi.internal.loader.EquinoxClassLoader @71304555. (com.eurocopter.mgs.datamodel.core.GroundStation is in unnamed module of loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @71304555, parent loader 'platform')
 	at java.util.concurrent.FutureTask.report(FutureTask.java:122) ~[?:?]
 	at java.util.concurrent.FutureTask.get(FutureTask.java:205) ~[?:?]
 	at com.eurocopter.mgs.business.connection.ConnectionManager$CheckConnectionRunnableWithTimeOut.run(ConnectionManager.java:177) ~[?:?]
@@ -29,14 +89,14 @@ java.util.concurrent.ExecutionException: java.lang.LinkageError: loader constrai
 	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1144) ~[?:?]
 	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:642) ~[?:?]
 	at java.lang.Thread.run(Thread.java:1583) ~[?:?]
-Caused by: java.lang.LinkageError: loader constraint violation: loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @c83dc5e wants to load class com.eurocopter.mgs.datamodel.core.GroundStation. A different class with the same name was previously loaded by org.eclipse.osgi.internal.loader.EquinoxClassLoader @2ed5950c. (com.eurocopter.mgs.datamodel.core.GroundStation is in unnamed module of loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @2ed5950c, parent loader 'platform')
+Caused by: java.lang.LinkageError: loader constraint violation: loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @2ebbd1e6 wants to load class com.eurocopter.mgs.datamodel.core.GroundStation. A different class with the same name was previously loaded by org.eclipse.osgi.internal.loader.EquinoxClassLoader @71304555. (com.eurocopter.mgs.datamodel.core.GroundStation is in unnamed module of loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @71304555, parent loader 'platform')
 	at com.eurocopter.mgs.business.connection.ConnectionManager.ping(ConnectionManager.java:138) ~[?:?]
 	at com.eurocopter.mgs.business.connection.ConnectionManager$CheckConnectionCallable.call(ConnectionManager.java:157) ~[?:?]
 	at com.eurocopter.mgs.business.connection.ConnectionManager$CheckConnectionCallable.call(ConnectionManager.java:1) ~[?:?]
 	at java.util.concurrent.FutureTask.run(FutureTask.java:317) ~[?:?]
 	... 3 more
-2026-10-07 08:03:44.779 [pool-6-thread-2] ERROR com.eurocopter.mgs.business.connection.ConnectionManager - Connection KO: unexpected java.lang.LinkageError
-java.util.concurrent.ExecutionException: java.lang.LinkageError: loader constraint violation: loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @c83dc5e wants to load class com.eurocopter.mgs.datamodel.core.GroundStation. A different class with the same name was previously loaded by org.eclipse.osgi.internal.loader.EquinoxClassLoader @2ed5950c. (com.eurocopter.mgs.datamodel.core.GroundStation is in unnamed module of loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @2ed5950c, parent loader 'platform')
+2026-10-08 11:21:49.795 [pool-6-thread-2] ERROR com.eurocopter.mgs.business.connection.ConnectionManager - Connection KO: unexpected java.lang.LinkageError
+java.util.concurrent.ExecutionException: java.lang.LinkageError: loader constraint violation: loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @2ebbd1e6 wants to load class com.eurocopter.mgs.datamodel.core.GroundStation. A different class with the same name was previously loaded by org.eclipse.osgi.internal.loader.EquinoxClassLoader @71304555. (com.eurocopter.mgs.datamodel.core.GroundStation is in unnamed module of loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @71304555, parent loader 'platform')
 	at java.util.concurrent.FutureTask.report(FutureTask.java:122) ~[?:?]
 	at java.util.concurrent.FutureTask.get(FutureTask.java:205) ~[?:?]
 	at com.eurocopter.mgs.business.connection.ConnectionManager$CheckConnectionRunnableWithTimeOut.run(ConnectionManager.java:177) ~[?:?]
@@ -46,14 +106,14 @@ java.util.concurrent.ExecutionException: java.lang.LinkageError: loader constrai
 	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1144) ~[?:?]
 	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:642) ~[?:?]
 	at java.lang.Thread.run(Thread.java:1583) ~[?:?]
-Caused by: java.lang.LinkageError: loader constraint violation: loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @c83dc5e wants to load class com.eurocopter.mgs.datamodel.core.GroundStation. A different class with the same name was previously loaded by org.eclipse.osgi.internal.loader.EquinoxClassLoader @2ed5950c. (com.eurocopter.mgs.datamodel.core.GroundStation is in unnamed module of loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @2ed5950c, parent loader 'platform')
+Caused by: java.lang.LinkageError: loader constraint violation: loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @2ebbd1e6 wants to load class com.eurocopter.mgs.datamodel.core.GroundStation. A different class with the same name was previously loaded by org.eclipse.osgi.internal.loader.EquinoxClassLoader @71304555. (com.eurocopter.mgs.datamodel.core.GroundStation is in unnamed module of loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @71304555, parent loader 'platform')
 	at com.eurocopter.mgs.business.connection.ConnectionManager.ping(ConnectionManager.java:138) ~[?:?]
 	at com.eurocopter.mgs.business.connection.ConnectionManager$CheckConnectionCallable.call(ConnectionManager.java:157) ~[?:?]
 	at com.eurocopter.mgs.business.connection.ConnectionManager$CheckConnectionCallable.call(ConnectionManager.java:1) ~[?:?]
 	at java.util.concurrent.FutureTask.run(FutureTask.java:317) ~[?:?]
 	... 3 more
-2026-10-07 08:03:49.803 [pool-6-thread-3] ERROR com.eurocopter.mgs.business.connection.ConnectionManager - Connection KO: unexpected java.lang.LinkageError
-java.util.concurrent.ExecutionException: java.lang.LinkageError: loader constraint violation: loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @c83dc5e wants to load class com.eurocopter.mgs.datamodel.core.GroundStation. A different class with the same name was previously loaded by org.eclipse.osgi.internal.loader.EquinoxClassLoader @2ed5950c. (com.eurocopter.mgs.datamodel.core.GroundStation is in unnamed module of loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @2ed5950c, parent loader 'platform')
+2026-10-08 11:21:54.809 [pool-6-thread-3] ERROR com.eurocopter.mgs.business.connection.ConnectionManager - Connection KO: unexpected java.lang.LinkageError
+java.util.concurrent.ExecutionException: java.lang.LinkageError: loader constraint violation: loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @2ebbd1e6 wants to load class com.eurocopter.mgs.datamodel.core.GroundStation. A different class with the same name was previously loaded by org.eclipse.osgi.internal.loader.EquinoxClassLoader @71304555. (com.eurocopter.mgs.datamodel.core.GroundStation is in unnamed module of loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @71304555, parent loader 'platform')
 	at java.util.concurrent.FutureTask.report(FutureTask.java:122) ~[?:?]
 	at java.util.concurrent.FutureTask.get(FutureTask.java:205) ~[?:?]
 	at com.eurocopter.mgs.business.connection.ConnectionManager$CheckConnectionRunnableWithTimeOut.run(ConnectionManager.java:177) ~[?:?]
@@ -63,14 +123,14 @@ java.util.concurrent.ExecutionException: java.lang.LinkageError: loader constrai
 	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1144) ~[?:?]
 	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:642) ~[?:?]
 	at java.lang.Thread.run(Thread.java:1583) ~[?:?]
-Caused by: java.lang.LinkageError: loader constraint violation: loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @c83dc5e wants to load class com.eurocopter.mgs.datamodel.core.GroundStation. A different class with the same name was previously loaded by org.eclipse.osgi.internal.loader.EquinoxClassLoader @2ed5950c. (com.eurocopter.mgs.datamodel.core.GroundStation is in unnamed module of loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @2ed5950c, parent loader 'platform')
+Caused by: java.lang.LinkageError: loader constraint violation: loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @2ebbd1e6 wants to load class com.eurocopter.mgs.datamodel.core.GroundStation. A different class with the same name was previously loaded by org.eclipse.osgi.internal.loader.EquinoxClassLoader @71304555. (com.eurocopter.mgs.datamodel.core.GroundStation is in unnamed module of loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @71304555, parent loader 'platform')
 	at com.eurocopter.mgs.business.connection.ConnectionManager.ping(ConnectionManager.java:138) ~[?:?]
 	at com.eurocopter.mgs.business.connection.ConnectionManager$CheckConnectionCallable.call(ConnectionManager.java:157) ~[?:?]
 	at com.eurocopter.mgs.business.connection.ConnectionManager$CheckConnectionCallable.call(ConnectionManager.java:1) ~[?:?]
 	at java.util.concurrent.FutureTask.run(FutureTask.java:317) ~[?:?]
 	... 3 more
-2026-10-07 08:03:54.820 [pool-6-thread-3] ERROR com.eurocopter.mgs.business.connection.ConnectionManager - Connection KO: unexpected java.lang.LinkageError
-java.util.concurrent.ExecutionException: java.lang.LinkageError: loader constraint violation: loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @c83dc5e wants to load class com.eurocopter.mgs.datamodel.core.GroundStation. A different class with the same name was previously loaded by org.eclipse.osgi.internal.loader.EquinoxClassLoader @2ed5950c. (com.eurocopter.mgs.datamodel.core.GroundStation is in unnamed module of loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @2ed5950c, parent loader 'platform')
+2026-10-08 11:21:59.819 [pool-6-thread-4] ERROR com.eurocopter.mgs.business.connection.ConnectionManager - Connection KO: unexpected java.lang.LinkageError
+java.util.concurrent.ExecutionException: java.lang.LinkageError: loader constraint violation: loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @2ebbd1e6 wants to load class com.eurocopter.mgs.datamodel.core.GroundStation. A different class with the same name was previously loaded by org.eclipse.osgi.internal.loader.EquinoxClassLoader @71304555. (com.eurocopter.mgs.datamodel.core.GroundStation is in unnamed module of loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @71304555, parent loader 'platform')
 	at java.util.concurrent.FutureTask.report(FutureTask.java:122) ~[?:?]
 	at java.util.concurrent.FutureTask.get(FutureTask.java:205) ~[?:?]
 	at com.eurocopter.mgs.business.connection.ConnectionManager$CheckConnectionRunnableWithTimeOut.run(ConnectionManager.java:177) ~[?:?]
@@ -80,14 +140,14 @@ java.util.concurrent.ExecutionException: java.lang.LinkageError: loader constrai
 	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1144) ~[?:?]
 	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:642) ~[?:?]
 	at java.lang.Thread.run(Thread.java:1583) ~[?:?]
-Caused by: java.lang.LinkageError: loader constraint violation: loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @c83dc5e wants to load class com.eurocopter.mgs.datamodel.core.GroundStation. A different class with the same name was previously loaded by org.eclipse.osgi.internal.loader.EquinoxClassLoader @2ed5950c. (com.eurocopter.mgs.datamodel.core.GroundStation is in unnamed module of loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @2ed5950c, parent loader 'platform')
+Caused by: java.lang.LinkageError: loader constraint violation: loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @2ebbd1e6 wants to load class com.eurocopter.mgs.datamodel.core.GroundStation. A different class with the same name was previously loaded by org.eclipse.osgi.internal.loader.EquinoxClassLoader @71304555. (com.eurocopter.mgs.datamodel.core.GroundStation is in unnamed module of loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @71304555, parent loader 'platform')
 	at com.eurocopter.mgs.business.connection.ConnectionManager.ping(ConnectionManager.java:138) ~[?:?]
 	at com.eurocopter.mgs.business.connection.ConnectionManager$CheckConnectionCallable.call(ConnectionManager.java:157) ~[?:?]
 	at com.eurocopter.mgs.business.connection.ConnectionManager$CheckConnectionCallable.call(ConnectionManager.java:1) ~[?:?]
 	at java.util.concurrent.FutureTask.run(FutureTask.java:317) ~[?:?]
 	... 3 more
-2026-10-07 08:03:59.843 [pool-6-thread-3] ERROR com.eurocopter.mgs.business.connection.ConnectionManager - Connection KO: unexpected java.lang.LinkageError
-java.util.concurrent.ExecutionException: java.lang.LinkageError: loader constraint violation: loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @c83dc5e wants to load class com.eurocopter.mgs.datamodel.core.GroundStation. A different class with the same name was previously loaded by org.eclipse.osgi.internal.loader.EquinoxClassLoader @2ed5950c. (com.eurocopter.mgs.datamodel.core.GroundStation is in unnamed module of loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @2ed5950c, parent loader 'platform')
+2026-10-08 11:22:04.828 [pool-6-thread-5] ERROR com.eurocopter.mgs.business.connection.ConnectionManager - Connection KO: unexpected java.lang.LinkageError
+java.util.concurrent.ExecutionException: java.lang.LinkageError: loader constraint violation: loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @2ebbd1e6 wants to load class com.eurocopter.mgs.datamodel.core.GroundStation. A different class with the same name was previously loaded by org.eclipse.osgi.internal.loader.EquinoxClassLoader @71304555. (com.eurocopter.mgs.datamodel.core.GroundStation is in unnamed module of loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @71304555, parent loader 'platform')
 	at java.util.concurrent.FutureTask.report(FutureTask.java:122) ~[?:?]
 	at java.util.concurrent.FutureTask.get(FutureTask.java:205) ~[?:?]
 	at com.eurocopter.mgs.business.connection.ConnectionManager$CheckConnectionRunnableWithTimeOut.run(ConnectionManager.java:177) ~[?:?]
@@ -97,14 +157,14 @@ java.util.concurrent.ExecutionException: java.lang.LinkageError: loader constrai
 	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1144) ~[?:?]
 	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:642) ~[?:?]
 	at java.lang.Thread.run(Thread.java:1583) ~[?:?]
-Caused by: java.lang.LinkageError: loader constraint violation: loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @c83dc5e wants to load class com.eurocopter.mgs.datamodel.core.GroundStation. A different class with the same name was previously loaded by org.eclipse.osgi.internal.loader.EquinoxClassLoader @2ed5950c. (com.eurocopter.mgs.datamodel.core.GroundStation is in unnamed module of loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @2ed5950c, parent loader 'platform')
+Caused by: java.lang.LinkageError: loader constraint violation: loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @2ebbd1e6 wants to load class com.eurocopter.mgs.datamodel.core.GroundStation. A different class with the same name was previously loaded by org.eclipse.osgi.internal.loader.EquinoxClassLoader @71304555. (com.eurocopter.mgs.datamodel.core.GroundStation is in unnamed module of loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @71304555, parent loader 'platform')
 	at com.eurocopter.mgs.business.connection.ConnectionManager.ping(ConnectionManager.java:138) ~[?:?]
 	at com.eurocopter.mgs.business.connection.ConnectionManager$CheckConnectionCallable.call(ConnectionManager.java:157) ~[?:?]
 	at com.eurocopter.mgs.business.connection.ConnectionManager$CheckConnectionCallable.call(ConnectionManager.java:1) ~[?:?]
 	at java.util.concurrent.FutureTask.run(FutureTask.java:317) ~[?:?]
 	... 3 more
-2026-10-07 08:04:04.853 [pool-6-thread-6] ERROR com.eurocopter.mgs.business.connection.ConnectionManager - Connection KO: unexpected java.lang.LinkageError
-java.util.concurrent.ExecutionException: java.lang.LinkageError: loader constraint violation: loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @c83dc5e wants to load class com.eurocopter.mgs.datamodel.core.GroundStation. A different class with the same name was previously loaded by org.eclipse.osgi.internal.loader.EquinoxClassLoader @2ed5950c. (com.eurocopter.mgs.datamodel.core.GroundStation is in unnamed module of loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @2ed5950c, parent loader 'platform')
+2026-10-08 11:22:09.840 [pool-6-thread-6] ERROR com.eurocopter.mgs.business.connection.ConnectionManager - Connection KO: unexpected java.lang.LinkageError
+java.util.concurrent.ExecutionException: java.lang.LinkageError: loader constraint violation: loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @2ebbd1e6 wants to load class com.eurocopter.mgs.datamodel.core.GroundStation. A different class with the same name was previously loaded by org.eclipse.osgi.internal.loader.EquinoxClassLoader @71304555. (com.eurocopter.mgs.datamodel.core.GroundStation is in unnamed module of loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @71304555, parent loader 'platform')
 	at java.util.concurrent.FutureTask.report(FutureTask.java:122) ~[?:?]
 	at java.util.concurrent.FutureTask.get(FutureTask.java:205) ~[?:?]
 	at com.eurocopter.mgs.business.connection.ConnectionManager$CheckConnectionRunnableWithTimeOut.run(ConnectionManager.java:177) ~[?:?]
@@ -114,36 +174,14 @@ java.util.concurrent.ExecutionException: java.lang.LinkageError: loader constrai
 	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1144) ~[?:?]
 	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:642) ~[?:?]
 	at java.lang.Thread.run(Thread.java:1583) ~[?:?]
-Caused by: java.lang.LinkageError: loader constraint violation: loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @c83dc5e wants to load class com.eurocopter.mgs.datamodel.core.GroundStation. A different class with the same name was previously loaded by org.eclipse.osgi.internal.loader.EquinoxClassLoader @2ed5950c. (com.eurocopter.mgs.datamodel.core.GroundStation is in unnamed module of loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @2ed5950c, parent loader 'platform')
+Caused by: java.lang.LinkageError: loader constraint violation: loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @2ebbd1e6 wants to load class com.eurocopter.mgs.datamodel.core.GroundStation. A different class with the same name was previously loaded by org.eclipse.osgi.internal.loader.EquinoxClassLoader @71304555. (com.eurocopter.mgs.datamodel.core.GroundStation is in unnamed module of loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @71304555, parent loader 'platform')
 	at com.eurocopter.mgs.business.connection.ConnectionManager.ping(ConnectionManager.java:138) ~[?:?]
 	at com.eurocopter.mgs.business.connection.ConnectionManager$CheckConnectionCallable.call(ConnectionManager.java:157) ~[?:?]
 	at com.eurocopter.mgs.business.connection.ConnectionManager$CheckConnectionCallable.call(ConnectionManager.java:1) ~[?:?]
 	at java.util.concurrent.FutureTask.run(FutureTask.java:317) ~[?:?]
 	... 3 more
-2026-10-07 08:04:07.965 [Framework stop - Equinox Container: e3f95070-c067-4b7c-8a9b-ef61d225cf57] DEBUG com.eurocopter.mgs.business.activator.Activator - Stop context: mgs-proxy
-2026-10-07 08:04:07.981 [Framework stop - Equinox Container: e3f95070-c067-4b7c-8a9b-ef61d225cf57] DEBUG com.eurocopter.mgs.core.activator.Activator - Stop context: mgs-glassfish-client
-2026-10-07 08:04:08.222 [Framework stop - Equinox Container: e3f95070-c067-4b7c-8a9b-ef61d225cf57] INFO  com.eurocopter.mgs.app.Activator - Exiting MGS client application
-2026-10-07 09:23:28.246 [Start Level: Equinox Container: d155d812-3fd9-4275-8a2d-e85f466e3e9d] WARN  com.eurocopter.mgs.business.activator.Activator - URLStreamHandlerFactory was already set: factory already defined
-2026-10-07 09:23:28.259 [Start Level: Equinox Container: d155d812-3fd9-4275-8a2d-e85f466e3e9d] DEBUG com.eurocopter.mgs.business.activator.Activator - Start context: mgs-proxy
-2026-10-07 09:23:28.371 [Start Level: Equinox Container: d155d812-3fd9-4275-8a2d-e85f466e3e9d] DEBUG com.eurocopter.mgs.core.activator.Activator - Start context: mgs-glassfish-client
-2026-10-07 09:23:30.557 [Start Level: Equinox Container: d155d812-3fd9-4275-8a2d-e85f466e3e9d] INFO  com.eurocopter.mgs.business.aircraft.impl.SftpUrlStreamHandlerService - Registered sftp:// URLStreamHandlerService with OSGi (bundle: mgs-proxy)
-2026-10-07 09:23:31.153 [main] INFO  com.eurocopter.mgs.app.Activator - Starting MGS client application
-2026-10-07 09:23:31.862 [pool-3-thread-1] INFO  org.apache.sshd.common.io.DefaultIoServiceFactoryFactory - No detected/configured IoServiceFactoryFactory; using Nio2ServiceFactoryFactory
-2026-10-07 09:23:31.885 [pool-3-thread-1] DEBUG com.eurocopter.mgs.business.connection.ConnectionManager - Start scheduler
-2026-10-07 09:23:35.610 [main] ERROR com.eurocopter.mgs.app.ApplicationWorkbenchAdvisor - class com.eurocopter.mgs.datamodel.user.AuthenticationConfiguration cannot be cast to class com.eurocopter.mgs.datamodel.user.AuthenticationConfiguration (com.eurocopter.mgs.datamodel.user.AuthenticationConfiguration is in unnamed module of loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @1339317e; com.eurocopter.mgs.datamodel.user.AuthenticationConfiguration is in unnamed module of loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @4ff57c1f)
-java.lang.ClassCastException: class com.eurocopter.mgs.datamodel.user.AuthenticationConfiguration cannot be cast to class com.eurocopter.mgs.datamodel.user.AuthenticationConfiguration (com.eurocopter.mgs.datamodel.user.AuthenticationConfiguration is in unnamed module of loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @1339317e; com.eurocopter.mgs.datamodel.user.AuthenticationConfiguration is in unnamed module of loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @4ff57c1f)
-	at com.eurocopter.mgs.business.user.impl.UserBusiness.getLocalAuthenticationConfiguration(UserBusiness.java:322) ~[?:?]
-	at com.eurocopter.mgs.business.user.impl.UserBusiness.getAuthenticationConfiguration(UserBusiness.java:441) ~[?:?]
-	at jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103) ~[?:?]
-	at java.lang.reflect.Method.invoke(Method.java:580) ~[?:?]
-	at com.eurocopter.mgs.business.proxy.BusinessManager$BusinessInvocationHandler.lambda$0(BusinessManager.java:71) ~[?:?]
-	at com.eurocopter.mgs.core.persistence.PersistenceManager$PersistenceCallable.call(PersistenceManager.java:46) ~[?:?]
-	at java.util.concurrent.FutureTask.run(FutureTask.java:317) ~[?:?]
-	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1144) ~[?:?]
-	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:642) ~[?:?]
-	at java.lang.Thread.run(Thread.java:1583) ~[?:?]
-2026-10-07 09:23:36.085 [pool-6-thread-1] ERROR com.eurocopter.mgs.business.connection.ConnectionManager - Connection KO: unexpected java.lang.LinkageError
-java.util.concurrent.ExecutionException: java.lang.LinkageError: loader constraint violation: loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @55972bda wants to load class com.eurocopter.mgs.datamodel.core.GroundStation. A different class with the same name was previously loaded by org.eclipse.osgi.internal.loader.EquinoxClassLoader @1339317e. (com.eurocopter.mgs.datamodel.core.GroundStation is in unnamed module of loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @1339317e, parent loader 'platform')
+2026-10-08 11:22:14.850 [pool-6-thread-7] ERROR com.eurocopter.mgs.business.connection.ConnectionManager - Connection KO: unexpected java.lang.LinkageError
+java.util.concurrent.ExecutionException: java.lang.LinkageError: loader constraint violation: loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @2ebbd1e6 wants to load class com.eurocopter.mgs.datamodel.core.GroundStation. A different class with the same name was previously loaded by org.eclipse.osgi.internal.loader.EquinoxClassLoader @71304555. (com.eurocopter.mgs.datamodel.core.GroundStation is in unnamed module of loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @71304555, parent loader 'platform')
 	at java.util.concurrent.FutureTask.report(FutureTask.java:122) ~[?:?]
 	at java.util.concurrent.FutureTask.get(FutureTask.java:205) ~[?:?]
 	at com.eurocopter.mgs.business.connection.ConnectionManager$CheckConnectionRunnableWithTimeOut.run(ConnectionManager.java:177) ~[?:?]
@@ -153,14 +191,14 @@ java.util.concurrent.ExecutionException: java.lang.LinkageError: loader constrai
 	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1144) ~[?:?]
 	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:642) ~[?:?]
 	at java.lang.Thread.run(Thread.java:1583) ~[?:?]
-Caused by: java.lang.LinkageError: loader constraint violation: loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @55972bda wants to load class com.eurocopter.mgs.datamodel.core.GroundStation. A different class with the same name was previously loaded by org.eclipse.osgi.internal.loader.EquinoxClassLoader @1339317e. (com.eurocopter.mgs.datamodel.core.GroundStation is in unnamed module of loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @1339317e, parent loader 'platform')
+Caused by: java.lang.LinkageError: loader constraint violation: loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @2ebbd1e6 wants to load class com.eurocopter.mgs.datamodel.core.GroundStation. A different class with the same name was previously loaded by org.eclipse.osgi.internal.loader.EquinoxClassLoader @71304555. (com.eurocopter.mgs.datamodel.core.GroundStation is in unnamed module of loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @71304555, parent loader 'platform')
 	at com.eurocopter.mgs.business.connection.ConnectionManager.ping(ConnectionManager.java:138) ~[?:?]
 	at com.eurocopter.mgs.business.connection.ConnectionManager$CheckConnectionCallable.call(ConnectionManager.java:157) ~[?:?]
 	at com.eurocopter.mgs.business.connection.ConnectionManager$CheckConnectionCallable.call(ConnectionManager.java:1) ~[?:?]
 	at java.util.concurrent.FutureTask.run(FutureTask.java:317) ~[?:?]
 	... 3 more
-2026-10-07 09:23:41.099 [pool-6-thread-2] ERROR com.eurocopter.mgs.business.connection.ConnectionManager - Connection KO: unexpected java.lang.LinkageError
-java.util.concurrent.ExecutionException: java.lang.LinkageError: loader constraint violation: loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @55972bda wants to load class com.eurocopter.mgs.datamodel.core.GroundStation. A different class with the same name was previously loaded by org.eclipse.osgi.internal.loader.EquinoxClassLoader @1339317e. (com.eurocopter.mgs.datamodel.core.GroundStation is in unnamed module of loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @1339317e, parent loader 'platform')
+2026-10-08 11:22:19.861 [pool-6-thread-8] ERROR com.eurocopter.mgs.business.connection.ConnectionManager - Connection KO: unexpected java.lang.LinkageError
+java.util.concurrent.ExecutionException: java.lang.LinkageError: loader constraint violation: loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @2ebbd1e6 wants to load class com.eurocopter.mgs.datamodel.core.GroundStation. A different class with the same name was previously loaded by org.eclipse.osgi.internal.loader.EquinoxClassLoader @71304555. (com.eurocopter.mgs.datamodel.core.GroundStation is in unnamed module of loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @71304555, parent loader 'platform')
 	at java.util.concurrent.FutureTask.report(FutureTask.java:122) ~[?:?]
 	at java.util.concurrent.FutureTask.get(FutureTask.java:205) ~[?:?]
 	at com.eurocopter.mgs.business.connection.ConnectionManager$CheckConnectionRunnableWithTimeOut.run(ConnectionManager.java:177) ~[?:?]
@@ -170,14 +208,14 @@ java.util.concurrent.ExecutionException: java.lang.LinkageError: loader constrai
 	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1144) ~[?:?]
 	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:642) ~[?:?]
 	at java.lang.Thread.run(Thread.java:1583) ~[?:?]
-Caused by: java.lang.LinkageError: loader constraint violation: loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @55972bda wants to load class com.eurocopter.mgs.datamodel.core.GroundStation. A different class with the same name was previously loaded by org.eclipse.osgi.internal.loader.EquinoxClassLoader @1339317e. (com.eurocopter.mgs.datamodel.core.GroundStation is in unnamed module of loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @1339317e, parent loader 'platform')
+Caused by: java.lang.LinkageError: loader constraint violation: loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @2ebbd1e6 wants to load class com.eurocopter.mgs.datamodel.core.GroundStation. A different class with the same name was previously loaded by org.eclipse.osgi.internal.loader.EquinoxClassLoader @71304555. (com.eurocopter.mgs.datamodel.core.GroundStation is in unnamed module of loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @71304555, parent loader 'platform')
 	at com.eurocopter.mgs.business.connection.ConnectionManager.ping(ConnectionManager.java:138) ~[?:?]
 	at com.eurocopter.mgs.business.connection.ConnectionManager$CheckConnectionCallable.call(ConnectionManager.java:157) ~[?:?]
 	at com.eurocopter.mgs.business.connection.ConnectionManager$CheckConnectionCallable.call(ConnectionManager.java:1) ~[?:?]
 	at java.util.concurrent.FutureTask.run(FutureTask.java:317) ~[?:?]
 	... 3 more
-2026-10-07 09:23:46.109 [pool-6-thread-3] ERROR com.eurocopter.mgs.business.connection.ConnectionManager - Connection KO: unexpected java.lang.LinkageError
-java.util.concurrent.ExecutionException: java.lang.LinkageError: loader constraint violation: loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @55972bda wants to load class com.eurocopter.mgs.datamodel.core.GroundStation. A different class with the same name was previously loaded by org.eclipse.osgi.internal.loader.EquinoxClassLoader @1339317e. (com.eurocopter.mgs.datamodel.core.GroundStation is in unnamed module of loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @1339317e, parent loader 'platform')
+2026-10-08 11:22:24.888 [pool-6-thread-9] ERROR com.eurocopter.mgs.business.connection.ConnectionManager - Connection KO: unexpected java.lang.LinkageError
+java.util.concurrent.ExecutionException: java.lang.LinkageError: loader constraint violation: loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @2ebbd1e6 wants to load class com.eurocopter.mgs.datamodel.core.GroundStation. A different class with the same name was previously loaded by org.eclipse.osgi.internal.loader.EquinoxClassLoader @71304555. (com.eurocopter.mgs.datamodel.core.GroundStation is in unnamed module of loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @71304555, parent loader 'platform')
 	at java.util.concurrent.FutureTask.report(FutureTask.java:122) ~[?:?]
 	at java.util.concurrent.FutureTask.get(FutureTask.java:205) ~[?:?]
 	at com.eurocopter.mgs.business.connection.ConnectionManager$CheckConnectionRunnableWithTimeOut.run(ConnectionManager.java:177) ~[?:?]
@@ -187,14 +225,14 @@ java.util.concurrent.ExecutionException: java.lang.LinkageError: loader constrai
 	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1144) ~[?:?]
 	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:642) ~[?:?]
 	at java.lang.Thread.run(Thread.java:1583) ~[?:?]
-Caused by: java.lang.LinkageError: loader constraint violation: loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @55972bda wants to load class com.eurocopter.mgs.datamodel.core.GroundStation. A different class with the same name was previously loaded by org.eclipse.osgi.internal.loader.EquinoxClassLoader @1339317e. (com.eurocopter.mgs.datamodel.core.GroundStation is in unnamed module of loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @1339317e, parent loader 'platform')
+Caused by: java.lang.LinkageError: loader constraint violation: loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @2ebbd1e6 wants to load class com.eurocopter.mgs.datamodel.core.GroundStation. A different class with the same name was previously loaded by org.eclipse.osgi.internal.loader.EquinoxClassLoader @71304555. (com.eurocopter.mgs.datamodel.core.GroundStation is in unnamed module of loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @71304555, parent loader 'platform')
 	at com.eurocopter.mgs.business.connection.ConnectionManager.ping(ConnectionManager.java:138) ~[?:?]
 	at com.eurocopter.mgs.business.connection.ConnectionManager$CheckConnectionCallable.call(ConnectionManager.java:157) ~[?:?]
 	at com.eurocopter.mgs.business.connection.ConnectionManager$CheckConnectionCallable.call(ConnectionManager.java:1) ~[?:?]
 	at java.util.concurrent.FutureTask.run(FutureTask.java:317) ~[?:?]
 	... 3 more
-2026-10-07 09:23:51.120 [pool-6-thread-4] ERROR com.eurocopter.mgs.business.connection.ConnectionManager - Connection KO: unexpected java.lang.LinkageError
-java.util.concurrent.ExecutionException: java.lang.LinkageError: loader constraint violation: loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @55972bda wants to load class com.eurocopter.mgs.datamodel.core.GroundStation. A different class with the same name was previously loaded by org.eclipse.osgi.internal.loader.EquinoxClassLoader @1339317e. (com.eurocopter.mgs.datamodel.core.GroundStation is in unnamed module of loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @1339317e, parent loader 'platform')
+2026-10-08 11:22:29.899 [pool-6-thread-10] ERROR com.eurocopter.mgs.business.connection.ConnectionManager - Connection KO: unexpected java.lang.LinkageError
+java.util.concurrent.ExecutionException: java.lang.LinkageError: loader constraint violation: loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @2ebbd1e6 wants to load class com.eurocopter.mgs.datamodel.core.GroundStation. A different class with the same name was previously loaded by org.eclipse.osgi.internal.loader.EquinoxClassLoader @71304555. (com.eurocopter.mgs.datamodel.core.GroundStation is in unnamed module of loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @71304555, parent loader 'platform')
 	at java.util.concurrent.FutureTask.report(FutureTask.java:122) ~[?:?]
 	at java.util.concurrent.FutureTask.get(FutureTask.java:205) ~[?:?]
 	at com.eurocopter.mgs.business.connection.ConnectionManager$CheckConnectionRunnableWithTimeOut.run(ConnectionManager.java:177) ~[?:?]
@@ -204,581 +242,94 @@ java.util.concurrent.ExecutionException: java.lang.LinkageError: loader constrai
 	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1144) ~[?:?]
 	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:642) ~[?:?]
 	at java.lang.Thread.run(Thread.java:1583) ~[?:?]
-Caused by: java.lang.LinkageError: loader constraint violation: loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @55972bda wants to load class com.eurocopter.mgs.datamodel.core.GroundStation. A different class with the same name was previously loaded by org.eclipse.osgi.internal.loader.EquinoxClassLoader @1339317e. (com.eurocopter.mgs.datamodel.core.GroundStation is in unnamed module of loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @1339317e, parent loader 'platform')
+Caused by: java.lang.LinkageError: loader constraint violation: loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @2ebbd1e6 wants to load class com.eurocopter.mgs.datamodel.core.GroundStation. A different class with the same name was previously loaded by org.eclipse.osgi.internal.loader.EquinoxClassLoader @71304555. (com.eurocopter.mgs.datamodel.core.GroundStation is in unnamed module of loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @71304555, parent loader 'platform')
 	at com.eurocopter.mgs.business.connection.ConnectionManager.ping(ConnectionManager.java:138) ~[?:?]
 	at com.eurocopter.mgs.business.connection.ConnectionManager$CheckConnectionCallable.call(ConnectionManager.java:157) ~[?:?]
 	at com.eurocopter.mgs.business.connection.ConnectionManager$CheckConnectionCallable.call(ConnectionManager.java:1) ~[?:?]
 	at java.util.concurrent.FutureTask.run(FutureTask.java:317) ~[?:?]
 	... 3 more
-2026-10-07 09:23:51.781 [Framework stop - Equinox Container: d155d812-3fd9-4275-8a2d-e85f466e3e9d] DEBUG com.eurocopter.mgs.business.activator.Activator - Stop context: mgs-proxy
-2026-10-07 09:23:51.795 [Framework stop - Equinox Container: d155d812-3fd9-4275-8a2d-e85f466e3e9d] DEBUG com.eurocopter.mgs.core.activator.Activator - Stop context: mgs-glassfish-client
-2026-10-07 09:23:52.010 [Framework stop - Equinox Container: d155d812-3fd9-4275-8a2d-e85f466e3e9d] INFO  com.eurocopter.mgs.app.Activator - Exiting MGS client application
-2026-10-07 09:48:59.891 [Start Level: Equinox Container: 8b62f77e-d935-4cfc-8fa0-0eae06ce1bec] WARN  com.eurocopter.mgs.business.activator.Activator - URLStreamHandlerFactory was already set: factory already defined
-2026-10-07 09:48:59.906 [Start Level: Equinox Container: 8b62f77e-d935-4cfc-8fa0-0eae06ce1bec] DEBUG com.eurocopter.mgs.business.activator.Activator - Start context: mgs-proxy
-2026-10-07 09:49:00.013 [Start Level: Equinox Container: 8b62f77e-d935-4cfc-8fa0-0eae06ce1bec] DEBUG com.eurocopter.mgs.core.activator.Activator - Start context: mgs-glassfish-client
-2026-10-07 09:49:02.575 [Start Level: Equinox Container: 8b62f77e-d935-4cfc-8fa0-0eae06ce1bec] INFO  com.eurocopter.mgs.business.aircraft.impl.SftpUrlStreamHandlerService - Registered sftp:// URLStreamHandlerService with OSGi (bundle: mgs-proxy)
-2026-10-07 09:49:03.353 [main] INFO  com.eurocopter.mgs.app.Activator - Starting MGS client application
-2026-10-07 09:49:04.151 [pool-3-thread-1] INFO  org.apache.sshd.common.io.DefaultIoServiceFactoryFactory - No detected/configured IoServiceFactoryFactory; using Nio2ServiceFactoryFactory
-2026-10-07 09:49:04.187 [pool-3-thread-1] DEBUG com.eurocopter.mgs.business.connection.ConnectionManager - Start scheduler
-2026-10-07 09:49:09.471 [main] ERROR com.eurocopter.mgs.app.ApplicationWorkbenchAdvisor - class com.eurocopter.mgs.datamodel.user.AuthenticationConfiguration cannot be cast to class com.eurocopter.mgs.datamodel.user.AuthenticationConfiguration (com.eurocopter.mgs.datamodel.user.AuthenticationConfiguration is in unnamed module of loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @795db5aa; com.eurocopter.mgs.datamodel.user.AuthenticationConfiguration is in unnamed module of loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @2e02f02c)
-java.lang.ClassCastException: class com.eurocopter.mgs.datamodel.user.AuthenticationConfiguration cannot be cast to class com.eurocopter.mgs.datamodel.user.AuthenticationConfiguration (com.eurocopter.mgs.datamodel.user.AuthenticationConfiguration is in unnamed module of loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @795db5aa; com.eurocopter.mgs.datamodel.user.AuthenticationConfiguration is in unnamed module of loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @2e02f02c)
-	at com.eurocopter.mgs.business.user.impl.UserBusiness.getLocalAuthenticationConfiguration(UserBusiness.java:322) ~[?:?]
-	at com.eurocopter.mgs.business.user.impl.UserBusiness.getAuthenticationConfiguration(UserBusiness.java:441) ~[?:?]
-	at jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103) ~[?:?]
-	at java.lang.reflect.Method.invoke(Method.java:580) ~[?:?]
-	at com.eurocopter.mgs.business.proxy.BusinessManager$BusinessInvocationHandler.lambda$0(BusinessManager.java:71) ~[?:?]
-	at com.eurocopter.mgs.core.persistence.PersistenceManager$PersistenceCallable.call(PersistenceManager.java:46) ~[?:?]
+2026-10-08 11:22:34.920 [pool-6-thread-11] ERROR com.eurocopter.mgs.business.connection.ConnectionManager - Connection KO: unexpected java.lang.LinkageError
+java.util.concurrent.ExecutionException: java.lang.LinkageError: loader constraint violation: loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @2ebbd1e6 wants to load class com.eurocopter.mgs.datamodel.core.GroundStation. A different class with the same name was previously loaded by org.eclipse.osgi.internal.loader.EquinoxClassLoader @71304555. (com.eurocopter.mgs.datamodel.core.GroundStation is in unnamed module of loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @71304555, parent loader 'platform')
+	at java.util.concurrent.FutureTask.report(FutureTask.java:122) ~[?:?]
+	at java.util.concurrent.FutureTask.get(FutureTask.java:205) ~[?:?]
+	at com.eurocopter.mgs.business.connection.ConnectionManager$CheckConnectionRunnableWithTimeOut.run(ConnectionManager.java:177) ~[?:?]
+	at java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:572) ~[?:?]
 	at java.util.concurrent.FutureTask.run(FutureTask.java:317) ~[?:?]
+	at java.util.concurrent.ScheduledThreadPoolExecutor$ScheduledFutureTask.run(ScheduledThreadPoolExecutor.java:304) ~[?:?]
 	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1144) ~[?:?]
 	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:642) ~[?:?]
 	at java.lang.Thread.run(Thread.java:1583) ~[?:?]
-2026-10-07 09:49:12.921 [Framework stop - Equinox Container: 8b62f77e-d935-4cfc-8fa0-0eae06ce1bec] DEBUG com.eurocopter.mgs.business.activator.Activator - Stop context: mgs-proxy
-2026-10-07 09:49:12.955 [Framework stop - Equinox Container: 8b62f77e-d935-4cfc-8fa0-0eae06ce1bec] DEBUG com.eurocopter.mgs.core.activator.Activator - Stop context: mgs-glassfish-client
-2026-10-07 09:49:13.727 [Framework stop - Equinox Container: 8b62f77e-d935-4cfc-8fa0-0eae06ce1bec] INFO  com.eurocopter.mgs.app.Activator - Exiting MGS client application
-2026-10-07 09:50:35.672 [Start Level: Equinox Container: c90ee925-8e3b-4f5f-bc22-c228ca476aae] WARN  com.eurocopter.mgs.business.activator.Activator - URLStreamHandlerFactory was already set: factory already defined
-2026-10-07 09:50:35.687 [Start Level: Equinox Container: c90ee925-8e3b-4f5f-bc22-c228ca476aae] DEBUG com.eurocopter.mgs.business.activator.Activator - Start context: mgs-proxy
-2026-10-07 09:50:35.833 [Start Level: Equinox Container: c90ee925-8e3b-4f5f-bc22-c228ca476aae] DEBUG com.eurocopter.mgs.core.activator.Activator - Start context: mgs-glassfish-client
-2026-10-07 09:50:38.763 [Start Level: Equinox Container: c90ee925-8e3b-4f5f-bc22-c228ca476aae] INFO  com.eurocopter.mgs.business.aircraft.impl.SftpUrlStreamHandlerService - Registered sftp:// URLStreamHandlerService with OSGi (bundle: mgs-proxy)
-2026-10-07 09:50:39.511 [main] INFO  com.eurocopter.mgs.app.Activator - Starting MGS client application
-2026-10-07 09:50:40.258 [pool-3-thread-1] INFO  org.apache.sshd.common.io.DefaultIoServiceFactoryFactory - No detected/configured IoServiceFactoryFactory; using Nio2ServiceFactoryFactory
-2026-10-07 09:50:40.289 [pool-3-thread-1] DEBUG com.eurocopter.mgs.business.connection.ConnectionManager - Start scheduler
-2026-10-07 09:50:45.767 [main] ERROR com.eurocopter.mgs.app.ApplicationWorkbenchAdvisor - class com.eurocopter.mgs.datamodel.user.AuthenticationConfiguration cannot be cast to class com.eurocopter.mgs.datamodel.user.AuthenticationConfiguration (com.eurocopter.mgs.datamodel.user.AuthenticationConfiguration is in unnamed module of loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @1339317e; com.eurocopter.mgs.datamodel.user.AuthenticationConfiguration is in unnamed module of loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @4ff57c1f)
-java.lang.ClassCastException: class com.eurocopter.mgs.datamodel.user.AuthenticationConfiguration cannot be cast to class com.eurocopter.mgs.datamodel.user.AuthenticationConfiguration (com.eurocopter.mgs.datamodel.user.AuthenticationConfiguration is in unnamed module of loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @1339317e; com.eurocopter.mgs.datamodel.user.AuthenticationConfiguration is in unnamed module of loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @4ff57c1f)
-	at com.eurocopter.mgs.business.user.impl.UserBusiness.getLocalAuthenticationConfiguration(UserBusiness.java:322) ~[?:?]
-	at com.eurocopter.mgs.business.user.impl.UserBusiness.getAuthenticationConfiguration(UserBusiness.java:441) ~[?:?]
-	at jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103) ~[?:?]
-	at java.lang.reflect.Method.invoke(Method.java:580) ~[?:?]
-	at com.eurocopter.mgs.business.proxy.BusinessManager$BusinessInvocationHandler.lambda$0(BusinessManager.java:71) ~[?:?]
-	at com.eurocopter.mgs.core.persistence.PersistenceManager$PersistenceCallable.call(PersistenceManager.java:46) ~[?:?]
-	at java.util.concurrent.FutureTask.run(FutureTask.java:317) ~[?:?]
-	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1144) ~[?:?]
-	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:642) ~[?:?]
-	at java.lang.Thread.run(Thread.java:1583) ~[?:?]
-2026-10-07 09:50:46.428 [pool-5-thread-1] ERROR com.eurocopter.mgs.core.proxy.ServiceManager - Unexpected java.util.concurrent.ExecutionException; wrap and rethrow
-2026-10-07 09:50:46.429 [pool-5-thread-1] DEBUG com.eurocopter.mgs.business.connection.ConnectionManager - Connection check error [class com.eurocopter.mgs.core.proxy.ConnectionException]
-com.eurocopter.mgs.core.proxy.ConnectionException: Unexpected java.util.concurrent.ExecutionException
-	at com.eurocopter.mgs.core.proxy.ServiceManager$ServiceInvocationHandler.invoke(ServiceManager.java:139) ~[?:?]
-	at jdk.proxy3.$Proxy19.getGroundStation(Unknown Source) ~[?:?]
-	at com.eurocopter.mgs.business.connection.ConnectionManager.ping(ConnectionManager.java:137) ~[?:?]
+Caused by: java.lang.LinkageError: loader constraint violation: loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @2ebbd1e6 wants to load class com.eurocopter.mgs.datamodel.core.GroundStation. A different class with the same name was previously loaded by org.eclipse.osgi.internal.loader.EquinoxClassLoader @71304555. (com.eurocopter.mgs.datamodel.core.GroundStation is in unnamed module of loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @71304555, parent loader 'platform')
+	at com.eurocopter.mgs.business.connection.ConnectionManager.ping(ConnectionManager.java:138) ~[?:?]
 	at com.eurocopter.mgs.business.connection.ConnectionManager$CheckConnectionCallable.call(ConnectionManager.java:157) ~[?:?]
 	at com.eurocopter.mgs.business.connection.ConnectionManager$CheckConnectionCallable.call(ConnectionManager.java:1) ~[?:?]
 	at java.util.concurrent.FutureTask.run(FutureTask.java:317) ~[?:?]
+	... 3 more
+2026-10-08 11:22:39.931 [pool-6-thread-12] ERROR com.eurocopter.mgs.business.connection.ConnectionManager - Connection KO: unexpected java.lang.LinkageError
+java.util.concurrent.ExecutionException: java.lang.LinkageError: loader constraint violation: loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @2ebbd1e6 wants to load class com.eurocopter.mgs.datamodel.core.GroundStation. A different class with the same name was previously loaded by org.eclipse.osgi.internal.loader.EquinoxClassLoader @71304555. (com.eurocopter.mgs.datamodel.core.GroundStation is in unnamed module of loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @71304555, parent loader 'platform')
+	at java.util.concurrent.FutureTask.report(FutureTask.java:122) ~[?:?]
+	at java.util.concurrent.FutureTask.get(FutureTask.java:205) ~[?:?]
+	at com.eurocopter.mgs.business.connection.ConnectionManager$CheckConnectionRunnableWithTimeOut.run(ConnectionManager.java:177) ~[?:?]
+	at java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:572) ~[?:?]
+	at java.util.concurrent.FutureTask.run(FutureTask.java:317) ~[?:?]
+	at java.util.concurrent.ScheduledThreadPoolExecutor$ScheduledFutureTask.run(ScheduledThreadPoolExecutor.java:304) ~[?:?]
 	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1144) ~[?:?]
 	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:642) ~[?:?]
 	at java.lang.Thread.run(Thread.java:1583) ~[?:?]
-Caused by: java.util.concurrent.ExecutionException: com.eurocopter.mgs.core.proxy.ConnectionException: Could not retrieve ejb/CoreService
-	at java.util.concurrent.FutureTask.report(FutureTask.java:122) ~[?:?]
-	at java.util.concurrent.FutureTask.get(FutureTask.java:205) ~[?:?]
-	at com.eurocopter.mgs.core.proxy.ServiceManager$ServiceInvocationHandler.invoke(ServiceManager.java:64) ~[?:?]
-	... 8 more
-Caused by: com.eurocopter.mgs.core.proxy.ConnectionException: Could not retrieve ejb/CoreService
-	at com.eurocopter.mgs.core.proxy.ServiceManager$ServiceInvocationHandler.lookupService(ServiceManager.java:170) ~[?:?]
-	at com.eurocopter.mgs.core.proxy.ServiceManager$ServiceInvocationHandler.lambda$0(ServiceManager.java:60) ~[?:?]
-	... 4 more
-Caused by: javax.naming.NamingException: Lookup failed for ejb/CoreService in SerialContext[myEnv={org.omg.CORBA.ORBInitialPort=3700, java.naming.factory.state=com.sun.corba.ee.impl.presentation.rmi.JNDIStateFactoryImpl, java.naming.factory.initial=com.sun.enterprise.naming.impl.SerialInitContextFactory, java.naming.factory.url.pkgs=com.sun.enterprise.naming, org.omg.CORBA.ORBInitialHost=localhost}]
-	at com.sun.enterprise.naming.impl.SerialContext.lookup(SerialContext.java:836) ~[?:?]
-	at com.sun.enterprise.naming.impl.SerialContext.lookup(SerialContext.java:257) ~[?:?]
-	at javax.naming.InitialContext.lookup(InitialContext.java:409) ~[?:?]
-	at com.eurocopter.mgs.core.proxy.ServiceManager$ServiceInvocationHandler.lookupService(ServiceManager.java:168) ~[?:?]
-	at com.eurocopter.mgs.core.proxy.ServiceManager$ServiceInvocationHandler.lambda$0(ServiceManager.java:60) ~[?:?]
-	... 4 more
-Caused by: javax.naming.NameNotFoundException: ejb
-	at com.sun.enterprise.naming.impl.TransientContext.resolveContext(TransientContext.java:292) ~[?:?]
-	at com.sun.enterprise.naming.impl.TransientContext.lookup(TransientContext.java:205) ~[?:?]
-	at com.sun.enterprise.naming.impl.SerialContextProviderImpl.lookup(SerialContextProviderImpl.java:37) ~[?:?]
-	at com.sun.enterprise.naming.impl.RemoteSerialContextProviderImpl.lookup(RemoteSerialContextProviderImpl.java:85) ~[?:?]
-	at jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103) ~[?:?]
-	at java.lang.reflect.Method.invoke(Method.java:580) ~[?:?]
-	at com.sun.corba.ee.impl.presentation.rmi.ReflectiveTie.dispatchToMethod(ReflectiveTie.java:122) ~[?:?]
-	at com.sun.corba.ee.impl.presentation.rmi.ReflectiveTie._invoke(ReflectiveTie.java:152) ~[?:?]
-	at com.sun.corba.ee.impl.protocol.ServerRequestDispatcherImpl.dispatchToServant(ServerRequestDispatcherImpl.java:501) ~[?:?]
-	at com.sun.corba.ee.impl.protocol.ServerRequestDispatcherImpl.dispatch(ServerRequestDispatcherImpl.java:172) ~[?:?]
-	at com.sun.corba.ee.impl.protocol.MessageMediatorImpl.handleRequestRequest(MessageMediatorImpl.java:1529) ~[?:?]
-	at com.sun.corba.ee.impl.protocol.MessageMediatorImpl.handleRequest(MessageMediatorImpl.java:1405) ~[?:?]
-	at com.sun.corba.ee.impl.protocol.MessageMediatorImpl.handleInput(MessageMediatorImpl.java:910) ~[?:?]
-	at com.sun.corba.ee.impl.protocol.giopmsgheaders.RequestMessage_1_2.callback(RequestMessage_1_2.java:192) ~[?:?]
-	at com.sun.corba.ee.impl.protocol.MessageMediatorImpl.handleRequest(MessageMediatorImpl.java:674) ~[?:?]
-	at com.sun.corba.ee.impl.protocol.MessageMediatorImpl.dispatch(MessageMediatorImpl.java:476) ~[?:?]
-	at com.sun.corba.ee.impl.protocol.MessageMediatorImpl.doWork(MessageMediatorImpl.java:2202) ~[?:?]
-	at com.sun.corba.ee.impl.threadpool.ThreadPoolImpl$WorkerThread.performWork(ThreadPoolImpl.java:476) ~[?:?]
-	at com.sun.corba.ee.impl.threadpool.ThreadPoolImpl$WorkerThread.run(ThreadPoolImpl.java:519) ~[?:?]
-2026-10-07 09:50:51.457 [pool-5-thread-1] ERROR com.eurocopter.mgs.core.proxy.ServiceManager - Unexpected java.util.concurrent.ExecutionException; wrap and rethrow
-2026-10-07 09:50:51.457 [pool-5-thread-1] DEBUG com.eurocopter.mgs.business.connection.ConnectionManager - Connection check error [class com.eurocopter.mgs.core.proxy.ConnectionException]
-com.eurocopter.mgs.core.proxy.ConnectionException: Unexpected java.util.concurrent.ExecutionException
-	at com.eurocopter.mgs.core.proxy.ServiceManager$ServiceInvocationHandler.invoke(ServiceManager.java:139) ~[?:?]
-	at jdk.proxy3.$Proxy19.getGroundStation(Unknown Source) ~[?:?]
-	at com.eurocopter.mgs.business.connection.ConnectionManager.ping(ConnectionManager.java:137) ~[?:?]
+Caused by: java.lang.LinkageError: loader constraint violation: loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @2ebbd1e6 wants to load class com.eurocopter.mgs.datamodel.core.GroundStation. A different class with the same name was previously loaded by org.eclipse.osgi.internal.loader.EquinoxClassLoader @71304555. (com.eurocopter.mgs.datamodel.core.GroundStation is in unnamed module of loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @71304555, parent loader 'platform')
+	at com.eurocopter.mgs.business.connection.ConnectionManager.ping(ConnectionManager.java:138) ~[?:?]
 	at com.eurocopter.mgs.business.connection.ConnectionManager$CheckConnectionCallable.call(ConnectionManager.java:157) ~[?:?]
 	at com.eurocopter.mgs.business.connection.ConnectionManager$CheckConnectionCallable.call(ConnectionManager.java:1) ~[?:?]
 	at java.util.concurrent.FutureTask.run(FutureTask.java:317) ~[?:?]
+	... 3 more
+2026-10-08 11:22:44.946 [pool-6-thread-12] ERROR com.eurocopter.mgs.business.connection.ConnectionManager - Connection KO: unexpected java.lang.LinkageError
+java.util.concurrent.ExecutionException: java.lang.LinkageError: loader constraint violation: loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @2ebbd1e6 wants to load class com.eurocopter.mgs.datamodel.core.GroundStation. A different class with the same name was previously loaded by org.eclipse.osgi.internal.loader.EquinoxClassLoader @71304555. (com.eurocopter.mgs.datamodel.core.GroundStation is in unnamed module of loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @71304555, parent loader 'platform')
+	at java.util.concurrent.FutureTask.report(FutureTask.java:122) ~[?:?]
+	at java.util.concurrent.FutureTask.get(FutureTask.java:205) ~[?:?]
+	at com.eurocopter.mgs.business.connection.ConnectionManager$CheckConnectionRunnableWithTimeOut.run(ConnectionManager.java:177) ~[?:?]
+	at java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:572) ~[?:?]
+	at java.util.concurrent.FutureTask.run(FutureTask.java:317) ~[?:?]
+	at java.util.concurrent.ScheduledThreadPoolExecutor$ScheduledFutureTask.run(ScheduledThreadPoolExecutor.java:304) ~[?:?]
 	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1144) ~[?:?]
 	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:642) ~[?:?]
 	at java.lang.Thread.run(Thread.java:1583) ~[?:?]
-Caused by: java.util.concurrent.ExecutionException: com.eurocopter.mgs.core.proxy.ConnectionException: Could not retrieve ejb/CoreService
-	at java.util.concurrent.FutureTask.report(FutureTask.java:122) ~[?:?]
-	at java.util.concurrent.FutureTask.get(FutureTask.java:205) ~[?:?]
-	at com.eurocopter.mgs.core.proxy.ServiceManager$ServiceInvocationHandler.invoke(ServiceManager.java:64) ~[?:?]
-	... 8 more
-Caused by: com.eurocopter.mgs.core.proxy.ConnectionException: Could not retrieve ejb/CoreService
-	at com.eurocopter.mgs.core.proxy.ServiceManager$ServiceInvocationHandler.lookupService(ServiceManager.java:170) ~[?:?]
-	at com.eurocopter.mgs.core.proxy.ServiceManager$ServiceInvocationHandler.lambda$0(ServiceManager.java:60) ~[?:?]
-	... 4 more
-Caused by: javax.naming.NamingException: Lookup failed for ejb/CoreService in SerialContext[myEnv={org.omg.CORBA.ORBInitialPort=3700, java.naming.factory.state=com.sun.corba.ee.impl.presentation.rmi.JNDIStateFactoryImpl, java.naming.factory.initial=com.sun.enterprise.naming.impl.SerialInitContextFactory, java.naming.factory.url.pkgs=com.sun.enterprise.naming, org.omg.CORBA.ORBInitialHost=localhost}]
-	at com.sun.enterprise.naming.impl.SerialContext.lookup(SerialContext.java:836) ~[?:?]
-	at com.sun.enterprise.naming.impl.SerialContext.lookup(SerialContext.java:257) ~[?:?]
-	at javax.naming.InitialContext.lookup(InitialContext.java:409) ~[?:?]
-	at com.eurocopter.mgs.core.proxy.ServiceManager$ServiceInvocationHandler.lookupService(ServiceManager.java:168) ~[?:?]
-	at com.eurocopter.mgs.core.proxy.ServiceManager$ServiceInvocationHandler.lambda$0(ServiceManager.java:60) ~[?:?]
-	... 4 more
-Caused by: javax.naming.NameNotFoundException: ejb
-	at com.sun.enterprise.naming.impl.TransientContext.resolveContext(TransientContext.java:292) ~[?:?]
-	at com.sun.enterprise.naming.impl.TransientContext.lookup(TransientContext.java:205) ~[?:?]
-	at com.sun.enterprise.naming.impl.SerialContextProviderImpl.lookup(SerialContextProviderImpl.java:37) ~[?:?]
-	at com.sun.enterprise.naming.impl.RemoteSerialContextProviderImpl.lookup(RemoteSerialContextProviderImpl.java:85) ~[?:?]
-	at jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103) ~[?:?]
-	at java.lang.reflect.Method.invoke(Method.java:580) ~[?:?]
-	at com.sun.corba.ee.impl.presentation.rmi.ReflectiveTie.dispatchToMethod(ReflectiveTie.java:122) ~[?:?]
-	at com.sun.corba.ee.impl.presentation.rmi.ReflectiveTie._invoke(ReflectiveTie.java:152) ~[?:?]
-	at com.sun.corba.ee.impl.protocol.ServerRequestDispatcherImpl.dispatchToServant(ServerRequestDispatcherImpl.java:501) ~[?:?]
-	at com.sun.corba.ee.impl.protocol.ServerRequestDispatcherImpl.dispatch(ServerRequestDispatcherImpl.java:172) ~[?:?]
-	at com.sun.corba.ee.impl.protocol.MessageMediatorImpl.handleRequestRequest(MessageMediatorImpl.java:1529) ~[?:?]
-	at com.sun.corba.ee.impl.protocol.MessageMediatorImpl.handleRequest(MessageMediatorImpl.java:1405) ~[?:?]
-	at com.sun.corba.ee.impl.protocol.MessageMediatorImpl.handleInput(MessageMediatorImpl.java:910) ~[?:?]
-	at com.sun.corba.ee.impl.protocol.giopmsgheaders.RequestMessage_1_2.callback(RequestMessage_1_2.java:192) ~[?:?]
-	at com.sun.corba.ee.impl.protocol.MessageMediatorImpl.handleRequest(MessageMediatorImpl.java:674) ~[?:?]
-	at com.sun.corba.ee.impl.protocol.MessageMediatorImpl.dispatch(MessageMediatorImpl.java:476) ~[?:?]
-	at com.sun.corba.ee.impl.protocol.MessageMediatorImpl.doWork(MessageMediatorImpl.java:2202) ~[?:?]
-	at com.sun.corba.ee.impl.threadpool.ThreadPoolImpl$WorkerThread.performWork(ThreadPoolImpl.java:476) ~[?:?]
-	at com.sun.corba.ee.impl.threadpool.ThreadPoolImpl$WorkerThread.run(ThreadPoolImpl.java:519) ~[?:?]
-2026-10-07 09:50:56.478 [pool-5-thread-1] ERROR com.eurocopter.mgs.core.proxy.ServiceManager - Unexpected java.util.concurrent.ExecutionException; wrap and rethrow
-2026-10-07 09:50:56.478 [pool-5-thread-1] DEBUG com.eurocopter.mgs.business.connection.ConnectionManager - Connection check error [class com.eurocopter.mgs.core.proxy.ConnectionException]
-com.eurocopter.mgs.core.proxy.ConnectionException: Unexpected java.util.concurrent.ExecutionException
-	at com.eurocopter.mgs.core.proxy.ServiceManager$ServiceInvocationHandler.invoke(ServiceManager.java:139) ~[?:?]
-	at jdk.proxy3.$Proxy19.getGroundStation(Unknown Source) ~[?:?]
-	at com.eurocopter.mgs.business.connection.ConnectionManager.ping(ConnectionManager.java:137) ~[?:?]
+Caused by: java.lang.LinkageError: loader constraint violation: loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @2ebbd1e6 wants to load class com.eurocopter.mgs.datamodel.core.GroundStation. A different class with the same name was previously loaded by org.eclipse.osgi.internal.loader.EquinoxClassLoader @71304555. (com.eurocopter.mgs.datamodel.core.GroundStation is in unnamed module of loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @71304555, parent loader 'platform')
+	at com.eurocopter.mgs.business.connection.ConnectionManager.ping(ConnectionManager.java:138) ~[?:?]
 	at com.eurocopter.mgs.business.connection.ConnectionManager$CheckConnectionCallable.call(ConnectionManager.java:157) ~[?:?]
 	at com.eurocopter.mgs.business.connection.ConnectionManager$CheckConnectionCallable.call(ConnectionManager.java:1) ~[?:?]
 	at java.util.concurrent.FutureTask.run(FutureTask.java:317) ~[?:?]
+	... 3 more
+2026-10-08 11:22:49.975 [pool-6-thread-14] ERROR com.eurocopter.mgs.business.connection.ConnectionManager - Connection KO: unexpected java.lang.LinkageError
+java.util.concurrent.ExecutionException: java.lang.LinkageError: loader constraint violation: loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @2ebbd1e6 wants to load class com.eurocopter.mgs.datamodel.core.GroundStation. A different class with the same name was previously loaded by org.eclipse.osgi.internal.loader.EquinoxClassLoader @71304555. (com.eurocopter.mgs.datamodel.core.GroundStation is in unnamed module of loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @71304555, parent loader 'platform')
+	at java.util.concurrent.FutureTask.report(FutureTask.java:122) ~[?:?]
+	at java.util.concurrent.FutureTask.get(FutureTask.java:205) ~[?:?]
+	at com.eurocopter.mgs.business.connection.ConnectionManager$CheckConnectionRunnableWithTimeOut.run(ConnectionManager.java:177) ~[?:?]
+	at java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:572) ~[?:?]
+	at java.util.concurrent.FutureTask.run(FutureTask.java:317) ~[?:?]
+	at java.util.concurrent.ScheduledThreadPoolExecutor$ScheduledFutureTask.run(ScheduledThreadPoolExecutor.java:304) ~[?:?]
 	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1144) ~[?:?]
 	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:642) ~[?:?]
 	at java.lang.Thread.run(Thread.java:1583) ~[?:?]
-Caused by: java.util.concurrent.ExecutionException: com.eurocopter.mgs.core.proxy.ConnectionException: Could not retrieve ejb/CoreService
-	at java.util.concurrent.FutureTask.report(FutureTask.java:122) ~[?:?]
-	at java.util.concurrent.FutureTask.get(FutureTask.java:205) ~[?:?]
-	at com.eurocopter.mgs.core.proxy.ServiceManager$ServiceInvocationHandler.invoke(ServiceManager.java:64) ~[?:?]
-	... 8 more
-Caused by: com.eurocopter.mgs.core.proxy.ConnectionException: Could not retrieve ejb/CoreService
-	at com.eurocopter.mgs.core.proxy.ServiceManager$ServiceInvocationHandler.lookupService(ServiceManager.java:170) ~[?:?]
-	at com.eurocopter.mgs.core.proxy.ServiceManager$ServiceInvocationHandler.lambda$0(ServiceManager.java:60) ~[?:?]
-	... 4 more
-Caused by: javax.naming.NamingException: Lookup failed for ejb/CoreService in SerialContext[myEnv={org.omg.CORBA.ORBInitialPort=3700, java.naming.factory.state=com.sun.corba.ee.impl.presentation.rmi.JNDIStateFactoryImpl, java.naming.factory.initial=com.sun.enterprise.naming.impl.SerialInitContextFactory, java.naming.factory.url.pkgs=com.sun.enterprise.naming, org.omg.CORBA.ORBInitialHost=localhost}]
-	at com.sun.enterprise.naming.impl.SerialContext.lookup(SerialContext.java:836) ~[?:?]
-	at com.sun.enterprise.naming.impl.SerialContext.lookup(SerialContext.java:257) ~[?:?]
-	at javax.naming.InitialContext.lookup(InitialContext.java:409) ~[?:?]
-	at com.eurocopter.mgs.core.proxy.ServiceManager$ServiceInvocationHandler.lookupService(ServiceManager.java:168) ~[?:?]
-	at com.eurocopter.mgs.core.proxy.ServiceManager$ServiceInvocationHandler.lambda$0(ServiceManager.java:60) ~[?:?]
-	... 4 more
-Caused by: javax.naming.NameNotFoundException: ejb
-	at com.sun.enterprise.naming.impl.TransientContext.resolveContext(TransientContext.java:292) ~[?:?]
-	at com.sun.enterprise.naming.impl.TransientContext.lookup(TransientContext.java:205) ~[?:?]
-	at com.sun.enterprise.naming.impl.SerialContextProviderImpl.lookup(SerialContextProviderImpl.java:37) ~[?:?]
-	at com.sun.enterprise.naming.impl.RemoteSerialContextProviderImpl.lookup(RemoteSerialContextProviderImpl.java:85) ~[?:?]
-	at jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103) ~[?:?]
-	at java.lang.reflect.Method.invoke(Method.java:580) ~[?:?]
-	at com.sun.corba.ee.impl.presentation.rmi.ReflectiveTie.dispatchToMethod(ReflectiveTie.java:122) ~[?:?]
-	at com.sun.corba.ee.impl.presentation.rmi.ReflectiveTie._invoke(ReflectiveTie.java:152) ~[?:?]
-	at com.sun.corba.ee.impl.protocol.ServerRequestDispatcherImpl.dispatchToServant(ServerRequestDispatcherImpl.java:501) ~[?:?]
-	at com.sun.corba.ee.impl.protocol.ServerRequestDispatcherImpl.dispatch(ServerRequestDispatcherImpl.java:172) ~[?:?]
-	at com.sun.corba.ee.impl.protocol.MessageMediatorImpl.handleRequestRequest(MessageMediatorImpl.java:1529) ~[?:?]
-	at com.sun.corba.ee.impl.protocol.MessageMediatorImpl.handleRequest(MessageMediatorImpl.java:1405) ~[?:?]
-	at com.sun.corba.ee.impl.protocol.MessageMediatorImpl.handleInput(MessageMediatorImpl.java:910) ~[?:?]
-	at com.sun.corba.ee.impl.protocol.giopmsgheaders.RequestMessage_1_2.callback(RequestMessage_1_2.java:192) ~[?:?]
-	at com.sun.corba.ee.impl.protocol.MessageMediatorImpl.handleRequest(MessageMediatorImpl.java:674) ~[?:?]
-	at com.sun.corba.ee.impl.protocol.MessageMediatorImpl.dispatch(MessageMediatorImpl.java:476) ~[?:?]
-	at com.sun.corba.ee.impl.protocol.MessageMediatorImpl.doWork(MessageMediatorImpl.java:2202) ~[?:?]
-	at com.sun.corba.ee.impl.threadpool.ThreadPoolImpl$WorkerThread.performWork(ThreadPoolImpl.java:476) ~[?:?]
-	at com.sun.corba.ee.impl.threadpool.ThreadPoolImpl$WorkerThread.run(ThreadPoolImpl.java:519) ~[?:?]
-2026-10-07 09:51:01.504 [pool-5-thread-1] ERROR com.eurocopter.mgs.core.proxy.ServiceManager - Unexpected java.util.concurrent.ExecutionException; wrap and rethrow
-2026-10-07 09:51:01.504 [pool-5-thread-1] DEBUG com.eurocopter.mgs.business.connection.ConnectionManager - Connection check error [class com.eurocopter.mgs.core.proxy.ConnectionException]
-com.eurocopter.mgs.core.proxy.ConnectionException: Unexpected java.util.concurrent.ExecutionException
-	at com.eurocopter.mgs.core.proxy.ServiceManager$ServiceInvocationHandler.invoke(ServiceManager.java:139) ~[?:?]
-	at jdk.proxy3.$Proxy19.getGroundStation(Unknown Source) ~[?:?]
-	at com.eurocopter.mgs.business.connection.ConnectionManager.ping(ConnectionManager.java:137) ~[?:?]
+Caused by: java.lang.LinkageError: loader constraint violation: loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @2ebbd1e6 wants to load class com.eurocopter.mgs.datamodel.core.GroundStation. A different class with the same name was previously loaded by org.eclipse.osgi.internal.loader.EquinoxClassLoader @71304555. (com.eurocopter.mgs.datamodel.core.GroundStation is in unnamed module of loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @71304555, parent loader 'platform')
+	at com.eurocopter.mgs.business.connection.ConnectionManager.ping(ConnectionManager.java:138) ~[?:?]
 	at com.eurocopter.mgs.business.connection.ConnectionManager$CheckConnectionCallable.call(ConnectionManager.java:157) ~[?:?]
 	at com.eurocopter.mgs.business.connection.ConnectionManager$CheckConnectionCallable.call(ConnectionManager.java:1) ~[?:?]
 	at java.util.concurrent.FutureTask.run(FutureTask.java:317) ~[?:?]
+	... 3 more
+2026-10-08 11:22:54.990 [pool-6-thread-15] ERROR com.eurocopter.mgs.business.connection.ConnectionManager - Connection KO: unexpected java.lang.LinkageError
+java.util.concurrent.ExecutionException: java.lang.LinkageError: loader constraint violation: loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @2ebbd1e6 wants to load class com.eurocopter.mgs.datamodel.core.GroundStation. A different class with the same name was previously loaded by org.eclipse.osgi.internal.loader.EquinoxClassLoader @71304555. (com.eurocopter.mgs.datamodel.core.GroundStation is in unnamed module of loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @71304555, parent loader 'platform')
+	at java.util.concurrent.FutureTask.report(FutureTask.java:122) ~[?:?]
+	at java.util.concurrent.FutureTask.get(FutureTask.java:205) ~[?:?]
+	at com.eurocopter.mgs.business.connection.ConnectionManager$CheckConnectionRunnableWithTimeOut.run(ConnectionManager.java:177) ~[?:?]
+	at java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:572) ~[?:?]
+	at java.util.concurrent.FutureTask.run(FutureTask.java:317) ~[?:?]
+	at java.util.concurrent.ScheduledThreadPoolExecutor$ScheduledFutureTask.run(ScheduledThreadPoolExecutor.java:304) ~[?:?]
 	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1144) ~[?:?]
 	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:642) ~[?:?]
 	at java.lang.Thread.run(Thread.java:1583) ~[?:?]
-Caused by: java.util.concurrent.ExecutionException: com.eurocopter.mgs.core.proxy.ConnectionException: Could not retrieve ejb/CoreService
-	at java.util.concurrent.FutureTask.report(FutureTask.java:122) ~[?:?]
-	at java.util.concurrent.FutureTask.get(FutureTask.java:205) ~[?:?]
-	at com.eurocopter.mgs.core.proxy.ServiceManager$ServiceInvocationHandler.invoke(ServiceManager.java:64) ~[?:?]
-	... 8 more
-Caused by: com.eurocopter.mgs.core.proxy.ConnectionException: Could not retrieve ejb/CoreService
-	at com.eurocopter.mgs.core.proxy.ServiceManager$ServiceInvocationHandler.lookupService(ServiceManager.java:170) ~[?:?]
-	at com.eurocopter.mgs.core.proxy.ServiceManager$ServiceInvocationHandler.lambda$0(ServiceManager.java:60) ~[?:?]
-	... 4 more
-Caused by: javax.naming.NamingException: Lookup failed for ejb/CoreService in SerialContext[myEnv={org.omg.CORBA.ORBInitialPort=3700, java.naming.factory.state=com.sun.corba.ee.impl.presentation.rmi.JNDIStateFactoryImpl, java.naming.factory.initial=com.sun.enterprise.naming.impl.SerialInitContextFactory, java.naming.factory.url.pkgs=com.sun.enterprise.naming, org.omg.CORBA.ORBInitialHost=localhost}]
-	at com.sun.enterprise.naming.impl.SerialContext.lookup(SerialContext.java:836) ~[?:?]
-	at com.sun.enterprise.naming.impl.SerialContext.lookup(SerialContext.java:257) ~[?:?]
-	at javax.naming.InitialContext.lookup(InitialContext.java:409) ~[?:?]
-	at com.eurocopter.mgs.core.proxy.ServiceManager$ServiceInvocationHandler.lookupService(ServiceManager.java:168) ~[?:?]
-	at com.eurocopter.mgs.core.proxy.ServiceManager$ServiceInvocationHandler.lambda$0(ServiceManager.java:60) ~[?:?]
-	... 4 more
-Caused by: javax.naming.NameNotFoundException: ejb
-	at com.sun.enterprise.naming.impl.TransientContext.resolveContext(TransientContext.java:292) ~[?:?]
-	at com.sun.enterprise.naming.impl.TransientContext.lookup(TransientContext.java:205) ~[?:?]
-	at com.sun.enterprise.naming.impl.SerialContextProviderImpl.lookup(SerialContextProviderImpl.java:37) ~[?:?]
-	at com.sun.enterprise.naming.impl.RemoteSerialContextProviderImpl.lookup(RemoteSerialContextProviderImpl.java:85) ~[?:?]
-	at jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103) ~[?:?]
-	at java.lang.reflect.Method.invoke(Method.java:580) ~[?:?]
-	at com.sun.corba.ee.impl.presentation.rmi.ReflectiveTie.dispatchToMethod(ReflectiveTie.java:122) ~[?:?]
-	at com.sun.corba.ee.impl.presentation.rmi.ReflectiveTie._invoke(ReflectiveTie.java:152) ~[?:?]
-	at com.sun.corba.ee.impl.protocol.ServerRequestDispatcherImpl.dispatchToServant(ServerRequestDispatcherImpl.java:501) ~[?:?]
-	at com.sun.corba.ee.impl.protocol.ServerRequestDispatcherImpl.dispatch(ServerRequestDispatcherImpl.java:172) ~[?:?]
-	at com.sun.corba.ee.impl.protocol.MessageMediatorImpl.handleRequestRequest(MessageMediatorImpl.java:1529) ~[?:?]
-	at com.sun.corba.ee.impl.protocol.MessageMediatorImpl.handleRequest(MessageMediatorImpl.java:1405) ~[?:?]
-	at com.sun.corba.ee.impl.protocol.MessageMediatorImpl.handleInput(MessageMediatorImpl.java:910) ~[?:?]
-	at com.sun.corba.ee.impl.protocol.giopmsgheaders.RequestMessage_1_2.callback(RequestMessage_1_2.java:192) ~[?:?]
-	at com.sun.corba.ee.impl.protocol.MessageMediatorImpl.handleRequest(MessageMediatorImpl.java:674) ~[?:?]
-	at com.sun.corba.ee.impl.protocol.MessageMediatorImpl.dispatch(MessageMediatorImpl.java:476) ~[?:?]
-	at com.sun.corba.ee.impl.protocol.MessageMediatorImpl.doWork(MessageMediatorImpl.java:2202) ~[?:?]
-	at com.sun.corba.ee.impl.threadpool.ThreadPoolImpl$WorkerThread.performWork(ThreadPoolImpl.java:476) ~[?:?]
-	at com.sun.corba.ee.impl.threadpool.ThreadPoolImpl$WorkerThread.run(ThreadPoolImpl.java:519) ~[?:?]
-2026-10-07 09:51:06.527 [pool-5-thread-1] ERROR com.eurocopter.mgs.core.proxy.ServiceManager - Unexpected java.util.concurrent.ExecutionException; wrap and rethrow
-2026-10-07 09:51:06.527 [pool-5-thread-1] DEBUG com.eurocopter.mgs.business.connection.ConnectionManager - Connection check error [class com.eurocopter.mgs.core.proxy.ConnectionException]
-com.eurocopter.mgs.core.proxy.ConnectionException: Unexpected java.util.concurrent.ExecutionException
-	at com.eurocopter.mgs.core.proxy.ServiceManager$ServiceInvocationHandler.invoke(ServiceManager.java:139) ~[?:?]
-	at jdk.proxy3.$Proxy19.getGroundStation(Unknown Source) ~[?:?]
-	at com.eurocopter.mgs.business.connection.ConnectionManager.ping(ConnectionManager.java:137) ~[?:?]
+Caused by: java.lang.LinkageError: loader constraint violation: loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @2ebbd1e6 wants to load class com.eurocopter.mgs.datamodel.core.GroundStation. A different class with the same name was previously loaded by org.eclipse.osgi.internal.loader.EquinoxClassLoader @71304555. (com.eurocopter.mgs.datamodel.core.GroundStation is in unnamed module of loader org.eclipse.osgi.internal.loader.EquinoxClassLoader @71304555, parent loader 'platform')
+	at com.eurocopter.mgs.business.connection.ConnectionManager.ping(ConnectionManager.java:138) ~[?:?]
 	at com.eurocopter.mgs.business.connection.ConnectionManager$CheckConnectionCallable.call(ConnectionManager.java:157) ~[?:?]
 	at com.eurocopter.mgs.business.connection.ConnectionManager$CheckConnectionCallable.call(ConnectionManager.java:1) ~[?:?]
 	at java.util.concurrent.FutureTask.run(FutureTask.java:317) ~[?:?]
-	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1144) ~[?:?]
-	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:642) ~[?:?]
-	at java.lang.Thread.run(Thread.java:1583) ~[?:?]
-Caused by: java.util.concurrent.ExecutionException: com.eurocopter.mgs.core.proxy.ConnectionException: Could not retrieve ejb/CoreService
-	at java.util.concurrent.FutureTask.report(FutureTask.java:122) ~[?:?]
-	at java.util.concurrent.FutureTask.get(FutureTask.java:205) ~[?:?]
-	at com.eurocopter.mgs.core.proxy.ServiceManager$ServiceInvocationHandler.invoke(ServiceManager.java:64) ~[?:?]
-	... 8 more
-Caused by: com.eurocopter.mgs.core.proxy.ConnectionException: Could not retrieve ejb/CoreService
-	at com.eurocopter.mgs.core.proxy.ServiceManager$ServiceInvocationHandler.lookupService(ServiceManager.java:170) ~[?:?]
-	at com.eurocopter.mgs.core.proxy.ServiceManager$ServiceInvocationHandler.lambda$0(ServiceManager.java:60) ~[?:?]
-	... 4 more
-Caused by: javax.naming.NamingException: Lookup failed for ejb/CoreService in SerialContext[myEnv={org.omg.CORBA.ORBInitialPort=3700, java.naming.factory.state=com.sun.corba.ee.impl.presentation.rmi.JNDIStateFactoryImpl, java.naming.factory.initial=com.sun.enterprise.naming.impl.SerialInitContextFactory, java.naming.factory.url.pkgs=com.sun.enterprise.naming, org.omg.CORBA.ORBInitialHost=localhost}]
-	at com.sun.enterprise.naming.impl.SerialContext.lookup(SerialContext.java:836) ~[?:?]
-	at com.sun.enterprise.naming.impl.SerialContext.lookup(SerialContext.java:257) ~[?:?]
-	at javax.naming.InitialContext.lookup(InitialContext.java:409) ~[?:?]
-	at com.eurocopter.mgs.core.proxy.ServiceManager$ServiceInvocationHandler.lookupService(ServiceManager.java:168) ~[?:?]
-	at com.eurocopter.mgs.core.proxy.ServiceManager$ServiceInvocationHandler.lambda$0(ServiceManager.java:60) ~[?:?]
-	... 4 more
-Caused by: javax.naming.NameNotFoundException: ejb
-	at com.sun.enterprise.naming.impl.TransientContext.resolveContext(TransientContext.java:292) ~[?:?]
-	at com.sun.enterprise.naming.impl.TransientContext.lookup(TransientContext.java:205) ~[?:?]
-	at com.sun.enterprise.naming.impl.SerialContextProviderImpl.lookup(SerialContextProviderImpl.java:37) ~[?:?]
-	at com.sun.enterprise.naming.impl.RemoteSerialContextProviderImpl.lookup(RemoteSerialContextProviderImpl.java:85) ~[?:?]
-	at jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103) ~[?:?]
-	at java.lang.reflect.Method.invoke(Method.java:580) ~[?:?]
-	at com.sun.corba.ee.impl.presentation.rmi.ReflectiveTie.dispatchToMethod(ReflectiveTie.java:122) ~[?:?]
-	at com.sun.corba.ee.impl.presentation.rmi.ReflectiveTie._invoke(ReflectiveTie.java:152) ~[?:?]
-	at com.sun.corba.ee.impl.protocol.ServerRequestDispatcherImpl.dispatchToServant(ServerRequestDispatcherImpl.java:501) ~[?:?]
-	at com.sun.corba.ee.impl.protocol.ServerRequestDispatcherImpl.dispatch(ServerRequestDispatcherImpl.java:172) ~[?:?]
-	at com.sun.corba.ee.impl.protocol.MessageMediatorImpl.handleRequestRequest(MessageMediatorImpl.java:1529) ~[?:?]
-	at com.sun.corba.ee.impl.protocol.MessageMediatorImpl.handleRequest(MessageMediatorImpl.java:1405) ~[?:?]
-	at com.sun.corba.ee.impl.protocol.MessageMediatorImpl.handleInput(MessageMediatorImpl.java:910) ~[?:?]
-	at com.sun.corba.ee.impl.protocol.giopmsgheaders.RequestMessage_1_2.callback(RequestMessage_1_2.java:192) ~[?:?]
-	at com.sun.corba.ee.impl.protocol.MessageMediatorImpl.handleRequest(MessageMediatorImpl.java:674) ~[?:?]
-	at com.sun.corba.ee.impl.protocol.MessageMediatorImpl.dispatch(MessageMediatorImpl.java:476) ~[?:?]
-	at com.sun.corba.ee.impl.protocol.MessageMediatorImpl.doWork(MessageMediatorImpl.java:2202) ~[?:?]
-	at com.sun.corba.ee.impl.threadpool.ThreadPoolImpl$WorkerThread.performWork(ThreadPoolImpl.java:476) ~[?:?]
-	at com.sun.corba.ee.impl.threadpool.ThreadPoolImpl$WorkerThread.run(ThreadPoolImpl.java:519) ~[?:?]
-2026-10-07 09:51:11.555 [pool-5-thread-1] ERROR com.eurocopter.mgs.core.proxy.ServiceManager - Unexpected java.util.concurrent.ExecutionException; wrap and rethrow
-2026-10-07 09:51:11.556 [pool-5-thread-1] DEBUG com.eurocopter.mgs.business.connection.ConnectionManager - Connection check error [class com.eurocopter.mgs.core.proxy.ConnectionException]
-com.eurocopter.mgs.core.proxy.ConnectionException: Unexpected java.util.concurrent.ExecutionException
-	at com.eurocopter.mgs.core.proxy.ServiceManager$ServiceInvocationHandler.invoke(ServiceManager.java:139) ~[?:?]
-	at jdk.proxy3.$Proxy19.getGroundStation(Unknown Source) ~[?:?]
-	at com.eurocopter.mgs.business.connection.ConnectionManager.ping(ConnectionManager.java:137) ~[?:?]
-	at com.eurocopter.mgs.business.connection.ConnectionManager$CheckConnectionCallable.call(ConnectionManager.java:157) ~[?:?]
-	at com.eurocopter.mgs.business.connection.ConnectionManager$CheckConnectionCallable.call(ConnectionManager.java:1) ~[?:?]
-	at java.util.concurrent.FutureTask.run(FutureTask.java:317) ~[?:?]
-	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1144) ~[?:?]
-	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:642) ~[?:?]
-	at java.lang.Thread.run(Thread.java:1583) ~[?:?]
-Caused by: java.util.concurrent.ExecutionException: com.eurocopter.mgs.core.proxy.ConnectionException: Could not retrieve ejb/CoreService
-	at java.util.concurrent.FutureTask.report(FutureTask.java:122) ~[?:?]
-	at java.util.concurrent.FutureTask.get(FutureTask.java:205) ~[?:?]
-	at com.eurocopter.mgs.core.proxy.ServiceManager$ServiceInvocationHandler.invoke(ServiceManager.java:64) ~[?:?]
-	... 8 more
-Caused by: com.eurocopter.mgs.core.proxy.ConnectionException: Could not retrieve ejb/CoreService
-	at com.eurocopter.mgs.core.proxy.ServiceManager$ServiceInvocationHandler.lookupService(ServiceManager.java:170) ~[?:?]
-	at com.eurocopter.mgs.core.proxy.ServiceManager$ServiceInvocationHandler.lambda$0(ServiceManager.java:60) ~[?:?]
-	... 4 more
-Caused by: javax.naming.NamingException: Lookup failed for ejb/CoreService in SerialContext[myEnv={org.omg.CORBA.ORBInitialPort=3700, java.naming.factory.state=com.sun.corba.ee.impl.presentation.rmi.JNDIStateFactoryImpl, java.naming.factory.initial=com.sun.enterprise.naming.impl.SerialInitContextFactory, java.naming.factory.url.pkgs=com.sun.enterprise.naming, org.omg.CORBA.ORBInitialHost=localhost}]
-	at com.sun.enterprise.naming.impl.SerialContext.lookup(SerialContext.java:836) ~[?:?]
-	at com.sun.enterprise.naming.impl.SerialContext.lookup(SerialContext.java:257) ~[?:?]
-	at javax.naming.InitialContext.lookup(InitialContext.java:409) ~[?:?]
-	at com.eurocopter.mgs.core.proxy.ServiceManager$ServiceInvocationHandler.lookupService(ServiceManager.java:168) ~[?:?]
-	at com.eurocopter.mgs.core.proxy.ServiceManager$ServiceInvocationHandler.lambda$0(ServiceManager.java:60) ~[?:?]
-	... 4 more
-Caused by: javax.naming.NameNotFoundException: ejb
-	at com.sun.enterprise.naming.impl.TransientContext.resolveContext(TransientContext.java:292) ~[?:?]
-	at com.sun.enterprise.naming.impl.TransientContext.lookup(TransientContext.java:205) ~[?:?]
-	at com.sun.enterprise.naming.impl.SerialContextProviderImpl.lookup(SerialContextProviderImpl.java:37) ~[?:?]
-	at com.sun.enterprise.naming.impl.RemoteSerialContextProviderImpl.lookup(RemoteSerialContextProviderImpl.java:85) ~[?:?]
-	at jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103) ~[?:?]
-	at java.lang.reflect.Method.invoke(Method.java:580) ~[?:?]
-	at com.sun.corba.ee.impl.presentation.rmi.ReflectiveTie.dispatchToMethod(ReflectiveTie.java:122) ~[?:?]
-	at com.sun.corba.ee.impl.presentation.rmi.ReflectiveTie._invoke(ReflectiveTie.java:152) ~[?:?]
-	at com.sun.corba.ee.impl.protocol.ServerRequestDispatcherImpl.dispatchToServant(ServerRequestDispatcherImpl.java:501) ~[?:?]
-	at com.sun.corba.ee.impl.protocol.ServerRequestDispatcherImpl.dispatch(ServerRequestDispatcherImpl.java:172) ~[?:?]
-	at com.sun.corba.ee.impl.protocol.MessageMediatorImpl.handleRequestRequest(MessageMediatorImpl.java:1529) ~[?:?]
-	at com.sun.corba.ee.impl.protocol.MessageMediatorImpl.handleRequest(MessageMediatorImpl.java:1405) ~[?:?]
-	at com.sun.corba.ee.impl.protocol.MessageMediatorImpl.handleInput(MessageMediatorImpl.java:910) ~[?:?]
-	at com.sun.corba.ee.impl.protocol.giopmsgheaders.RequestMessage_1_2.callback(RequestMessage_1_2.java:192) ~[?:?]
-	at com.sun.corba.ee.impl.protocol.MessageMediatorImpl.handleRequest(MessageMediatorImpl.java:674) ~[?:?]
-	at com.sun.corba.ee.impl.protocol.MessageMediatorImpl.dispatch(MessageMediatorImpl.java:476) ~[?:?]
-	at com.sun.corba.ee.impl.protocol.MessageMediatorImpl.doWork(MessageMediatorImpl.java:2202) ~[?:?]
-	at com.sun.corba.ee.impl.threadpool.ThreadPoolImpl$WorkerThread.performWork(ThreadPoolImpl.java:476) ~[?:?]
-	at com.sun.corba.ee.impl.threadpool.ThreadPoolImpl$WorkerThread.run(ThreadPoolImpl.java:519) ~[?:?]
-2026-10-07 09:51:16.599 [pool-5-thread-1] ERROR com.eurocopter.mgs.core.proxy.ServiceManager - Unexpected java.util.concurrent.ExecutionException; wrap and rethrow
-2026-10-07 09:51:16.600 [pool-5-thread-1] DEBUG com.eurocopter.mgs.business.connection.ConnectionManager - Connection check error [class com.eurocopter.mgs.core.proxy.ConnectionException]
-com.eurocopter.mgs.core.proxy.ConnectionException: Unexpected java.util.concurrent.ExecutionException
-	at com.eurocopter.mgs.core.proxy.ServiceManager$ServiceInvocationHandler.invoke(ServiceManager.java:139) ~[?:?]
-	at jdk.proxy3.$Proxy19.getGroundStation(Unknown Source) ~[?:?]
-	at com.eurocopter.mgs.business.connection.ConnectionManager.ping(ConnectionManager.java:137) ~[?:?]
-	at com.eurocopter.mgs.business.connection.ConnectionManager$CheckConnectionCallable.call(ConnectionManager.java:157) ~[?:?]
-	at com.eurocopter.mgs.business.connection.ConnectionManager$CheckConnectionCallable.call(ConnectionManager.java:1) ~[?:?]
-	at java.util.concurrent.FutureTask.run(FutureTask.java:317) ~[?:?]
-	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1144) ~[?:?]
-	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:642) ~[?:?]
-	at java.lang.Thread.run(Thread.java:1583) ~[?:?]
-Caused by: java.util.concurrent.ExecutionException: com.eurocopter.mgs.core.proxy.ConnectionException: Could not retrieve ejb/CoreService
-	at java.util.concurrent.FutureTask.report(FutureTask.java:122) ~[?:?]
-	at java.util.concurrent.FutureTask.get(FutureTask.java:205) ~[?:?]
-	at com.eurocopter.mgs.core.proxy.ServiceManager$ServiceInvocationHandler.invoke(ServiceManager.java:64) ~[?:?]
-	... 8 more
-Caused by: com.eurocopter.mgs.core.proxy.ConnectionException: Could not retrieve ejb/CoreService
-	at com.eurocopter.mgs.core.proxy.ServiceManager$ServiceInvocationHandler.lookupService(ServiceManager.java:170) ~[?:?]
-	at com.eurocopter.mgs.core.proxy.ServiceManager$ServiceInvocationHandler.lambda$0(ServiceManager.java:60) ~[?:?]
-	... 4 more
-Caused by: javax.naming.NamingException: Lookup failed for ejb/CoreService in SerialContext[myEnv={org.omg.CORBA.ORBInitialPort=3700, java.naming.factory.state=com.sun.corba.ee.impl.presentation.rmi.JNDIStateFactoryImpl, java.naming.factory.initial=com.sun.enterprise.naming.impl.SerialInitContextFactory, java.naming.factory.url.pkgs=com.sun.enterprise.naming, org.omg.CORBA.ORBInitialHost=localhost}]
-	at com.sun.enterprise.naming.impl.SerialContext.lookup(SerialContext.java:836) ~[?:?]
-	at com.sun.enterprise.naming.impl.SerialContext.lookup(SerialContext.java:257) ~[?:?]
-	at javax.naming.InitialContext.lookup(InitialContext.java:409) ~[?:?]
-	at com.eurocopter.mgs.core.proxy.ServiceManager$ServiceInvocationHandler.lookupService(ServiceManager.java:168) ~[?:?]
-	at com.eurocopter.mgs.core.proxy.ServiceManager$ServiceInvocationHandler.lambda$0(ServiceManager.java:60) ~[?:?]
-	... 4 more
-Caused by: javax.naming.NameNotFoundException: ejb
-	at com.sun.enterprise.naming.impl.TransientContext.resolveContext(TransientContext.java:292) ~[?:?]
-	at com.sun.enterprise.naming.impl.TransientContext.lookup(TransientContext.java:205) ~[?:?]
-	at com.sun.enterprise.naming.impl.SerialContextProviderImpl.lookup(SerialContextProviderImpl.java:37) ~[?:?]
-	at com.sun.enterprise.naming.impl.RemoteSerialContextProviderImpl.lookup(RemoteSerialContextProviderImpl.java:85) ~[?:?]
-	at jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103) ~[?:?]
-	at java.lang.reflect.Method.invoke(Method.java:580) ~[?:?]
-	at com.sun.corba.ee.impl.presentation.rmi.ReflectiveTie.dispatchToMethod(ReflectiveTie.java:122) ~[?:?]
-	at com.sun.corba.ee.impl.presentation.rmi.ReflectiveTie._invoke(ReflectiveTie.java:152) ~[?:?]
-	at com.sun.corba.ee.impl.protocol.ServerRequestDispatcherImpl.dispatchToServant(ServerRequestDispatcherImpl.java:501) ~[?:?]
-	at com.sun.corba.ee.impl.protocol.ServerRequestDispatcherImpl.dispatch(ServerRequestDispatcherImpl.java:172) ~[?:?]
-	at com.sun.corba.ee.impl.protocol.MessageMediatorImpl.handleRequestRequest(MessageMediatorImpl.java:1529) ~[?:?]
-	at com.sun.corba.ee.impl.protocol.MessageMediatorImpl.handleRequest(MessageMediatorImpl.java:1405) ~[?:?]
-	at com.sun.corba.ee.impl.protocol.MessageMediatorImpl.handleInput(MessageMediatorImpl.java:910) ~[?:?]
-	at com.sun.corba.ee.impl.protocol.giopmsgheaders.RequestMessage_1_2.callback(RequestMessage_1_2.java:192) ~[?:?]
-	at com.sun.corba.ee.impl.protocol.MessageMediatorImpl.handleRequest(MessageMediatorImpl.java:674) ~[?:?]
-	at com.sun.corba.ee.impl.protocol.MessageMediatorImpl.dispatch(MessageMediatorImpl.java:476) ~[?:?]
-	at com.sun.corba.ee.impl.protocol.MessageMediatorImpl.doWork(MessageMediatorImpl.java:2202) ~[?:?]
-	at com.sun.corba.ee.impl.threadpool.ThreadPoolImpl$WorkerThread.performWork(ThreadPoolImpl.java:476) ~[?:?]
-	at com.sun.corba.ee.impl.threadpool.ThreadPoolImpl$WorkerThread.run(ThreadPoolImpl.java:519) ~[?:?]
-2026-10-07 09:51:21.631 [pool-5-thread-1] ERROR com.eurocopter.mgs.core.proxy.ServiceManager - Unexpected java.util.concurrent.ExecutionException; wrap and rethrow
-2026-10-07 09:51:21.631 [pool-5-thread-1] DEBUG com.eurocopter.mgs.business.connection.ConnectionManager - Connection check error [class com.eurocopter.mgs.core.proxy.ConnectionException]
-com.eurocopter.mgs.core.proxy.ConnectionException: Unexpected java.util.concurrent.ExecutionException
-	at com.eurocopter.mgs.core.proxy.ServiceManager$ServiceInvocationHandler.invoke(ServiceManager.java:139) ~[?:?]
-	at jdk.proxy3.$Proxy19.getGroundStation(Unknown Source) ~[?:?]
-	at com.eurocopter.mgs.business.connection.ConnectionManager.ping(ConnectionManager.java:137) ~[?:?]
-	at com.eurocopter.mgs.business.connection.ConnectionManager$CheckConnectionCallable.call(ConnectionManager.java:157) ~[?:?]
-	at com.eurocopter.mgs.business.connection.ConnectionManager$CheckConnectionCallable.call(ConnectionManager.java:1) ~[?:?]
-	at java.util.concurrent.FutureTask.run(FutureTask.java:317) ~[?:?]
-	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1144) ~[?:?]
-	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:642) ~[?:?]
-	at java.lang.Thread.run(Thread.java:1583) ~[?:?]
-Caused by: java.util.concurrent.ExecutionException: com.eurocopter.mgs.core.proxy.ConnectionException: Could not retrieve ejb/CoreService
-	at java.util.concurrent.FutureTask.report(FutureTask.java:122) ~[?:?]
-	at java.util.concurrent.FutureTask.get(FutureTask.java:205) ~[?:?]
-	at com.eurocopter.mgs.core.proxy.ServiceManager$ServiceInvocationHandler.invoke(ServiceManager.java:64) ~[?:?]
-	... 8 more
-Caused by: com.eurocopter.mgs.core.proxy.ConnectionException: Could not retrieve ejb/CoreService
-	at com.eurocopter.mgs.core.proxy.ServiceManager$ServiceInvocationHandler.lookupService(ServiceManager.java:170) ~[?:?]
-	at com.eurocopter.mgs.core.proxy.ServiceManager$ServiceInvocationHandler.lambda$0(ServiceManager.java:60) ~[?:?]
-	... 4 more
-Caused by: javax.naming.NamingException: Lookup failed for ejb/CoreService in SerialContext[myEnv={org.omg.CORBA.ORBInitialPort=3700, java.naming.factory.state=com.sun.corba.ee.impl.presentation.rmi.JNDIStateFactoryImpl, java.naming.factory.initial=com.sun.enterprise.naming.impl.SerialInitContextFactory, java.naming.factory.url.pkgs=com.sun.enterprise.naming, org.omg.CORBA.ORBInitialHost=localhost}]
-	at com.sun.enterprise.naming.impl.SerialContext.lookup(SerialContext.java:836) ~[?:?]
-	at com.sun.enterprise.naming.impl.SerialContext.lookup(SerialContext.java:257) ~[?:?]
-	at javax.naming.InitialContext.lookup(InitialContext.java:409) ~[?:?]
-	at com.eurocopter.mgs.core.proxy.ServiceManager$ServiceInvocationHandler.lookupService(ServiceManager.java:168) ~[?:?]
-	at com.eurocopter.mgs.core.proxy.ServiceManager$ServiceInvocationHandler.lambda$0(ServiceManager.java:60) ~[?:?]
-	... 4 more
-Caused by: javax.naming.NameNotFoundException: ejb
-	at com.sun.enterprise.naming.impl.TransientContext.resolveContext(TransientContext.java:292) ~[?:?]
-	at com.sun.enterprise.naming.impl.TransientContext.lookup(TransientContext.java:205) ~[?:?]
-	at com.sun.enterprise.naming.impl.SerialContextProviderImpl.lookup(SerialContextProviderImpl.java:37) ~[?:?]
-	at com.sun.enterprise.naming.impl.RemoteSerialContextProviderImpl.lookup(RemoteSerialContextProviderImpl.java:85) ~[?:?]
-	at jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103) ~[?:?]
-	at java.lang.reflect.Method.invoke(Method.java:580) ~[?:?]
-	at com.sun.corba.ee.impl.presentation.rmi.ReflectiveTie.dispatchToMethod(ReflectiveTie.java:122) ~[?:?]
-	at com.sun.corba.ee.impl.presentation.rmi.ReflectiveTie._invoke(ReflectiveTie.java:152) ~[?:?]
-	at com.sun.corba.ee.impl.protocol.ServerRequestDispatcherImpl.dispatchToServant(ServerRequestDispatcherImpl.java:501) ~[?:?]
-	at com.sun.corba.ee.impl.protocol.ServerRequestDispatcherImpl.dispatch(ServerRequestDispatcherImpl.java:172) ~[?:?]
-	at com.sun.corba.ee.impl.protocol.MessageMediatorImpl.handleRequestRequest(MessageMediatorImpl.java:1529) ~[?:?]
-	at com.sun.corba.ee.impl.protocol.MessageMediatorImpl.handleRequest(MessageMediatorImpl.java:1405) ~[?:?]
-	at com.sun.corba.ee.impl.protocol.MessageMediatorImpl.handleInput(MessageMediatorImpl.java:910) ~[?:?]
-	at com.sun.corba.ee.impl.protocol.giopmsgheaders.RequestMessage_1_2.callback(RequestMessage_1_2.java:192) ~[?:?]
-	at com.sun.corba.ee.impl.protocol.MessageMediatorImpl.handleRequest(MessageMediatorImpl.java:674) ~[?:?]
-	at com.sun.corba.ee.impl.protocol.MessageMediatorImpl.dispatch(MessageMediatorImpl.java:476) ~[?:?]
-	at com.sun.corba.ee.impl.protocol.MessageMediatorImpl.doWork(MessageMediatorImpl.java:2202) ~[?:?]
-	at com.sun.corba.ee.impl.threadpool.ThreadPoolImpl$WorkerThread.performWork(ThreadPoolImpl.java:476) ~[?:?]
-	at com.sun.corba.ee.impl.threadpool.ThreadPoolImpl$WorkerThread.run(ThreadPoolImpl.java:519) ~[?:?]
-2026-10-07 09:51:26.688 [pool-5-thread-1] ERROR com.eurocopter.mgs.core.proxy.ServiceManager - Unexpected java.util.concurrent.ExecutionException; wrap and rethrow
-2026-10-07 09:51:26.690 [pool-5-thread-1] DEBUG com.eurocopter.mgs.business.connection.ConnectionManager - Connection check error [class com.eurocopter.mgs.core.proxy.ConnectionException]
-com.eurocopter.mgs.core.proxy.ConnectionException: Unexpected java.util.concurrent.ExecutionException
-	at com.eurocopter.mgs.core.proxy.ServiceManager$ServiceInvocationHandler.invoke(ServiceManager.java:139) ~[?:?]
-	at jdk.proxy3.$Proxy19.getGroundStation(Unknown Source) ~[?:?]
-	at com.eurocopter.mgs.business.connection.ConnectionManager.ping(ConnectionManager.java:137) ~[?:?]
-	at com.eurocopter.mgs.business.connection.ConnectionManager$CheckConnectionCallable.call(ConnectionManager.java:157) ~[?:?]
-	at com.eurocopter.mgs.business.connection.ConnectionManager$CheckConnectionCallable.call(ConnectionManager.java:1) ~[?:?]
-	at java.util.concurrent.FutureTask.run(FutureTask.java:317) ~[?:?]
-	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1144) ~[?:?]
-	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:642) ~[?:?]
-	at java.lang.Thread.run(Thread.java:1583) ~[?:?]
-Caused by: java.util.concurrent.ExecutionException: com.eurocopter.mgs.core.proxy.ConnectionException: Could not retrieve ejb/CoreService
-	at java.util.concurrent.FutureTask.report(FutureTask.java:122) ~[?:?]
-	at java.util.concurrent.FutureTask.get(FutureTask.java:205) ~[?:?]
-	at com.eurocopter.mgs.core.proxy.ServiceManager$ServiceInvocationHandler.invoke(ServiceManager.java:64) ~[?:?]
-	... 8 more
-Caused by: com.eurocopter.mgs.core.proxy.ConnectionException: Could not retrieve ejb/CoreService
-	at com.eurocopter.mgs.core.proxy.ServiceManager$ServiceInvocationHandler.lookupService(ServiceManager.java:170) ~[?:?]
-	at com.eurocopter.mgs.core.proxy.ServiceManager$ServiceInvocationHandler.lambda$0(ServiceManager.java:60) ~[?:?]
-	... 4 more
-Caused by: javax.naming.NamingException: Lookup failed for ejb/CoreService in SerialContext[myEnv={org.omg.CORBA.ORBInitialPort=3700, java.naming.factory.state=com.sun.corba.ee.impl.presentation.rmi.JNDIStateFactoryImpl, java.naming.factory.initial=com.sun.enterprise.naming.impl.SerialInitContextFactory, java.naming.factory.url.pkgs=com.sun.enterprise.naming, org.omg.CORBA.ORBInitialHost=localhost}]
-	at com.sun.enterprise.naming.impl.SerialContext.lookup(SerialContext.java:836) ~[?:?]
-	at com.sun.enterprise.naming.impl.SerialContext.lookup(SerialContext.java:257) ~[?:?]
-	at javax.naming.InitialContext.lookup(InitialContext.java:409) ~[?:?]
-	at com.eurocopter.mgs.core.proxy.ServiceManager$ServiceInvocationHandler.lookupService(ServiceManager.java:168) ~[?:?]
-	at com.eurocopter.mgs.core.proxy.ServiceManager$ServiceInvocationHandler.lambda$0(ServiceManager.java:60) ~[?:?]
-	... 4 more
-Caused by: javax.naming.NameNotFoundException: ejb
-	at com.sun.enterprise.naming.impl.TransientContext.resolveContext(TransientContext.java:292) ~[?:?]
-	at com.sun.enterprise.naming.impl.TransientContext.lookup(TransientContext.java:205) ~[?:?]
-	at com.sun.enterprise.naming.impl.SerialContextProviderImpl.lookup(SerialContextProviderImpl.java:37) ~[?:?]
-	at com.sun.enterprise.naming.impl.RemoteSerialContextProviderImpl.lookup(RemoteSerialContextProviderImpl.java:85) ~[?:?]
-	at jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103) ~[?:?]
-	at java.lang.reflect.Method.invoke(Method.java:580) ~[?:?]
-	at com.sun.corba.ee.impl.presentation.rmi.ReflectiveTie.dispatchToMethod(ReflectiveTie.java:122) ~[?:?]
-	at com.sun.corba.ee.impl.presentation.rmi.ReflectiveTie._invoke(ReflectiveTie.java:152) ~[?:?]
-	at com.sun.corba.ee.impl.protocol.ServerRequestDispatcherImpl.dispatchToServant(ServerRequestDispatcherImpl.java:501) ~[?:?]
-	at com.sun.corba.ee.impl.protocol.ServerRequestDispatcherImpl.dispatch(ServerRequestDispatcherImpl.java:172) ~[?:?]
-	at com.sun.corba.ee.impl.protocol.MessageMediatorImpl.handleRequestRequest(MessageMediatorImpl.java:1529) ~[?:?]
-	at com.sun.corba.ee.impl.protocol.MessageMediatorImpl.handleRequest(MessageMediatorImpl.java:1405) ~[?:?]
-	at com.sun.corba.ee.impl.protocol.MessageMediatorImpl.handleInput(MessageMediatorImpl.java:910) ~[?:?]
-	at com.sun.corba.ee.impl.protocol.giopmsgheaders.RequestMessage_1_2.callback(RequestMessage_1_2.java:192) ~[?:?]
-	at com.sun.corba.ee.impl.protocol.MessageMediatorImpl.handleRequest(MessageMediatorImpl.java:674) ~[?:?]
-	at com.sun.corba.ee.impl.protocol.MessageMediatorImpl.dispatch(MessageMediatorImpl.java:476) ~[?:?]
-	at com.sun.corba.ee.impl.protocol.MessageMediatorImpl.doWork(MessageMediatorImpl.java:2202) ~[?:?]
-	at com.sun.corba.ee.impl.threadpool.ThreadPoolImpl$WorkerThread.performWork(ThreadPoolImpl.java:476) ~[?:?]
-	at com.sun.corba.ee.impl.threadpool.ThreadPoolImpl$WorkerThread.run(ThreadPoolImpl.java:519) ~[?:?]
-2026-10-07 09:51:31.711 [pool-5-thread-1] ERROR com.eurocopter.mgs.core.proxy.ServiceManager - Unexpected java.util.concurrent.ExecutionException; wrap and rethrow
-2026-10-07 09:51:31.712 [pool-5-thread-1] DEBUG com.eurocopter.mgs.business.connection.ConnectionManager - Connection check error [class com.eurocopter.mgs.core.proxy.ConnectionException]
-com.eurocopter.mgs.core.proxy.ConnectionException: Unexpected java.util.concurrent.ExecutionException
-	at com.eurocopter.mgs.core.proxy.ServiceManager$ServiceInvocationHandler.invoke(ServiceManager.java:139) ~[?:?]
-	at jdk.proxy3.$Proxy19.getGroundStation(Unknown Source) ~[?:?]
-	at com.eurocopter.mgs.business.connection.ConnectionManager.ping(ConnectionManager.java:137) ~[?:?]
-	at com.eurocopter.mgs.business.connection.ConnectionManager$CheckConnectionCallable.call(ConnectionManager.java:157) ~[?:?]
-	at com.eurocopter.mgs.business.connection.ConnectionManager$CheckConnectionCallable.call(ConnectionManager.java:1) ~[?:?]
-	at java.util.concurrent.FutureTask.run(FutureTask.java:317) ~[?:?]
-	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1144) ~[?:?]
-	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:642) ~[?:?]
-	at java.lang.Thread.run(Thread.java:1583) ~[?:?]
-Caused by: java.util.concurrent.ExecutionException: com.eurocopter.mgs.core.proxy.ConnectionException: Could not retrieve ejb/CoreService
-	at java.util.concurrent.FutureTask.report(FutureTask.java:122) ~[?:?]
-	at java.util.concurrent.FutureTask.get(FutureTask.java:205) ~[?:?]
-	at com.eurocopter.mgs.core.proxy.ServiceManager$ServiceInvocationHandler.invoke(ServiceManager.java:64) ~[?:?]
-	... 8 more
-Caused by: com.eurocopter.mgs.core.proxy.ConnectionException: Could not retrieve ejb/CoreService
-	at com.eurocopter.mgs.core.proxy.ServiceManager$ServiceInvocationHandler.lookupService(ServiceManager.java:170) ~[?:?]
-	at com.eurocopter.mgs.core.proxy.ServiceManager$ServiceInvocationHandler.lambda$0(ServiceManager.java:60) ~[?:?]
-	... 4 more
-Caused by: javax.naming.NamingException: Lookup failed for ejb/CoreService in SerialContext[myEnv={org.omg.CORBA.ORBInitialPort=3700, java.naming.factory.state=com.sun.corba.ee.impl.presentation.rmi.JNDIStateFactoryImpl, java.naming.factory.initial=com.sun.enterprise.naming.impl.SerialInitContextFactory, java.naming.factory.url.pkgs=com.sun.enterprise.naming, org.omg.CORBA.ORBInitialHost=localhost}]
-	at com.sun.enterprise.naming.impl.SerialContext.lookup(SerialContext.java:836) ~[?:?]
-	at com.sun.enterprise.naming.impl.SerialContext.lookup(SerialContext.java:257) ~[?:?]
-	at javax.naming.InitialContext.lookup(InitialContext.java:409) ~[?:?]
-	at com.eurocopter.mgs.core.proxy.ServiceManager$ServiceInvocationHandler.lookupService(ServiceManager.java:168) ~[?:?]
-	at com.eurocopter.mgs.core.proxy.ServiceManager$ServiceInvocationHandler.lambda$0(ServiceManager.java:60) ~[?:?]
-	... 4 more
-Caused by: javax.naming.NameNotFoundException: ejb
-	at com.sun.enterprise.naming.impl.TransientContext.resolveContext(TransientContext.java:292) ~[?:?]
-	at com.sun.enterprise.naming.impl.TransientContext.lookup(TransientContext.java:205) ~[?:?]
-	at com.sun.enterprise.naming.impl.SerialContextProviderImpl.lookup(SerialContextProviderImpl.java:37) ~[?:?]
-	at com.sun.enterprise.naming.impl.RemoteSerialContextProviderImpl.lookup(RemoteSerialContextProviderImpl.java:85) ~[?:?]
-	at jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103) ~[?:?]
-	at java.lang.reflect.Method.invoke(Method.java:580) ~[?:?]
-	at com.sun.corba.ee.impl.presentation.rmi.ReflectiveTie.dispatchToMethod(ReflectiveTie.java:122) ~[?:?]
-	at com.sun.corba.ee.impl.presentation.rmi.ReflectiveTie._invoke(ReflectiveTie.java:152) ~[?:?]
-	at com.sun.corba.ee.impl.protocol.ServerRequestDispatcherImpl.dispatchToServant(ServerRequestDispatcherImpl.java:501) ~[?:?]
-	at com.sun.corba.ee.impl.protocol.ServerRequestDispatcherImpl.dispatch(ServerRequestDispatcherImpl.java:172) ~[?:?]
-	at com.sun.corba.ee.impl.protocol.MessageMediatorImpl.handleRequestRequest(MessageMediatorImpl.java:1529) ~[?:?]
-	at com.sun.corba.ee.impl.protocol.MessageMediatorImpl.handleRequest(MessageMediatorImpl.java:1405) ~[?:?]
-	at com.sun.corba.ee.impl.protocol.MessageMediatorImpl.handleInput(MessageMediatorImpl.java:910) ~[?:?]
-	at com.sun.corba.ee.impl.protocol.giopmsgheaders.RequestMessage_1_2.callback(RequestMessage_1_2.java:192) ~[?:?]
-	at com.sun.corba.ee.impl.protocol.MessageMediatorImpl.handleRequest(MessageMediatorImpl.java:674) ~[?:?]
-	at com.sun.corba.ee.impl.protocol.MessageMediatorImpl.dispatch(MessageMediatorImpl.java:476) ~[?:?]
-	at com.sun.corba.ee.impl.protocol.MessageMediatorImpl.doWork(MessageMediatorImpl.java:2202) ~[?:?]
-	at com.sun.corba.ee.impl.threadpool.ThreadPoolImpl$WorkerThread.performWork(ThreadPoolImpl.java:476) ~[?:?]
-	at com.sun.corba.ee.impl.threadpool.ThreadPoolImpl$WorkerThread.run(ThreadPoolImpl.java:519) ~[?:?]
-2026-10-07 09:51:36.733 [pool-5-thread-1] ERROR com.eurocopter.mgs.core.proxy.ServiceManager - Unexpected java.util.concurrent.ExecutionException; wrap and rethrow
-2026-10-07 09:51:36.734 [pool-5-thread-1] DEBUG com.eurocopter.mgs.business.connection.ConnectionManager - Connection check error [class com.eurocopter.mgs.core.proxy.ConnectionException]
-com.eurocopter.mgs.core.proxy.ConnectionException: Unexpected java.util.concurrent.ExecutionException
-	at com.eurocopter.mgs.core.proxy.ServiceManager$ServiceInvocationHandler.invoke(ServiceManager.java:139) ~[?:?]
-	at jdk.proxy3.$Proxy19.getGroundStation(Unknown Source) ~[?:?]
-	at com.eurocopter.mgs.business.connection.ConnectionManager.ping(ConnectionManager.java:137) ~[?:?]
-	at com.eurocopter.mgs.business.connection.ConnectionManager$CheckConnectionCallable.call(ConnectionManager.java:157) ~[?:?]
-	at com.eurocopter.mgs.business.connection.ConnectionManager$CheckConnectionCallable.call(ConnectionManager.java:1) ~[?:?]
-	at java.util.concurrent.FutureTask.run(FutureTask.java:317) ~[?:?]
-	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1144) ~[?:?]
-	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:642) ~[?:?]
-	at java.lang.Thread.run(Thread.java:1583) ~[?:?]
-Caused by: java.util.concurrent.ExecutionException: com.eurocopter.mgs.core.proxy.ConnectionException: Could not retrieve ejb/CoreService
-	at java.util.concurrent.FutureTask.report(FutureTask.java:122) ~[?:?]
-	at java.util.concurrent.FutureTask.get(FutureTask.java:205) ~[?:?]
-	at com.eurocopter.mgs.core.proxy.ServiceManager$ServiceInvocationHandler.invoke(ServiceManager.java:64) ~[?:?]
-	... 8 more
-Caused by: com.eurocopter.mgs.core.proxy.ConnectionException: Could not retrieve ejb/CoreService
-	at com.eurocopter.mgs.core.proxy.ServiceManager$ServiceInvocationHandler.lookupService(ServiceManager.java:170) ~[?:?]
-	at com.eurocopter.mgs.core.proxy.ServiceManager$ServiceInvocationHandler.lambda$0(ServiceManager.java:60) ~[?:?]
-	... 4 more
-Caused by: javax.naming.NamingException: Lookup failed for ejb/CoreService in SerialContext[myEnv={org.omg.CORBA.ORBInitialPort=3700, java.naming.factory.state=com.sun.corba.ee.impl.presentation.rmi.JNDIStateFactoryImpl, java.naming.factory.initial=com.sun.enterprise.naming.impl.SerialInitContextFactory, java.naming.factory.url.pkgs=com.sun.enterprise.naming, org.omg.CORBA.ORBInitialHost=localhost}]
-	at com.sun.enterprise.naming.impl.SerialContext.lookup(SerialContext.java:836) ~[?:?]
-	at com.sun.enterprise.naming.impl.SerialContext.lookup(SerialContext.java:257) ~[?:?]
-	at javax.naming.InitialContext.lookup(InitialContext.java:409) ~[?:?]
-	at com.eurocopter.mgs.core.proxy.ServiceManager$ServiceInvocationHandler.lookupService(ServiceManager.java:168) ~[?:?]
-	at com.eurocopter.mgs.core.proxy.ServiceManager$ServiceInvocationHandler.lambda$0(ServiceManager.java:60) ~[?:?]
-	... 4 more
-Caused by: javax.naming.NameNotFoundException: ejb
-	at com.sun.enterprise.naming.impl.TransientContext.resolveContext(TransientContext.java:292) ~[?:?]
-	at com.sun.enterprise.naming.impl.TransientContext.lookup(TransientContext.java:205) ~[?:?]
-	at com.sun.enterprise.naming.impl.SerialContextProviderImpl.lookup(SerialContextProviderImpl.java:37) ~[?:?]
-	at com.sun.enterprise.naming.impl.RemoteSerialContextProviderImpl.lookup(RemoteSerialContextProviderImpl.java:85) ~[?:?]
-	at jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103) ~[?:?]
-	at java.lang.reflect.Method.invoke(Method.java:580) ~[?:?]
-	at com.sun.corba.ee.impl.presentation.rmi.ReflectiveTie.dispatchToMethod(ReflectiveTie.java:122) ~[?:?]
-	at com.sun.corba.ee.impl.presentation.rmi.ReflectiveTie._invoke(ReflectiveTie.java:152) ~[?:?]
-	at com.sun.corba.ee.impl.protocol.ServerRequestDispatcherImpl.dispatchToServant(ServerRequestDispatcherImpl.java:501) ~[?:?]
-	at com.sun.corba.ee.impl.protocol.ServerRequestDispatcherImpl.dispatch(ServerRequestDispatcherImpl.java:172) ~[?:?]
-	at com.sun.corba.ee.impl.protocol.MessageMediatorImpl.handleRequestRequest(MessageMediatorImpl.java:1529) ~[?:?]
-	at com.sun.corba.ee.impl.protocol.MessageMediatorImpl.handleRequest(MessageMediatorImpl.java:1405) ~[?:?]
-	at com.sun.corba.ee.impl.protocol.MessageMediatorImpl.handleInput(MessageMediatorImpl.java:910) ~[?:?]
-	at com.sun.corba.ee.impl.protocol.giopmsgheaders.RequestMessage_1_2.callback(RequestMessage_1_2.java:192) ~[?:?]
-	at com.sun.corba.ee.impl.protocol.MessageMediatorImpl.handleRequest(MessageMediatorImpl.java:674) ~[?:?]
-	at com.sun.corba.ee.impl.protocol.MessageMediatorImpl.dispatch(MessageMediatorImpl.java:476) ~[?:?]
-	at com.sun.corba.ee.impl.protocol.MessageMediatorImpl.doWork(MessageMediatorImpl.java:2202) ~[?:?]
-	at com.sun.corba.ee.impl.threadpool.ThreadPoolImpl$WorkerThread.performWork(ThreadPoolImpl.java:476) ~[?:?]
-	at com.sun.corba.ee.impl.threadpool.ThreadPoolImpl$WorkerThread.run(ThreadPoolImpl.java:519) ~[?:?]
+	... 3 more
