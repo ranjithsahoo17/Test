@@ -577,5 +577,1076 @@ public class RelearnThresholdRequest implements Serializable {
    }
 }
 
+=======================================================================
+
+
+package com.eurocopter.mgs.business.health.impl;
+
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
+import java.util.UUID;
+
+import com.eurocopter.mgs.business.health.api.IHealthCommonBusiness;
+import com.eurocopter.mgs.business.health.model.IndicatorModel;
+import com.eurocopter.mgs.business.health.model.WCThresholdModel;
+import com.eurocopter.mgs.business.parameter.ParameterManager;
+import com.eurocopter.mgs.core.persistence.PersistenceManager;
+import com.eurocopter.mgs.datamodel.aircraft.Aircraft;
+import com.eurocopter.mgs.datamodel.alarm.Alarm;
+import com.eurocopter.mgs.datamodel.flight.Flight;
+import com.eurocopter.mgs.datamodel.flight.FlightIndicatorValue;
+import com.eurocopter.mgs.datamodel.health.common.Accelerometer;
+import com.eurocopter.mgs.datamodel.health.common.IAcquisition;
+import com.eurocopter.mgs.datamodel.health.common.IndicatorValue;
+import com.eurocopter.mgs.datamodel.health.monitoring.AircraftDisplayData;
+import com.eurocopter.mgs.datamodel.health.monitoring.ContextualParameter;
+import com.eurocopter.mgs.datamodel.health.monitoring.FilteringLaw;
+import com.eurocopter.mgs.datamodel.health.monitoring.FixedThresholdConfiguration;
+import com.eurocopter.mgs.datamodel.health.monitoring.HealthAlarm;
+import com.eurocopter.mgs.datamodel.health.monitoring.HealthMechanicalComponent;
+import com.eurocopter.mgs.datamodel.health.monitoring.HealthMechanicalComponentConfiguration;
+import com.eurocopter.mgs.datamodel.health.monitoring.HealthMonitoringConfiguration;
+import com.eurocopter.mgs.datamodel.health.monitoring.Indicator;
+import com.eurocopter.mgs.datamodel.health.monitoring.IndicatorConfiguration;
+import com.eurocopter.mgs.datamodel.health.monitoring.IndicatorDeviation;
+import com.eurocopter.mgs.datamodel.health.monitoring.IndicatorDisplay;
+import com.eurocopter.mgs.datamodel.health.monitoring.IndicatorMarker;
+import com.eurocopter.mgs.datamodel.health.monitoring.LearnedThresholdConfiguration;
+import com.eurocopter.mgs.datamodel.health.monitoring.ThresholdConfiguration;
+import com.eurocopter.mgs.datamodel.health.monitoring.ThresholdType;
+import com.eurocopter.mgs.datamodel.systemstatus.IndicatorInvalidity;
+import com.eurocopter.mgs.datamodel.systemstatus.SensorAnomaly;
+import com.eurocopter.mgs.service.exception.ConcurrentAccessException;
+import com.eurocopter.mgs.service.exception.EntityNotFoundException;
+import com.eurocopter.mgs.service.health.common.api.IHealthAlarmService;
+import com.eurocopter.mgs.service.health.common.api.IHealthCommonService;
+import com.eurocopter.mgs.service.health.common.dto.AlarmIndicatorModel;
+import com.eurocopter.mgs.service.health.common.dto.ContextualParameterDto;
+import com.eurocopter.mgs.service.health.common.dto.FilteringLawDto;
+import com.eurocopter.mgs.service.health.common.dto.HealthAcknowledgementDto;
+import com.eurocopter.mgs.service.health.common.dto.IndicatorDeviationDto;
+import com.eurocopter.mgs.service.marker.dto.BatchIndicatorMarkerDto;
+import com.eurocopter.mgs.service.marker.dto.IndicatorMarkerDto;
+import com.eurocopter.mgs.service.user.api.IUserService;
+import com.eurocopter.mgs.xml.configuration.unit.Unit;
+
+public class HealthCommonBusiness implements IHealthCommonBusiness {
+
+   private final IHealthCommonService healthCommonService;
+
+   private final IHealthAlarmService healthAlarmService;
+
+   private final IUserService userService;
+
+   private PersistenceManager persistenceManager;
+
+   private ParameterManager parameterManager;
+
+   public HealthCommonBusiness(IHealthCommonService healthCommonService, IHealthAlarmService healthAlarmService, IUserService userService) {
+      this.healthCommonService = healthCommonService;
+      this.healthAlarmService = healthAlarmService;
+      this.userService = userService;
+   }
+
+   public void setPersistenceManager(PersistenceManager persistenceManager) {
+      this.persistenceManager = persistenceManager;
+   }
+
+   public void setParameterManager(ParameterManager parameterManager) {
+      this.parameterManager = parameterManager;
+   }
+
+   @Override
+   public List<Accelerometer> getAccelerometers(String aircraftId) throws EntityNotFoundException {
+      Aircraft aircraft = persistenceManager.getEntityManager().find(Aircraft.class, aircraftId);
+      if (aircraft == null) {
+         throw new EntityNotFoundException("Aircraft not found [id = " + aircraftId + "]");
+      }
+      return new ArrayList<>(aircraft.getAccelerometers());
+   }
+
+   @Override
+   public AircraftDisplayData getAircraftDisplayData(String aircraftId) {
+      return healthCommonService.getAircraftDisplayData(aircraftId);
+   }
+
+   @Override
+   public List<HealthMechanicalComponent> getHealthMechanicalComponents(String aircraftId) {
+      return healthCommonService.getHealthMechanicalComponents(aircraftId);
+   }
+
+   @Override
+   public Map<Indicator, IndicatorModel> getIndicatorModels(String userId, String aircraftId) throws EntityNotFoundException {
+      Map<Indicator, HealthMechanicalComponent> indicatorMechanicalComponents = new HashMap<>();
+
+      Map<Indicator, IndicatorDisplay> resultMap = new HashMap<>();
+      List<HealthMechanicalComponent> healthMechanicalComponents = healthCommonService.getHealthMechanicalComponents(aircraftId);
+      for (HealthMechanicalComponent comp : healthMechanicalComponents) {
+         for (Indicator indicator : comp.getIndicators().values()) {
+            indicatorMechanicalComponents.put(indicator, comp);
+            resultMap.put(indicator, indicator.getDisplay());
+         }
+      }
+
+      resultMap.putAll(userService.getIndicatorDisplays(userId, aircraftId));
+
+      // Load the health monitoring configuration
+      HealthMonitoringConfiguration healthConfig = getLatestConfiguration(aircraftId);
+      Map<Indicator, IndicatorModel> indicatorModels = new HashMap<>(resultMap.size());
+      for (Entry<Indicator, IndicatorDisplay> entry : resultMap.entrySet()) {
+         Indicator indicator = entry.getKey();
+         IndicatorDisplay indicatorDisplay = entry.getValue();
+         if (indicatorMechanicalComponents.get(indicator) != null) {
+            Object[] availableUnit = parameterManager.getUnitDefinitions().getPhysicalQuantityFor(indicatorDisplay.getUnitName()).getAllUnits().toArray(new Unit[0]);
+            WCThresholdModel[] thresholdModels = getThresholds(indicatorMechanicalComponents.get(indicator), indicator, healthConfig);
+            indicatorModels.put(entry.getKey(), new IndicatorModel(indicator, indicatorDisplay, availableUnit, thresholdModels));
+         }
+      }
+
+      return indicatorModels;
+   }
+
+   @Override
+   public IndicatorConfiguration getLatestIndicatorConfiguration(String aircraftId, String indicatorId) throws EntityNotFoundException {
+      HealthMonitoringConfiguration healthConfiguration = getLatestConfiguration(aircraftId);
+      return getIndicatorConfiguration(indicatorId, healthConfiguration);
+   }
+
+   @Override
+   public IndicatorConfiguration getIndicatorConfigurationForFlight(String flightId, String indicatorId) throws EntityNotFoundException {
+      HealthMonitoringConfiguration healthconfiguration = healthCommonService.getConfigurationForFlight(flightId);
+      return getIndicatorConfiguration(indicatorId, healthconfiguration);
+   }
+
+   @Override
+   public FlightIndicatorValue getFlightIndicatorValue(String flightId, String indicatorId) throws EntityNotFoundException {
+      return healthCommonService.getFlightIndicatorValue(flightId, indicatorId);
+   }
+
+   @Override
+   public void updateCloseMonitoringStatus(String aircraftId, Set<String> kept, Set<String> withdrawn) {
+      healthAlarmService.updateCloseMonitoringStatus(aircraftId, kept, withdrawn);
+   }
+
+   @Override
+   public Map<String, Object> getHealthParameters() {
+      return healthCommonService.getHealthParameters();
+   }
+
+   @Override
+   public HealthMonitoringConfiguration getLatestConfiguration(String aircraftId) throws EntityNotFoundException {
+      return healthCommonService.getLatestConfiguration(aircraftId);
+   }
+
+   @Override
+   public Map<HealthMechanicalComponent, HealthMechanicalComponentConfiguration> getActiveComponentsAndConfiguration(String aircraftId) {
+      return healthCommonService.getActiveComponentsAndConfiguration(aircraftId);
+   }
+
+   @Override
+   public Map<String, Map<IndicatorValue, IAcquisition>> getIndicatorValues(String avionicName, String aircraftId, String indicatorId) {
+      return healthCommonService.getIndicatorValues(avionicName, aircraftId, indicatorId);
+   }
+
+   @Override
+   public void createRelearnThresholdRequests(String aircraftId, List<String> learnedThresholdIds, long historyLearningTime,
+         String learningReason, String loginName) throws ConcurrentAccessException {
+      healthCommonService.createRelearnThresholdRequests(aircraftId, learnedThresholdIds, historyLearningTime, learningReason, loginName);
+   }
+
+   @Override
+   public Map<HealthAlarm, Flight> getNotAckHealthAlarms(String aircraftId) {
+      Map<HealthAlarm, Flight> map = new HashMap<>();
+      for (AlarmIndicatorModel healthAlarmModel : getNotAckHealthAlarmModels(aircraftId)) {
+         map.put((HealthAlarm) healthAlarmModel.getAlarmIndicator(), healthAlarmModel.getFlight());
+      }
+      return map;
+   }
+
+   @Override
+   public Set<AlarmIndicatorModel> getNotAckHealthAlarmModels(String aircraftId) {
+      return healthAlarmService.getNotAckHealthAlarms(aircraftId);
+   }
+
+   @Override
+   public Map<HealthAlarm, Flight> getHealthAlarmsByIndicator(String indicatorId, Boolean acknowledged) {
+      return healthAlarmService.getHealthAlarmsByIndicator(indicatorId, acknowledged);
+   }
+
+   @Override
+   public Map<SensorAnomaly, Flight> getSensorAnomaliesByIndicator(String indicatorId) {
+      return healthAlarmService.getSensorAnomaliesByIndicator(indicatorId);
+   }
+
+   @Override
+   public Map<IndicatorInvalidity, Flight> getIndicatorInvaliditiesByIndicator(String indicatorId) {
+      return healthAlarmService.getIndicatorInvaliditiesByIndicator(indicatorId);
+   }
+
+   @Override
+   public Map<Alarm, Flight> getNotAcknowledgedHealthAlarmsByHmc(String componentId) {
+      return healthAlarmService.getNotAcknowledgedHealthAlarmsByHmc(componentId);
+   }
+
+   @Override
+   public Map<? extends Alarm, Flight> getAcknowledgedGreyHealthAlarmsAndVpuAnomaliesByHmc(String componentId) {
+      Map<Alarm, Flight> result = new HashMap<>();
+      result.putAll(healthAlarmService.getAcknowledgedHealthGreyAlarmsByHmc(componentId));
+      result.putAll(healthAlarmService.getAcknowledgedVpuAnomaliesByHmc(componentId));
+      return result;
+   }
+
+   @Override
+   public void acknowledgeAircraftHealthAlarms(String aircraftId, HealthAcknowledgementDto paramDto, String login) throws ConcurrentAccessException {
+      healthAlarmService.acknowledgeAircraftHealthAlarms(aircraftId, paramDto, login);
+   }
+
+   @Override
+   public void acknowledgeMechanicalComponentAlarms(String aircraftId, String mcPath, HealthAcknowledgementDto paramDto, String login)
+         throws EntityNotFoundException, ConcurrentAccessException {
+      healthAlarmService.acknowledgeMechanicalComponentAlarms(aircraftId, mcPath, paramDto, login);
+   }
+
+   @Override
+   public void acknowledgeIndicatorAlarms(String aircraftId, String indicatorId, HealthAcknowledgementDto paramDto, String login)
+         throws EntityNotFoundException, ConcurrentAccessException {
+      healthAlarmService.acknowledgeIndicatorAlarms(aircraftId, indicatorId, paramDto, login);
+   }
+
+   @Override
+   public void closeMonitorAircraftHealthAlarms(String aircraftId, HealthAcknowledgementDto paramDto, String login) throws ConcurrentAccessException {
+      healthAlarmService.closeMonitorAircraftHealthAlarms(aircraftId, paramDto, login);
+   }
+
+   @Override
+   public void closeMonitorMechanicalComponentAlarms(String aircraftId, String mcPath, HealthAcknowledgementDto paramDto, String login) throws ConcurrentAccessException {
+      healthAlarmService.closeMonitorMechanicalComponentAlarms(aircraftId, mcPath, paramDto, login);
+   }
+
+   @Override
+   public void closeMonitorIndicatorAlarms(String aircraftId, String indicatorId, HealthAcknowledgementDto paramDto, String login) throws ConcurrentAccessException {
+      healthAlarmService.closeMonitorIndicatorAlarms(aircraftId, indicatorId, paramDto, login);
+   }
+
+   @Override
+   public List<LearnedThresholdConfiguration> getIndicatorLatestLearnedThresholds(String aircraftId, String indicatorId) throws EntityNotFoundException {
+      return healthCommonService.getIndicatorLatestLearnedThresholds(aircraftId, indicatorId);
+   }
+
+   @Override
+   public boolean hasLearnedThresholds(String aircraftId, String indicatorId) throws EntityNotFoundException {
+      return healthCommonService.hasLearnedThresholds(aircraftId, indicatorId);
+   }
+
+   @Override
+   public Map<IndicatorMarker, String> getIndicatorMarkers(String aircraftId, String indicatorId) {
+      return healthCommonService.getIndicatorMarkers(aircraftId, indicatorId);
+   }
+
+   @Override
+   public void createIndicatorMarker(IndicatorMarkerDto indicatorMarkerDto) throws EntityNotFoundException {
+      healthCommonService.createIndicatorMarker(indicatorMarkerDto);
+   }
+
+   @Override
+   public void createBatchIndicatorMarkers(BatchIndicatorMarkerDto batchIndicatorMarkerDto) throws EntityNotFoundException {
+      healthCommonService.createBatchIndicatorMarkers(batchIndicatorMarkerDto);
+   }
+
+   @Override
+   public void removeIndicatorMarker(String flightIndicatorValueId, String markerId) throws EntityNotFoundException {
+      healthCommonService.removeIndicatorMarker(flightIndicatorValueId, markerId);
+   }
+
+   @Override
+   public void removeAcknowledgementMarker(String alarmId) throws EntityNotFoundException {
+      healthCommonService.removeAcknowledgementMarker(alarmId);
+   }
+
+   @Override
+   public Map<String, HealthMechanicalComponentConfiguration> getMechanicalComponentConfigurationsForAircraft(String aircraftId, String mechanicalComponentId) throws EntityNotFoundException {
+      return healthCommonService.getMechanicalComponentConfigurationsForAircraft(aircraftId, mechanicalComponentId);
+   }
+
+   /**
+    * Gets the latest thresholds for the indicator
+    */
+   private WCThresholdModel[] getThresholds(HealthMechanicalComponent mechanicalComponent, Indicator indicator, HealthMonitoringConfiguration healthMonitoringConfiguration) {
+      Set<ThresholdConfiguration> latestThresholdConfigs;
+      IndicatorConfiguration indicatorConfig = healthMonitoringConfiguration.getMechanicalComponentConfigurations().get(mechanicalComponent).getIndicatorConfigurations().get(indicator);
+      if (indicatorConfig != null) {
+         latestThresholdConfigs = indicatorConfig.getThresholdConfigurations();
+      } else {
+         latestThresholdConfigs = new HashSet<>();
+      }
+
+      List<WCThresholdModel> existingThresholdModels = new ArrayList<>();
+
+      for (ThresholdConfiguration existingThresholdConfig : latestThresholdConfigs) {
+
+         WCThresholdModel thresholdModel = new WCThresholdModel(indicator, mechanicalComponent.getFunctionalId());
+         existingThresholdModels.add(thresholdModel);
+
+         // update data with the existing threshold values
+         thresholdModel.setSeverity(existingThresholdConfig.getThreshold().getSeverity());
+         thresholdModel.setEnabled(Boolean.TRUE);
+         thresholdModel.setLevel(existingThresholdConfig.getThresholdLevel());
+         thresholdModel.setWorkCardReference(existingThresholdConfig.getWorkcard());
+         thresholdModel.setNbSuccessivePoints(existingThresholdConfig.getNbSuccessivePoints());
+         thresholdModel.setMinimumEngineOilTemperature(existingThresholdConfig.getMinimumEngineOilTemperature());
+
+         if (existingThresholdConfig instanceof LearnedThresholdConfiguration learnedConfiguration) {
+            thresholdModel.setType(ThresholdType.LEARNED);
+            // default value
+            thresholdModel.setDefaultValue(learnedConfiguration.getValue() != null ? learnedConfiguration.getValue() : null);
+            // max value
+            thresholdModel.setMaxValue(Double.valueOf(learnedConfiguration.getMaximumThreshold()));
+            // min value
+            if (learnedConfiguration.getMinimumThreshold() != null) {
+               thresholdModel.setMinValue(learnedConfiguration.getMinimumThreshold());
+            }
+            // learning time
+            thresholdModel.setLearningTime(learnedConfiguration.getLearningTime());
+            thresholdModel.setDeviationCoefficient(learnedConfiguration.getDeviationCoefficient());
+            thresholdModel.setMeanFactor(learnedConfiguration.getMeanFactor());
+            thresholdModel.setMinimumDeviation(learnedConfiguration.getMinimumDeviation());
+         } else if (existingThresholdConfig instanceof FixedThresholdConfiguration fixedThreshold) {
+            thresholdModel.setType(ThresholdType.FIXED);
+            // default value
+            thresholdModel.setDefaultValue(fixedThreshold.getValue());
+         }
+      }
+      return existingThresholdModels.toArray(new WCThresholdModel[0]);
+   }
+
+   @Override
+   public Accelerometer getAccelerometer(String indicatorId, String aircraftId) {
+      return healthAlarmService.getAccelerometer(indicatorId, aircraftId);
+   }
+
+   @Override
+   public Set<ThresholdConfiguration> getThresholdConfigurations(String thresholdId) {
+      return healthCommonService.getThresholdConfigurations(thresholdId);
+   }
+
+   @Override
+   public boolean hasReadIndicators(String aircraftId, String mechanicalComponentId) {
+      return healthCommonService.hasReadIndicators(aircraftId, mechanicalComponentId);
+   }
+
+   @Override
+   public List<IndicatorDeviationDto> findActiveDeviations(String aircraftId)
+         throws EntityNotFoundException {
+      return toDtos(healthCommonService.findActiveDeviations(getIndicatorIds(aircraftId)));
+   }
+
+   @Override
+   public List<IndicatorDeviationDto> findDeviationHistory(String aircraftId)
+         throws EntityNotFoundException {
+      return toDtos(healthCommonService.findDeviationHistory(getIndicatorIds(aircraftId)));
+   }
+
+   private IndicatorConfiguration getIndicatorConfiguration(String indicatorId, HealthMonitoringConfiguration healthConfiguration) throws EntityNotFoundException {
+      for (Map.Entry<HealthMechanicalComponent, HealthMechanicalComponentConfiguration> mcEntry : healthConfiguration.getMechanicalComponentConfigurations().entrySet()) {
+         for (Map.Entry<Indicator, IndicatorConfiguration> indicatorEntry : mcEntry.getValue().getIndicatorConfigurations().entrySet()) {
+            if (indicatorEntry.getKey().getId().equals(indicatorId)) {
+               return indicatorEntry.getValue();
+            }
+         }
+      }
+      throw new EntityNotFoundException("Missing indicator configuration");
+   }
+
+   /*
+    * @Override public List<FilteringLawDto> getFilteringLaws(String aircraftId) throws EntityNotFoundException { List<FilteringLawDto> result = new ArrayList<>(); HealthMonitoringConfiguration
+    * configuration = getLatestConfiguration(aircraftId); for (FilteringLaw law : configuration.getFilteringLaws()) { FilteringLawDto dto = new FilteringLawDto(); dto.setId(law.getId());
+    * dto.setName(law.getName()); result.add(dto); } return result; }
+    */
+
+   @Override
+   public void createDeviations(List<IndicatorDeviationDto> dtos) {
+      for (IndicatorDeviationDto dto : dtos) {
+         IndicatorDeviation d = new IndicatorDeviation(UUID.randomUUID().toString());
+         d.setIndicatorConfiguration(healthCommonService.findIndicatorConfiguration(dto.getIndicatorConfigurationId()));
+         d.setFilteringLaw(healthCommonService.findFilteringLaw(dto.getFilteringLawId()));
+         d.setTeReference(dto.getTeReference());
+         d.setStartDate(dto.getStartDate());
+         d.setEndDate(null);
+         d.setSeverity(dto.getSeverity());
+         d.setThresholdLevel(dto.getThresholdLevel());
+         d.setThresholdType(dto.getThresholdType());
+         d.setThresholdValue(dto.getThresholdValue());
+         d.setMinValue(dto.getMinValue());
+         d.setMaxValue(dto.getMaxValue());
+         d.setLearningTime(dto.getLearningTime());
+         d.setMinimumDeviation(dto.getMinimumDeviation());
+         d.setMeanFactor(dto.getMeanFactor());
+         d.setDeviationCoefficient(dto.getDeviationCoefficient());
+         d.setNbSuccessivePoints(dto.getNbSuccessivePoints());
+         healthCommonService.createDeviation(d);
+      }
+   }
+
+   @Override
+   public void acknowledgeDeviations(List<String> deviationIds) {
+      Date now = new Date();
+      for (String id : deviationIds) {
+         healthCommonService.acknowledgeDeviation(id, now);
+      }
+   }
+
+   private List<IndicatorDeviationDto> toDtos(List<IndicatorDeviation> deviations) {
+      List<IndicatorDeviationDto> result = new ArrayList<>();
+      for (IndicatorDeviation d : deviations) {
+         IndicatorDeviationDto dto = new IndicatorDeviationDto();
+         dto.setId(d.getId());
+         dto.setIndicatorConfigurationId(d.getIndicatorConfiguration().getId());
+         dto.setIndicatorId(d.getIndicatorConfiguration().getIndicator().getId());
+         if (d.getFilteringLaw() != null) {
+            dto.setFilteringLawId(d.getFilteringLaw().getId());
+            dto.setFilteringLawName(d.getFilteringLaw().getName());
+         }
+         StringBuilder params = new StringBuilder();
+         for (ContextualParameter p : d.getFilteringLaw().getContextualParameters()) {
+            if (params.length() > 0) {
+               params.append("  |  ");
+            }
+            params.append(p.getName()).append(", min=").append(p.getMinValue()).append(", max=").append(p.getMaxValue());
+            if (p.getThresholdOfVariabilityValue() != null) {
+               params.append(", S=").append(p.getThresholdOfVariabilityValue());
+            }
+         }
+         dto.setFilteringLawParameters(params.toString());
+         dto.setTeReference(d.getTeReference());
+         dto.setStartDate(d.getStartDate());
+         dto.setEndDate(d.getEndDate());
+         dto.setSeverity(d.getSeverity());
+         dto.setThresholdLevel(d.getThresholdLevel());
+         dto.setThresholdType(d.getThresholdType());
+         dto.setThresholdValue(d.getThresholdValue());
+         dto.setMinValue(d.getMinValue());
+         dto.setMaxValue(d.getMaxValue());
+         dto.setLearningTime(d.getLearningTime());
+         dto.setMinimumDeviation(d.getMinimumDeviation());
+         dto.setMeanFactor(d.getMeanFactor());
+         dto.setDeviationCoefficient(d.getDeviationCoefficient());
+         dto.setNbSuccessivePoints(d.getNbSuccessivePoints());
+
+         result.add(dto);
+      }
+      return result;
+   }
+
+   /*
+    * private List<String> getIndicatorConfigurationIds(String aircraftId) throws EntityNotFoundException { List<String> ids = new ArrayList<>(); HealthMonitoringConfiguration configuration =
+    * getLatestConfiguration(aircraftId); for (HealthMechanicalComponentConfiguration mcc : configuration.getMechanicalComponentConfigurations().values()) { for (IndicatorConfiguration ic :
+    * mcc.getIndicatorConfigurations().values()) { ids.add(ic.getId()); } } return ids; }
+    */
+
+   private List<String> getIndicatorIds(String aircraftId) throws EntityNotFoundException {
+      List<String> ids = new ArrayList<>();
+      HealthMonitoringConfiguration configuration = getLatestConfiguration(aircraftId);
+      for (HealthMechanicalComponentConfiguration mcc : configuration.getMechanicalComponentConfigurations().values()) {
+         for (IndicatorConfiguration ic : mcc.getIndicatorConfigurations().values()) {
+            ids.add(ic.getIndicator().getId());
+         }
+      }
+      return ids;
+   }
+
+   @Override
+   public List<FilteringLawDto> getFilteringLaws(String aircraftId) throws EntityNotFoundException {
+      List<FilteringLawDto> result = new ArrayList<>();
+      for (FilteringLaw law : healthCommonService.findFilteringLaws(aircraftId)) {
+         FilteringLawDto dto = new FilteringLawDto();
+         dto.setId(law.getId());
+         dto.setName(law.getName());
+         dto.setOriginal(law.isOriginal());
+         dto.setInUse(healthCommonService.isFilteringLawUsedByConfiguration(aircraftId, law.getName()) || healthCommonService.isFilteringLawUsedByDeviation(law.getId()));
+         for (ContextualParameter p : law.getContextualParameters()) {
+            ContextualParameterDto pDto = new ContextualParameterDto();
+            pDto.setId(p.getId());
+            pDto.setName(p.getName());
+            pDto.setMinValue(p.getMinValue());
+            pDto.setMaxValue(p.getMaxValue());
+            pDto.setThresholdOfVariabilityValue(p.getThresholdOfVariabilityValue());
+            dto.getParameters().add(pDto);
+         }
+         result.add(dto);
+      }
+      result.sort((a, b) -> a.getName().compareTo(b.getName()));
+      return result;
+   }
+
+   /*
+    * @Override public void createFilteringLaw(String aircraftId, FilteringLawDto dto) throws EntityNotFoundException { FilteringLaw law = new FilteringLaw(UUID.randomUUID().toString());
+    * law.setName(dto.getName()); law.setOriginal(false); applyParameters(law, dto); healthCommonService.createFilteringLaw(aircraftId, law); }
+    */
+
+   /*
+    * @Override public void updateFilteringLaw(FilteringLawDto dto) { FilteringLaw law = healthCommonService.findFilteringLawById(dto.getId()); if (law == null) { return; } law.setName(dto.getName());
+    * law.getContextualParameters().clear(); applyParameters(law, dto); }
+    */
+
+   @Override
+   public void deleteFilteringLaw(String aircraftId, String lawId) throws EntityNotFoundException {
+      healthCommonService.deleteFilteringLaw(aircraftId, lawId);
+   }
+
+   /*
+    * private void applyParameters(FilteringLaw law, FilteringLawDto dto) { for (ContextualParameterDto pDto : dto.getParameters()) { ContextualParameter p = new
+    * ContextualParameter(UUID.randomUUID().toString()); p.setName(pDto.getName()); p.setMinValue(pDto.getMinValue()); p.setMaxValue(pDto.getMaxValue());
+    * p.setThresholdOfVariabilityValue(pDto.getThresholdOfVariabilityValue()); law.getContextualParameters().add(p); } }
+    */
+
+   @Override
+   public void createFilteringLaw(String aircraftId, FilteringLawDto dto)
+         throws EntityNotFoundException {
+      healthCommonService.createFilteringLaw(aircraftId, dto.getName(), dto.getParameters());
+   }
+
+   @Override
+   public void updateFilteringLaw(FilteringLawDto dto) {
+      healthCommonService.updateFilteringLaw(dto.getId(), dto.getName(), dto.getParameters());
+   }
+
+   @Override
+   public boolean hasActiveDeviationOnThresholds(String aircraftId, List<String> thresholdIds) throws EntityNotFoundException {
+      if (thresholdIds == null || thresholdIds.isEmpty()) {
+         return false;
+      }
+      // The indicators those thresholds belong to
+      Set<String> indicatorIds = new HashSet<>();
+      HealthMonitoringConfiguration configuration = getLatestConfiguration(aircraftId);
+      for (HealthMechanicalComponentConfiguration mcc : configuration.getMechanicalComponentConfigurations().values()) {
+         for (IndicatorConfiguration ic : mcc.getIndicatorConfigurations().values()) {
+            for (ThresholdConfiguration threshold : ic.getThresholdConfigurations()) {
+               if (thresholdIds.contains(threshold.getId())) {
+                  indicatorIds.add(ic.getIndicator().getId());
+               }
+            }
+         }
+      }
+      if (indicatorIds.isEmpty()) {
+         return false;
+      }
+      for (IndicatorDeviationDto dto : findActiveDeviations(aircraftId)) {
+         if (indicatorIds.contains(dto.getIndicatorId())) {
+            return true;
+         }
+      }
+      return false;
+   }
+}
+
+===========================================================
+
+/***************************************/
+/** Copyright Airbus Helicopters 2019 **/
+/***************************************/
+package com.eurocopter.mgs.datamodel.health.monitoring;
+
+import java.io.Serializable;
+import java.util.Date;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.NamedQuery;
+import jakarta.persistence.Table;
+import jakarta.persistence.Temporal;
+import jakarta.persistence.TemporalType;
+
+/**
+ * Entity that represents a request to re-learn a threshold.
+ */
+@Entity
+@Table(name = "RELEARN_THRESHOLD_REQUEST")
+@NamedQuery(name = "findRelearnRequestsByThreshold", query = "SELECT rr FROM LearnedThresholdConfiguration ltc JOIN ltc.relearnRequests rr WHERE ltc.threshold.id = :thresholdId")
+public class RelearnThresholdRequest implements Serializable {
+
+   private static final long serialVersionUID = 1L;
+
+   /**
+    * Database ID
+    */
+   @Id
+   @Column(name = "ID", nullable = false)
+   private String id;
+
+   /**
+    * Textual description of the reason of the re-learn
+    */
+   @Column(name = "DESCRIPTION")
+   private String description;
+
+   /**
+    * Effective date/time of the launch of the re-learn process
+    */
+   @Temporal(TemporalType.TIMESTAMP)
+   private Date startDate;
+
+   /**
+    * Applicable date/time of the learned value. Flight download date shall be used for the comparison
+    */
+   @Temporal(TemporalType.TIMESTAMP)
+   private Date endDate;
+
+   @Temporal(TemporalType.TIMESTAMP)
+   @Column(name = "APPLICABLE_FLIGHT_DATE")
+   private Date applicableFlightDate;
+
+   @Temporal(TemporalType.TIMESTAMP)
+   @Column(name = "START_FLIGHT_DATE")
+   private Date startFlightDate;
+
+   /**
+    * Is handled
+    */
+   @Column(name = "HANDLED", nullable = false)
+   private boolean handled;
+
+   @Column(name = "HISTORY_LEARNING_TIME", nullable = false)
+   private long historyLearningTime;
+
+   /**
+    * Value computed after learning
+    */
+   @Column(name = "learnedValue")
+   private Double learnedValue;
+
+   @Column(name = "CREATE_MARKER")
+   private boolean createMarker;
+
+   RelearnThresholdRequest() {
+   }
+
+   public RelearnThresholdRequest(String id) {
+      this.id = id;
+      createMarker = true;
+   }
+
+   public String getId() {
+      return id;
+   }
+
+   public String getDescription() {
+      return description;
+   }
+
+   public void setDescription(String description) {
+      this.description = description;
+   }
+
+   public Date getStartDate() {
+      return startDate;
+   }
+
+   public void setStartDate(Date effectiveDate) {
+      startDate = effectiveDate;
+   }
+
+   public Date getEndDate() {
+      return endDate;
+   }
+
+   public void setEndDate(Date endDate) {
+      this.endDate = endDate;
+   }
+
+   public boolean isHandled() {
+      return handled;
+   }
+
+   public void setHandled(boolean handled) {
+      this.handled = handled;
+   }
+
+   public void setHistoryLearningTime(long historyLearningTime) {
+      this.historyLearningTime = historyLearningTime;
+   }
+
+   public long getHistoryLearningTime() {
+      return historyLearningTime;
+   }
+
+   public void setLearnedValue(Double learnedValue) {
+      this.learnedValue = learnedValue;
+   }
+
+   public Double getLearnedValue() {
+      return learnedValue;
+   }
+
+   public boolean isCreateMarker() {
+      return createMarker;
+   }
+
+   public void setCreateMarker(boolean createMarker) {
+      this.createMarker = createMarker;
+   }
+
+   public Date getApplicableFlightDate() {
+      return applicableFlightDate;
+   }
+
+   public void setApplicableFlightDate(Date applicableFlightDate) {
+      this.applicableFlightDate = applicableFlightDate;
+   }
+
+   public Date getStartFlightDate() {
+      return startFlightDate;
+   }
+
+   public void setStartFlightDate(Date startFlightDate) {
+      this.startFlightDate = startFlightDate;
+   }
+
+   @Override
+   public int hashCode() {
+      final int prime = 31;
+      int result = 1;
+      result = prime * result + ((id == null) ? 0 : id.hashCode());
+      return result;
+   }
+
+   @Override
+   public boolean equals(Object obj) {
+      if (this == obj) {
+         return true;
+      }
+      if (obj == null) {
+         return false;
+      }
+      if (getClass() != obj.getClass()) {
+         return false;
+      }
+      RelearnThresholdRequest other = (RelearnThresholdRequest) obj;
+      if (id == null) {
+         return other.id == null;
+      } else
+         return id.equals(other.id);
+   }
+
+   @Override
+   public String toString() {
+      return "RelearnThresholdRequest [id=" + id + ", description=" + description + ", effectiveDate=" + startDate + ", handled=" + handled + "]";
+   }
+}
+
+===========================================
+
+
+
+package com.eurocopter.mgs.service.health.common.ejb;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Date;
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
+import java.util.UUID;
+
+import com.eurocopter.mgs.datamodel.aircraft.Aircraft;
+import com.eurocopter.mgs.datamodel.flight.Flight;
+import com.eurocopter.mgs.datamodel.flight.FlightIndicatorValue;
+import com.eurocopter.mgs.datamodel.health.monitoring.HealthMonitoringConfiguration;
+import com.eurocopter.mgs.datamodel.health.monitoring.Indicator;
+import com.eurocopter.mgs.datamodel.health.monitoring.LearnedThresholdConfiguration;
+import com.eurocopter.mgs.datamodel.health.monitoring.RelearnThresholdRequest;
+import com.eurocopter.mgs.datamodel.health.monitoring.ThresholdConfiguration;
+import com.eurocopter.mgs.service.aircraft.dao.AircraftDao;
+import com.eurocopter.mgs.service.aircraft.dao.ConfigurationDao;
+import com.eurocopter.mgs.service.datacollection.ejb.DataCollectionService;
+import com.eurocopter.mgs.service.exception.EntityNotFoundException;
+
+import jakarta.ejb.EJB;
+import jakarta.ejb.Local;
+import jakarta.ejb.Stateless;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
+import jakarta.persistence.TypedQuery;
+
+@Local
+@Stateless
+public class HealthDao {
+
+   @EJB
+   private AircraftDao aircraftDao;
+
+   @EJB
+   private ConfigurationDao configurationDao;
+
+   /** The data collection service. */
+   @EJB
+   private DataCollectionService dataCollectionService;
+
+   @PersistenceContext
+   private EntityManager manager;
+
+   public FlightIndicatorValue getFlightIndicatorValue(String flightId, String indicatorId) throws EntityNotFoundException {
+      Flight flight = manager.find(Flight.class, flightId);
+      if (flight == null) {
+         throw new EntityNotFoundException("Cannot find flight with id " + flightId);
+      }
+      Set<FlightIndicatorValue> flightIndicatorValues = flight.getFlightIndicatorValues();
+      for (FlightIndicatorValue flightIndicatorValue : flightIndicatorValues) {
+         if (flightIndicatorValue.getIndicator().getId().equals(indicatorId)) {
+            return flightIndicatorValue;
+         }
+      }
+      return null;
+   }
+
+   public List<LearnedThresholdConfiguration> getIndicatorLatestLearnedThresholds(String aircraftId, Indicator indicator) throws EntityNotFoundException {
+      HealthMonitoringConfiguration healthConfiguration = (HealthMonitoringConfiguration) configurationDao.getLatestConfiguration(aircraftId).getConfigurations()
+            .get(HealthMonitoringConfiguration.TYPE);
+      TypedQuery<ThresholdConfiguration> query = manager.createNamedQuery("findThresholdConfigurationByIndicator", ThresholdConfiguration.class);
+      query.setParameter("configurationId", healthConfiguration.getId());
+      query.setParameter("indicatorId", indicator.getId());
+      List<ThresholdConfiguration> thresholdConfigurations = query.getResultList();
+      List<LearnedThresholdConfiguration> result = new ArrayList<>();
+      for (ThresholdConfiguration thresholdConfiguration : thresholdConfigurations) {
+         if (thresholdConfiguration instanceof LearnedThresholdConfiguration) {
+            result.add((LearnedThresholdConfiguration) thresholdConfiguration);
+         }
+      }
+      return result;
+   }
+
+   public boolean hasLearnedThresholds(String aircraftId, Indicator indicator) throws EntityNotFoundException {
+      HealthMonitoringConfiguration healthConfiguration = (HealthMonitoringConfiguration) configurationDao.getLatestConfiguration(aircraftId).getConfigurations()
+            .get(HealthMonitoringConfiguration.TYPE);
+      TypedQuery<ThresholdConfiguration> query = manager.createNamedQuery("findThresholdConfigurationByIndicator", ThresholdConfiguration.class);
+      query.setParameter("configurationId", healthConfiguration.getId());
+      query.setParameter("indicatorId", indicator.getId());
+      List<ThresholdConfiguration> thresholdConfigurations = query.getResultList();
+      for (ThresholdConfiguration thresholdConfiguration : thresholdConfigurations) {
+         if (thresholdConfiguration instanceof LearnedThresholdConfiguration) {
+            return true;
+         }
+      }
+      return false;
+   }
+
+   public HealthMonitoringConfiguration getLatestConfiguration(String aircraftId) throws EntityNotFoundException {
+      HealthMonitoringConfiguration healthConfiguration = (HealthMonitoringConfiguration) configurationDao.getLatestConfiguration(aircraftId).getConfigurations()
+            .get(HealthMonitoringConfiguration.TYPE);
+      // Force initialization
+      healthConfiguration.getMechanicalComponentConfigurations().size();
+      healthConfiguration.getFilteringLaws().size();
+      return healthConfiguration;
+   }
+
+   public HealthMonitoringConfiguration getConfigurationForFlight(String flightId) throws EntityNotFoundException {
+      final HealthMonitoringConfiguration healthMonitoringConfiguration = (HealthMonitoringConfiguration) configurationDao.findConfigurationByFlight(flightId).getConfigurations()
+            .get(HealthMonitoringConfiguration.TYPE);
+      // Force initialization
+      healthMonitoringConfiguration.getMechanicalComponentConfigurations().size();
+      return healthMonitoringConfiguration;
+   }
+
+   public void createRelearnThresholdRequest(Aircraft aircraft, LearnedThresholdConfiguration learnedThreshold, Date effectiveDate, Date startFlightDate, long historyLearningTime,
+         String comment, String login, Indicator indicator, List<String> indicatorLocations) {
+      RelearnThresholdRequest request = new RelearnThresholdRequest(UUID.randomUUID().toString());
+      request.setStartDate(effectiveDate);
+      request.setStartFlightDate(startFlightDate);
+      request.setHistoryLearningTime(historyLearningTime);
+      request.setDescription(comment);
+      request.setLearnedValue(learnedThreshold.getValue());
+      learnedThreshold.getRelearnRequests().add(request);
+
+      dataCollectionService.collectThresholdRelearnRequest(learnedThreshold, comment, indicator, indicatorLocations, login, aircraft.getRegisterNumber());
+   }
+
+   public Date getLastFlightDate(String aircraftId) {
+      Optional<Flight> lastFlightOptional = aircraftDao.getLastFlight(aircraftId);
+      if (lastFlightOptional.isPresent()) {
+         long maxDate = 0;
+         for (Date date : Arrays.asList(lastFlightOptional.get().getUsageEndDate(), lastFlightOptional.get().getHealthEndDate(), lastFlightOptional.get().getMaintenanceEndDate())) {
+            if (date != null && date.getTime() > maxDate) {
+               maxDate = date.getTime();
+            }
+         }
+         return new Date(maxDate);
+      }
+      return new Date(0);
+   }
+
+}
+
+========================================
+
+
+package com.eurocopter.mgs.datamodel.health.monitoring;
+
+import java.util.HashSet;
+import java.util.Set;
+
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
+import jakarta.persistence.DiscriminatorValue;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.OneToMany;
+
+/**
+ * This class represents a Learned Threshold.
+ */
+@Entity
+@DiscriminatorValue(value = "LEARNED")
+public class LearnedThresholdConfiguration extends ThresholdConfiguration {
+
+   private static final long serialVersionUID = 1L;
+
+   /**
+    * Learning time (in flight hours) for learned threshold.
+    */
+   @Column(name = "LEARNING_TIME")
+   private long learningTime;
+
+   /**
+    * Minimum value of a learned threshold. (OPTIONAL)
+    */
+   @Column(name = "MINIMUM_THRESHOLD")
+   private Double minimumThreshold;
+
+   /**
+    * Maximum value of a learned threshold.
+    */
+   @Column(name = "MAXIMUM_THRESHOLD")
+   private double maximumThreshold;
+
+   /**
+    * Default value of the threshold.
+    */
+   @Column(name = "DEFAULT_VALUE")
+   private Double value;
+
+   /**
+    * Mean factor for relearning value computation.
+    */
+   @Column(name = "MEAN_FACTOR")
+   private Double meanFactor;
+
+   /**
+    * Deviation coefficient for relearning value computation.
+    */
+   @Column(name = "DEVIATION_COEFFICIENT")
+   private Double deviationCoefficient;
+
+   /**
+    * Minimum deviation for relearning value computation.
+    */
+   @Column(name = "MINIMUM_DEVIATION")
+   private Double minimumDeviation;
+
+   /** The relearn requests. */
+   @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.EAGER, orphanRemoval = true)
+   @JoinColumn(name = "THRESHOLD_CONFIGURATION_ID")
+   private Set<RelearnThresholdRequest> relearnRequests = new HashSet<>();
+
+   LearnedThresholdConfiguration() {
+   }
+
+   public LearnedThresholdConfiguration(String id) {
+      super(id);
+   }
+
+   public long getLearningTime() {
+      return learningTime;
+   }
+
+   public void setLearningTime(long learningTime) {
+      this.learningTime = learningTime;
+   }
+
+   public Double getMinimumThreshold() {
+      return minimumThreshold;
+   }
+
+   public void setMinimumThreshold(Double minimumThreshold) {
+      this.minimumThreshold = minimumThreshold;
+   }
+
+   public double getMaximumThreshold() {
+      return maximumThreshold;
+   }
+
+   public void setMaximumThreshold(double maximumThreshold) {
+      this.maximumThreshold = maximumThreshold;
+   }
+
+   @Override
+   public Double getValue() {
+      return value;
+   }
+
+   public void setValue(Double defaultValue) {
+      this.value = defaultValue;
+   }
+
+   public double getMeanFactor() {
+      return meanFactor != null ? meanFactor : 1;
+   }
+
+   public void setMeanFactor(Double meanFactor) {
+      this.meanFactor = meanFactor;
+   }
+
+   public Double getDeviationCoefficient() {
+      return deviationCoefficient;
+   }
+
+   public void setDeviationCoefficient(Double deviationCoefficient) {
+      this.deviationCoefficient = deviationCoefficient;
+   }
+
+   public Double getMinimumDeviation() {
+      return minimumDeviation;
+   }
+
+   public void setMinimumDeviation(Double minimumDeviation) {
+      this.minimumDeviation = minimumDeviation;
+   }
+
+   /**
+    * Gets the relearn requests.
+    *
+    * @return the relearn requests
+    */
+   public Set<RelearnThresholdRequest> getRelearnRequests() {
+      return relearnRequests;
+   }
+
+   /**
+    * Sets the relearn requests.
+    *
+    * @param relearnRequest
+    *           the new relearn requests
+    */
+   public void setRelearnRequests(Set<RelearnThresholdRequest> relearnRequest) {
+      this.relearnRequests = relearnRequest;
+   }
+
+   @Override
+   public String toString() {
+      return "LearnedThreshold [learningTime=" + learningTime + ", maximumThreshold=" + maximumThreshold + ", defaultValue=" + value + ", toString()="
+            + super.toString() + "]";
+   }
+}
+
+
+
+
+
 
 
