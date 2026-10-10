@@ -1,58 +1,111 @@
-
-package com.eurocopter.mgs.presentation.configuration.store.dialog;
-
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-
-import org.eclipse.jface.window.Window;
-import org.osgi.framework.BundleContext;
-import org.osgi.framework.FrameworkUtil;
-
-import com.eurocopter.mgs.business.flight.api.IFlightBusiness;
-import com.eurocopter.mgs.datamodel.aircraft.Aircraft;
-import com.eurocopter.mgs.datamodel.flight.Flight;
-import com.eurocopter.mgs.presentation.download.list.FlightComparator;
-import com.eurocopter.mgs.service.aircraft.dto.AircraftConfigurationHistoryDto;
-
-public class MgsPreferenceDialogHandler {
-
-   private final Map<AircraftConfigurationHistoryDto, Flight> applicableFlight = new HashMap<>();
-
-   private final Map<AircraftConfigurationHistoryDto, Boolean> okCancels = new HashMap<>();
-
-   public boolean getOkCancel(AircraftConfigurationHistoryDto configurationHistorizationDto) {
-      return okCancels.get(configurationHistorizationDto);
-   }
-
-   public Flight getApplicableFlight(AircraftConfigurationHistoryDto configurationHistorizationDto) {
-      return applicableFlight.get(configurationHistorizationDto);
-   }
-
-   public void openDialog(Map<Aircraft, AircraftConfigurationHistoryDto> aircraftConfigurationHistoryMap) {
-      boolean okCancel = false;
-      MgsPreferenceDialogModel mgsPreferenceDialogModel = new MgsPreferenceDialogModel();
-      BundleContext flightBusinessContext = FrameworkUtil.getBundle(IFlightBusiness.class).getBundleContext();
-      IFlightBusiness flightBusiness = flightBusinessContext
-            .getService(flightBusinessContext.getServiceReference(IFlightBusiness.class));
-
-      for (Entry<Aircraft, AircraftConfigurationHistoryDto> aircraftConfiguration : aircraftConfigurationHistoryMap
-            .entrySet()) {
-         List<Flight> flights = new ArrayList<>();
-         flights.addAll(flightBusiness.getFlights(aircraftConfiguration.getKey().getId(), true));
-         flights.sort(new FlightComparator());
-
-         mgsPreferenceDialogModel.setAircraft(aircraftConfiguration.getKey());
-         mgsPreferenceDialogModel.setFlights(flights);
-         MgsPreferenceDialog mgsPreferenceDialog = new MgsPreferenceDialog(mgsPreferenceDialogModel);
-         if (mgsPreferenceDialog.open() == Window.OK) {
-            okCancel = true;
-            applicableFlight.put(aircraftConfiguration.getValue(),
-                  mgsPreferenceDialogModel.getSelectedFlight());
-         }
-         okCancels.put(aircraftConfiguration.getValue(), okCancel);
-      }
-   }
-}
+java.lang.reflect.InvocationTargetException: null
+	at jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:118) ~[?:?]
+	at java.lang.reflect.Method.invoke(Method.java:580) ~[?:?]
+	at com.eurocopter.mgs.core.proxy.ServiceManager$ServiceInvocationHandler.invoke(ServiceManager.java:180) ~[?:?]
+	at com.eurocopter.mgs.core.proxy.ServiceManager$ServiceInvocationHandler.invoke(ServiceManager.java:79) ~[?:?]
+	at jdk.proxy3.$Proxy38.createRelearnThresholdRequests(Unknown Source) ~[?:?]
+	at com.eurocopter.mgs.business.health.impl.HealthCommonBusiness.createRelearnThresholdRequests(HealthCommonBusiness.java:185) ~[?:?]
+	at com.eurocopter.mgs.business.health.impl.HealthCommonBusiness.launchRelearn(HealthCommonBusiness.java:486) ~[?:?]
+	at com.eurocopter.mgs.business.health.impl.HealthCommonBusiness.createDeviations(HealthCommonBusiness.java:432) ~[?:?]
+	at jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103) ~[?:?]
+	at java.lang.reflect.Method.invoke(Method.java:580) ~[?:?]
+	at com.eurocopter.mgs.business.proxy.BusinessManager$BusinessInvocationHandler.lambda$0(BusinessManager.java:71) ~[?:?]
+	at com.eurocopter.mgs.core.persistence.PersistenceManager$PersistenceCallable.call(PersistenceManager.java:46) ~[?:?]
+	at java.util.concurrent.FutureTask.run(FutureTask.java:317) ~[?:?]
+	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1144) ~[?:?]
+	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:642) ~[?:?]
+	at java.lang.Thread.run(Thread.java:1583) ~[?:?]
+Caused by: com.eurocopter.mgs.service.exception.ConcurrentAccessException: Cannot handle relearn request: health configuration has been changed.
+	at com.eurocopter.mgs.service.health.common.ejb.HealthCommonService.createRelearnThresholdRequests(HealthCommonService.java:284) ~[?:?]
+	at jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103) ~[?:?]
+	at java.lang.reflect.Method.invoke(Method.java:580) ~[?:?]
+	at org.glassfish.exousia.AuthorizationService.lambda$invokeBeanMethod$6(AuthorizationService.java:501) ~[?:?]
+	at org.glassfish.exousia.AuthorizationService.runInScope(AuthorizationService.java:577) ~[?:?]
+	at org.glassfish.exousia.AuthorizationService.invokeBeanMethod(AuthorizationService.java:501) ~[?:?]
+	at org.glassfish.ejb.security.application.EJBSecurityManager.invoke(EJBSecurityManager.java:295) ~[?:?]
+	at com.sun.ejb.containers.BaseContainer.invokeBeanMethod(BaseContainer.java:4192) ~[?:?]
+	at com.sun.ejb.EjbInvocation.invokeBeanMethod(EjbInvocation.java:604) ~[?:?]
+	at com.sun.ejb.containers.interceptors.AroundInvokeChainImpl.invokeNext(InterceptorManager.java:705) ~[?:?]
+	at com.sun.ejb.EjbInvocation.proceed(EjbInvocation.java:553) ~[?:?]
+	at org.jboss.weld.module.ejb.AbstractEJBRequestScopeActivationInterceptor.aroundInvoke(AbstractEJBRequestScopeActivationInterceptor.java:81) ~[?:?]
+	at org.jboss.weld.module.ejb.SessionBeanInterceptor.aroundInvoke(SessionBeanInterceptor.java:52) ~[?:?]
+	at jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103) ~[?:?]
+	at java.lang.reflect.Method.invoke(Method.java:580) ~[?:?]
+	at com.sun.ejb.containers.interceptors.AroundInvokeInterceptor.intercept(InterceptorManager.java:765) ~[?:?]
+	at com.sun.ejb.containers.interceptors.AroundInvokeChainImpl.invokeNext(InterceptorManager.java:705) ~[?:?]
+	at com.sun.ejb.EjbInvocation.proceed(EjbInvocation.java:553) ~[?:?]
+	at com.sun.ejb.containers.interceptors.SystemInterceptorProxy.doCall(SystemInterceptorProxy.java:121) ~[?:?]
+	at com.sun.ejb.containers.interceptors.SystemInterceptorProxy.aroundInvoke(SystemInterceptorProxy.java:98) ~[?:?]
+	at jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103) ~[?:?]
+	at java.lang.reflect.Method.invoke(Method.java:580) ~[?:?]
+	at com.sun.ejb.containers.interceptors.AroundInvokeInterceptor.intercept(InterceptorManager.java:765) ~[?:?]
+	at com.sun.ejb.containers.interceptors.AroundInvokeChainImpl.invokeNext(InterceptorManager.java:705) ~[?:?]
+	at com.sun.ejb.containers.interceptors.InterceptorManager.intercept(InterceptorManager.java:306) ~[?:?]
+	at com.sun.ejb.containers.BaseContainer.__intercept(BaseContainer.java:4167) ~[?:?]
+	at com.sun.ejb.containers.BaseContainer.intercept(BaseContainer.java:4157) ~[?:?]
+	at com.sun.ejb.containers.EJBObjectInvocationHandler.invoke(EJBObjectInvocationHandler.java:173) ~[?:?]
+	at com.sun.ejb.containers.EJBObjectInvocationHandlerDelegate.invoke(EJBObjectInvocationHandlerDelegate.java:54) ~[?:?]
+	at jdk.proxy56.$Proxy419.createRelearnThresholdRequests(Unknown Source) ~[?:?]
+	at jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103) ~[?:?]
+	at java.lang.reflect.Method.invoke(Method.java:580) ~[?:?]
+	at com.sun.corba.ee.impl.presentation.rmi.ReflectiveTie.dispatchToMethod(ReflectiveTie.java:122) ~[?:?]
+	at com.sun.corba.ee.impl.presentation.rmi.ReflectiveTie._invoke(ReflectiveTie.java:152) ~[?:?]
+	at com.sun.corba.ee.impl.protocol.ServerRequestDispatcherImpl.dispatchToServant(ServerRequestDispatcherImpl.java:501) ~[?:?]
+	at com.sun.corba.ee.impl.protocol.ServerRequestDispatcherImpl.dispatch(ServerRequestDispatcherImpl.java:172) ~[?:?]
+	at com.sun.corba.ee.impl.protocol.MessageMediatorImpl.handleRequestRequest(MessageMediatorImpl.java:1529) ~[?:?]
+	at com.sun.corba.ee.impl.protocol.MessageMediatorImpl.handleRequest(MessageMediatorImpl.java:1405) ~[?:?]
+	at com.sun.corba.ee.impl.protocol.MessageMediatorImpl.handleInput(MessageMediatorImpl.java:910) ~[?:?]
+	at com.sun.corba.ee.impl.protocol.giopmsgheaders.RequestMessage_1_2.callback(RequestMessage_1_2.java:192) ~[?:?]
+	at com.sun.corba.ee.impl.protocol.MessageMediatorImpl.handleRequest(MessageMediatorImpl.java:674) ~[?:?]
+	at com.sun.corba.ee.impl.protocol.MessageMediatorImpl.dispatch(MessageMediatorImpl.java:476) ~[?:?]
+	at com.sun.corba.ee.impl.protocol.MessageMediatorImpl.doWork(MessageMediatorImpl.java:2202) ~[?:?]
+	at com.sun.corba.ee.impl.threadpool.ThreadPoolImpl$WorkerThread.performWork(ThreadPoolImpl.java:476) ~[?:?]
+	at com.sun.corba.ee.impl.threadpool.ThreadPoolImpl$WorkerThread.run(ThreadPoolImpl.java:519) ~[?:?]
+2026-10-10 21:26:02.643 [pool-3-thread-1] ERROR com.eurocopter.mgs.core.proxy.ServiceManager - Declared com.eurocopter.mgs.service.exception.ConcurrentAccessException; rethrow
+2026-10-10 21:26:02.644 [main] ERROR com.eurocopter.mgs.presentation.configuration.preferences.healthalarms.store.HealthAlarmsPreferenceStore - Could  not   save  deviations
+com.eurocopter.mgs.service.exception.ConcurrentAccessException: Cannot handle relearn request: health configuration has been changed.
+	at com.eurocopter.mgs.service.health.common.ejb.HealthCommonService.createRelearnThresholdRequests(HealthCommonService.java:284) ~[?:?]
+	at jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103) ~[?:?]
+	at java.lang.reflect.Method.invoke(Method.java:580) ~[?:?]
+	at org.glassfish.exousia.AuthorizationService.lambda$invokeBeanMethod$6(AuthorizationService.java:501) ~[?:?]
+	at org.glassfish.exousia.AuthorizationService.runInScope(AuthorizationService.java:577) ~[?:?]
+	at org.glassfish.exousia.AuthorizationService.invokeBeanMethod(AuthorizationService.java:501) ~[?:?]
+	at org.glassfish.ejb.security.application.EJBSecurityManager.invoke(EJBSecurityManager.java:295) ~[?:?]
+	at com.sun.ejb.containers.BaseContainer.invokeBeanMethod(BaseContainer.java:4192) ~[?:?]
+	at com.sun.ejb.EjbInvocation.invokeBeanMethod(EjbInvocation.java:604) ~[?:?]
+	at com.sun.ejb.containers.interceptors.AroundInvokeChainImpl.invokeNext(InterceptorManager.java:705) ~[?:?]
+	at com.sun.ejb.EjbInvocation.proceed(EjbInvocation.java:553) ~[?:?]
+	at org.jboss.weld.module.ejb.AbstractEJBRequestScopeActivationInterceptor.aroundInvoke(AbstractEJBRequestScopeActivationInterceptor.java:81) ~[?:?]
+	at org.jboss.weld.module.ejb.SessionBeanInterceptor.aroundInvoke(SessionBeanInterceptor.java:52) ~[?:?]
+	at jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103) ~[?:?]
+	at java.lang.reflect.Method.invoke(Method.java:580) ~[?:?]
+	at com.sun.ejb.containers.interceptors.AroundInvokeInterceptor.intercept(InterceptorManager.java:765) ~[?:?]
+	at com.sun.ejb.containers.interceptors.AroundInvokeChainImpl.invokeNext(InterceptorManager.java:705) ~[?:?]
+	at com.sun.ejb.EjbInvocation.proceed(EjbInvocation.java:553) ~[?:?]
+	at com.sun.ejb.containers.interceptors.SystemInterceptorProxy.doCall(SystemInterceptorProxy.java:121) ~[?:?]
+	at com.sun.ejb.containers.interceptors.SystemInterceptorProxy.aroundInvoke(SystemInterceptorProxy.java:98) ~[?:?]
+	at jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103) ~[?:?]
+	at java.lang.reflect.Method.invoke(Method.java:580) ~[?:?]
+	at com.sun.ejb.containers.interceptors.AroundInvokeInterceptor.intercept(InterceptorManager.java:765) ~[?:?]
+	at com.sun.ejb.containers.interceptors.AroundInvokeChainImpl.invokeNext(InterceptorManager.java:705) ~[?:?]
+	at com.sun.ejb.containers.interceptors.InterceptorManager.intercept(InterceptorManager.java:306) ~[?:?]
+	at com.sun.ejb.containers.BaseContainer.__intercept(BaseContainer.java:4167) ~[?:?]
+	at com.sun.ejb.containers.BaseContainer.intercept(BaseContainer.java:4157) ~[?:?]
+	at com.sun.ejb.containers.EJBObjectInvocationHandler.invoke(EJBObjectInvocationHandler.java:173) ~[?:?]
+	at com.sun.ejb.containers.EJBObjectInvocationHandlerDelegate.invoke(EJBObjectInvocationHandlerDelegate.java:54) ~[?:?]
+	at jdk.proxy56.$Proxy419.createRelearnThresholdRequests(Unknown Source) ~[?:?]
+	at jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103) ~[?:?]
+	at java.lang.reflect.Method.invoke(Method.java:580) ~[?:?]
+	at com.sun.corba.ee.impl.presentation.rmi.ReflectiveTie.dispatchToMethod(ReflectiveTie.java:122) ~[?:?]
+	at com.sun.corba.ee.impl.presentation.rmi.ReflectiveTie._invoke(ReflectiveTie.java:152) ~[?:?]
+	at com.sun.corba.ee.impl.protocol.ServerRequestDispatcherImpl.dispatchToServant(ServerRequestDispatcherImpl.java:501) ~[?:?]
+	at com.sun.corba.ee.impl.protocol.ServerRequestDispatcherImpl.dispatch(ServerRequestDispatcherImpl.java:172) ~[?:?]
+	at com.sun.corba.ee.impl.protocol.MessageMediatorImpl.handleRequestRequest(MessageMediatorImpl.java:1529) ~[?:?]
+	at com.sun.corba.ee.impl.protocol.MessageMediatorImpl.handleRequest(MessageMediatorImpl.java:1405) ~[?:?]
+	at com.sun.corba.ee.impl.protocol.MessageMediatorImpl.handleInput(MessageMediatorImpl.java:910) ~[?:?]
+	at com.sun.corba.ee.impl.protocol.giopmsgheaders.RequestMessage_1_2.callback(RequestMessage_1_2.java:192) ~[?:?]
+	at com.sun.corba.ee.impl.protocol.MessageMediatorImpl.handleRequest(MessageMediatorImpl.java:674) ~[?:?]
+	at com.sun.corba.ee.impl.protocol.MessageMediatorImpl.dispatch(MessageMediatorImpl.java:476) ~[?:?]
+	at com.sun.corba.ee.impl.protocol.MessageMediatorImpl.doWork(MessageMediatorImpl.java:2202) ~[?:?]
+	at com.sun.corba.ee.impl.threadpool.ThreadPoolImpl$WorkerThread.performWork(ThreadPoolImpl.java:476) ~[?:?]
+	at com.sun.corba.ee.impl.threadpool.ThreadPoolImpl$WorkerThread.run(ThreadPoolImpl.java:519) ~[?:?]
