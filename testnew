@@ -1,57 +1,422 @@
-package com.eurocopter.mgs.business.health.impl;
+package com.eurocopter.mgs.download.analysis.health.impl;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.Date;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
+import java.util.SortedSet;
+import java.util.TreeSet;
+
+import org.apache.commons.collections.primitives.ArrayDoubleList;
+import org.apache.commons.collections.primitives.DoubleList;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
+import com.eurocopter.mgs.datamodel.aircraft.Aircraft;
+import com.eurocopter.mgs.datamodel.aircraft.Avionic;
+import com.eurocopter.mgs.datamodel.alarm.Severity;
+import com.eurocopter.mgs.datamodel.flight.Flight;
+import com.eurocopter.mgs.datamodel.health.monitoring.HealthMechanicalComponent;
+import com.eurocopter.mgs.datamodel.health.monitoring.HealthMechanicalComponentConfiguration;
+import com.eurocopter.mgs.datamodel.health.monitoring.Indicator;
+import com.eurocopter.mgs.datamodel.health.monitoring.IndicatorConfiguration;
 import com.eurocopter.mgs.datamodel.health.monitoring.IndicatorDeviation;
 import com.eurocopter.mgs.datamodel.health.monitoring.LearnedThresholdConfiguration;
+import com.eurocopter.mgs.datamodel.health.monitoring.RelearnThresholdRequest;
+import com.eurocopter.mgs.datamodel.health.monitoring.RelearnThresholdRequestComparator;
+import com.eurocopter.mgs.datamodel.health.monitoring.TakeoffLandingDateTime;
+import com.eurocopter.mgs.datamodel.health.monitoring.ThresholdConfiguration;
 import com.eurocopter.mgs.datamodel.health.monitoring.ThresholdLevel;
+import com.eurocopter.mgs.datamodel.health.monitoring.ThresholdType;
+import com.eurocopter.mgs.download.analysis.health.api.IHealthHistoryProvider;
+import com.eurocopter.mgs.download.analysis.health.api.IndicatorValueHolder;
+import com.eurocopter.mgs.parameter.health.monitoring.HealthMonitoringParameters;
 
-/**
- * BCR-6605 the parameters the learning algorithm needs, resolved from the configuration
- */
-public record LearningParameters(long learningTime, double meanFactor, Double deviationCoefficient, Double minimumDeviation, ThresholdLevel thresholdLevel, Double minimumThreshold,
-      double maximumThreshold) {
-   /** The configured parameters of a learned threshold, with any deviated value taking over. */
-   public static LearningParameters of(LearnedThresholdConfiguration configuration, IndicatorDeviation deviation) {
-      long learningTime = configuration.getLearningTime();
-      double meanFactor = configuration.getMeanFactor();
-      Double deviationCoefficient = configuration.getDeviationCoefficient();
-      Double minimumDeviation = configuration.getMinimumDeviation();
-      ThresholdLevel level = configuration.getThresholdLevel();
-      Double min = configuration.getMinimumThreshold();
-      double max = configuration.getMaximumThreshold();
-      if (deviation != null) {
-         if (deviation.getLearningTime() != null) {
-            learningTime = deviation.getLearningTime();
-         }
-         if (deviation.getMeanFactor() != null) {
-            meanFactor = deviation.getMeanFactor();
-         }
-         if (deviation.getDeviationCoefficient() != null) {
-            deviationCoefficient = deviation.getDeviationCoefficient();
-         }
-         if (deviation.getMinimumDeviation() != null) {
-            minimumDeviation = deviation.getMinimumDeviation();
-         }
-         if (deviation.getThresholdLevel() != null) {
-            level = ThresholdLevel.valueOf(deviation.getThresholdLevel());
-         }
-         if (deviation.getMinValue() != null) {
-            min = deviation.getMinValue();
-         }
-         if (deviation.getMaxValue() != null) {
-            max = deviation.getMaxValue();
+import corp.airbus.helicopters.algorithm.health.HealthAlgorithms;
+import corp.airbus.helicopters.algorithm.health.IHealthAlgorithms;
+
+public class LearnedThresholdAnalyzer {
+
+   private static final Logger LOGGER = LogManager.getLogger(LearnedThresholdAnalyzer.class);
+
+   /** The health algorithms */
+   private static final IHealthAlgorithms HEALTH_ALGORITHMS = new HealthAlgorithms();
+
+   private static final Comparator<Flight> FLIGHT_DOWNLOAD_COMPARATOR = Comparator.comparing(Flight::getLastDownloadDate).thenComparing(Flight::getUsageStartDate)
+         .thenComparingInt(Flight::getFlightId);
+
+   private static final Comparator<TakeoffLandingDateTime> TAKEOFF_LANDING_COMPARATOR = Comparator.comparing(TakeoffLandingDateTime::getTakeoffDateTime);
+
+   /**
+    * Update learned thresholds.
+    *
+    * @param aircraft
+    *           the aircraft
+    * @param latestHealthConfiguration
+    *           the latest health configuration
+    * @param commonParameters
+    *           the common parameters
+    */
+   void updateLearnedThresholds(final Aircraft aircraft, final Flight flight, final Map<HealthMechanicalComponent, HealthMechanicalComponentConfiguration> latestHealthConfiguration,
+         final HealthMonitoringParameters commonParameters, IHealthHistoryProvider healthHistoryProvider) {
+      // BCR-6605 every deviation of this aircraft, keyed by indicator id and severity
+      final Map<String, IndicatorDeviation> deviations = healthHistoryProvider.getDeviations();
+
+      for (final Map.Entry<HealthMechanicalComponent, HealthMechanicalComponentConfiguration> mechanicalComponentEntry : latestHealthConfiguration.entrySet()) {
+         for (final Entry<Indicator, IndicatorConfiguration> indicatorEntry : mechanicalComponentEntry.getValue().getIndicatorConfigurations().entrySet()) {
+            // Index threshold configuration by threshold
+            for (final ThresholdConfiguration thresholdConfiguration : indicatorEntry.getValue().getThresholdConfigurations()) {
+               final Severity severity = thresholdConfiguration.getThreshold().getSeverity();
+
+               // BCR-6605 the deviation that governs this threshold, if any
+               final IndicatorDeviation deviation = deviations.get(indicatorEntry.getKey().getId() + "|" + severity.name());
+
+               final LearningParameters parameters;
+               if (thresholdConfiguration instanceof LearnedThresholdConfiguration learnedConfiguration) {
+                  parameters = LearningParameters.of(learnedConfiguration, deviation);
+               } else if (deviation != null && ThresholdType.LEARNED.name().equals(deviation.getThresholdType())) {
+                  // BCR-6605 fixed in the configuration, learned because of the deviation
+                  parameters = LearningParameters.ofDeviationOnly(deviation, thresholdConfiguration.getThresholdLevel());
+               } else {
+                  // Neither configured nor deviated to learned: nothing to do
+                  continue;
+               }
+
+               // This is a learned threshold: retrieve latest relearn request if any
+               final List<RelearnThresholdRequest> requests = new ArrayList<>(thresholdConfiguration.getRelearnRequests());
+               if (!requests.isEmpty()) {
+                  // Retrieve latest relearn request
+                  final RelearnThresholdRequest latestRequest = Collections.max(requests, new RelearnThresholdRequestComparator());
+                  if (!latestRequest.isHandled()) {
+                     computeThresholdLearning(aircraft, flight, indicatorEntry.getKey(), parameters, severity,
+                           latestRequest, commonParameters, healthHistoryProvider, mechanicalComponentEntry.getKey().isGroundAcquisition());
+                  }
+                  // Only the last request will be processed (no matter its state)
+               }
+            }
          }
       }
-      return new LearningParameters(learningTime, meanFactor, deviationCoefficient, minimumDeviation, level, min, max);
    }
 
    /**
-    * The parameters of a threshold that is learned only because a deviation says so. Everything * comes from the deviation; the fixed configuration has none of these values.
+    * Compute threshold learning.
+    *
+    * @param aircraft
+    *           the aircraft
+    * @param currentFlight
+    *           the flight
+    * @param indicator
+    *           the indicator
+    * @param parameters
+    *           BCR-6605 the learning parameters, from the configuration or from the deviation
+    * @param severity
+    *           BCR-6605 the severity of the threshold, for the default deviation coefficient
+    * @param request
+    *           the request
+    * @param commonParameters
+    *           the common parameters
+    * @param groundAcquisitionMode
     */
-   public static LearningParameters ofDeviationOnly(IndicatorDeviation deviation, ThresholdLevel configuredLevel) {
-      return new LearningParameters(deviation.getLearningTime() != null ? deviation.getLearningTime() : 0L, deviation.getMeanFactor() != null ? deviation.getMeanFactor() : 1d,
-            deviation.getDeviationCoefficient(), deviation.getMinimumDeviation(), deviation.getThresholdLevel() != null
-                  ? ThresholdLevel.valueOf(deviation.getThresholdLevel())
-                  : configuredLevel,
-            deviation.getMinValue(), deviation.getMaxValue() != null ? deviation.getMaxValue() : Double.MAX_VALUE);
+   private void computeThresholdLearning(final Aircraft aircraft, final Flight currentFlight, final Indicator indicator, final LearningParameters parameters, final Severity severity,
+         final RelearnThresholdRequest request, final HealthMonitoringParameters commonParameters, final IHealthHistoryProvider healthHistoryProvider, boolean groundAcquisitionMode) {
+      LOGGER.debug("Compute threshold learning: begin flight retrieval");
+
+      Set<Flight> flightsWithValues = healthHistoryProvider.getFlightsWithValues(indicator);
+      if (flightsWithValues.isEmpty()) {
+         // There is no value for this indicator at all, shortcut for skipping the entire algorithm
+         LOGGER.debug("No value for indicator, skipping the learning process");
+         return;
+      }
+
+      // Sort flights for learning
+      final SortedSet<Flight> flightsBefore = new TreeSet<>(Collections.reverseOrder(FLIGHT_DOWNLOAD_COMPARATOR));
+      final SortedSet<Flight> flightsAfter = new TreeSet<>(FLIGHT_DOWNLOAD_COMPARATOR);
+      Flight lastFlight = currentFlight;
+
+      // All flights that contribute to the learning are those downloaded after the learning start date
+      for (final Flight flight : aircraft.getFlights()) {
+         if (flight.getLastDownloadDate().before(request.getStartDate())) {
+            flightsBefore.add(flight);
+         } else {
+            flightsAfter.add(flight);
+         }
+         if (flight.getUsageStartDate().after(lastFlight.getUsageStartDate())) {
+            lastFlight = flight;
+         }
+      }
+      LOGGER.debug("End flight retrieval");
+
+      Avionic avionic = aircraft.getAircraftType().getAvionic();
+      boolean isMarms = avionic == Avionic.MARMS;
+
+      // Values for learning
+      final DoubleList values = new ArrayDoubleList();
+
+      final long maxPastLearningTime = Math.min(request.getHistoryLearningTime(), parameters.learningTime());
+      long remainingPastLearningTime = maxPastLearningTime;
+      // Get values from download before request
+      for (final Flight flight : flightsBefore) {
+         if (remainingPastLearningTime == 0) {
+            // If history learning time has been reached then stop loop
+            break;
+         }
+         final Set<IndicatorValueHolder> indicatorValues = healthHistoryProvider.getIndicatorValues(flight, indicator);
+         if (!indicatorValues.isEmpty()) {
+            // If sensor acquisition contains acquisitions for concerned indicator
+            // then compute past learning time and get corresponding indicator values
+            if (groundAcquisitionMode) {
+               if (flight.getHealthStartDate() != null) {
+                  Date startDate = flight.getHealthStartDate();
+                  Date endDate = flight.getHealthEndDate();
+                  if (endDate.getTime() - startDate.getTime() > remainingPastLearningTime) {
+                     // If interval is too long, adjust end time
+                     startDate = new Date(endDate.getTime() - remainingPastLearningTime);
+                  }
+                  values.addAll(getIndicatorValuesBetweenDates(indicatorValues, startDate, endDate, isMarms));
+                  // Update the flight acquisition duration
+                  remainingPastLearningTime -= endDate.getTime() - startDate.getTime();
+               }
+            } else {
+               // Sort takeoffs/landings in reverse chronological order
+               List<TakeoffLandingDateTime> sortedTLDates = new ArrayList<>(flight.getFlightHourData().getTakeoffLandingDateTimes());
+               sortedTLDates.sort(Collections.reverseOrder(TAKEOFF_LANDING_COMPARATOR));
+
+               for (final TakeoffLandingDateTime takeoffLandingDateTime : sortedTLDates) {
+                  if (remainingPastLearningTime == 0) {
+                     break;
+                  }
+                  Date startDate = takeoffLandingDateTime.getTakeoffDateTime();
+                  final Date endDate = takeoffLandingDateTime.getLandingDateTime();
+                  if (endDate.getTime() - startDate.getTime() > remainingPastLearningTime) {
+                     // If interval is too long, adjust end time
+                     startDate = new Date(endDate.getTime() - remainingPastLearningTime);
+                  }
+                  values.addAll(getIndicatorValuesBetweenDates(indicatorValues, startDate, endDate, isMarms));
+                  // Update the flight acquisition duration
+                  remainingPastLearningTime -= endDate.getTime() - startDate.getTime();
+               }
+            }
+         }
+      }
+
+      // Remaining time for learning
+      int i = 1;
+      long remainingTime = parameters.learningTime() - (maxPastLearningTime - remainingPastLearningTime);
+      final long originalRemainingTime = remainingTime;
+      if (remainingTime == 0 && !values.isEmpty()) {
+         // learning completed with past hours data only. set end date equals to start date
+         request.setEndDate(request.getStartDate());
+         // Applicable to the current flight as well, so include it
+         request.setApplicableFlightDate(new Date(lastFlight.getUsageStartDate().getTime() - 1));
+      } else if (isLearningPossible(flightsAfter, remainingTime, groundAcquisitionMode)) {
+         // Boolean that indicates if all indicator values are processed (i.e. cannot extend further the learning time)
+         boolean endReached = false;
+         // Loop in order to extend the learning time when no values have been found
+         while (!endReached) {
+            endReached = true;
+            // Get values from downloads after request
+            for (final Flight flight : flightsAfter) {
+               if (remainingTime == 0) {
+                  // If learning time has been reached with values, then stop loop
+                  endReached = !values.isEmpty();
+                  break;
+               }
+               final Set<IndicatorValueHolder> indicatorValues = healthHistoryProvider.getIndicatorValues(flight, indicator);
+               if (groundAcquisitionMode) {
+                  if (flight.getHealthStartDate() != null) {
+                     final Date startDate = flight.getHealthStartDate();
+                     Date endDate = flight.getHealthEndDate();
+                     if (endDate.getTime() - startDate.getTime() > remainingTime) {
+                        // If interval is too long, adjust end time
+                        endDate = new Date(startDate.getTime() + remainingTime);
+                        endReached = false;
+                     }
+                     values.addAll(getIndicatorValuesBetweenDates(indicatorValues, startDate, endDate, isMarms));
+                     // Update the flight acquisition duration
+                     remainingTime -= endDate.getTime() - startDate.getTime();
+                  }
+               } else if (flight.getFlightHourData() != null) {
+                  // Sort takeoffs/landings in chronological order
+                  List<TakeoffLandingDateTime> sortedTLDates = new ArrayList<>(flight.getFlightHourData().getTakeoffLandingDateTimes());
+                  sortedTLDates.sort(TAKEOFF_LANDING_COMPARATOR);
+                  for (final TakeoffLandingDateTime takeoffLandingDateTime : sortedTLDates) {
+                     if (remainingTime == 0) {
+                        // If learning time has been reached with values, then stop loop
+                        endReached = !values.isEmpty();
+                        break;
+                     }
+                     final Date startDate = takeoffLandingDateTime.getTakeoffDateTime();
+                     Date endDate = takeoffLandingDateTime.getLandingDateTime();
+                     if (endDate.getTime() - startDate.getTime() > remainingTime) {
+                        // If interval is too long, adjust end time
+                        endDate = new Date(startDate.getTime() + remainingTime);
+                        endReached = false;
+                     }
+                     values.addAll(getIndicatorValuesBetweenDates(indicatorValues, startDate, endDate, isMarms));
+                     // Update the flight acquisition duration
+                     remainingTime -= endDate.getTime() - startDate.getTime();
+                  }
+               }
+            }
+            if (remainingTime == 0 && values.isEmpty()) {
+               if (endReached) {
+                  // Cannot extend the learning time (infinite loop, there won't be any more values)
+               } else if (parameters.learningTime() == 0) {
+                  // Infinite loop as well, if the configured learning time is 0
+                  endReached = true;
+               } else {
+                  // No values for the computation, need to extend the learning time
+                  remainingTime = originalRemainingTime + i * parameters.learningTime();
+                  // Loop again
+                  endReached = false;
+                  LOGGER.info("Extending learning time (since no point has been found during the learning time).");
+
+                  ++i;
+               }
+            }
+         }
+      }
+
+      if ((remainingTime == 0 || i > 1) && !values.isEmpty()) {
+         completeLearning(currentFlight, lastFlight, parameters, severity, request, commonParameters, values);
+      }
+   }
+
+   private boolean isLearningPossible(SortedSet<Flight> flightsAfter, long originalRemainingTime, boolean groundAcquisitionMode) {
+      long remainingTime = originalRemainingTime;
+      for (final Flight flight : flightsAfter) {
+         if (groundAcquisitionMode) {
+            if (flight.getHealthStartDate() != null) {
+               final Date startDate = flight.getHealthStartDate();
+               Date endDate = flight.getHealthEndDate();
+               if (endDate.getTime() - startDate.getTime() > remainingTime) {
+                  endDate = new Date(startDate.getTime() + remainingTime);
+               }
+               remainingTime -= endDate.getTime() - startDate.getTime();
+               if (remainingTime == 0) {
+                  return true;
+               }
+            }
+         } else if (flight.getFlightHourData() != null) {
+            List<TakeoffLandingDateTime> sortedTLDates = new ArrayList<>(flight.getFlightHourData().getTakeoffLandingDateTimes());
+            sortedTLDates.sort(TAKEOFF_LANDING_COMPARATOR);
+            for (final TakeoffLandingDateTime takeoffLandingDateTime : sortedTLDates) {
+               final Date startDate = takeoffLandingDateTime.getTakeoffDateTime();
+               Date endDate = takeoffLandingDateTime.getLandingDateTime();
+               if (endDate.getTime() - startDate.getTime() > remainingTime) {
+                  endDate = new Date(startDate.getTime() + remainingTime);
+               }
+               remainingTime -= endDate.getTime() - startDate.getTime();
+               if (remainingTime == 0) {
+                  return true;
+               }
+            }
+         }
+      }
+      return remainingTime <= 0;
+   }
+
+   private void completeLearning(final Flight currentFlight, final Flight lastFlight, final LearningParameters parameters, final Severity severity, final RelearnThresholdRequest request,
+         final HealthMonitoringParameters commonParameters, final DoubleList values) {
+      final double mean = HEALTH_ALGORITHMS.mean(values.toArray());
+      double standardDeviation = HEALTH_ALGORITHMS.rms(values.toArray());
+      final Double minimumDeviation = parameters.minimumDeviation();
+      if (minimumDeviation != null && standardDeviation < minimumDeviation) {
+         standardDeviation = minimumDeviation;
+      }
+      Double deviationCoeff = parameters.deviationCoefficient();
+      double meanFactor = parameters.meanFactor();
+      if (deviationCoeff == null) {
+         // When absent from threshold configuration, get deviation coefficient from health parameters
+         deviationCoeff = switch (severity) {
+            case AMBER -> commonParameters.getLearningThresholdAlgorithmAmber();
+            case RED -> commonParameters.getLearningThresholdAlgorithmRed();
+            default -> 0.0;
+         };
+      }
+      double learnedValue = meanFactor * mean + deviationCoeff * standardDeviation;
+
+      learnedValue = ajustThresholdBounds(parameters, learnedValue);
+
+      request.setLearnedValue(learnedValue);
+
+      request.setHandled(true);
+      if (request.getEndDate() == null) {
+         // If the end date has not been set at the end of past flight hours analysis (see above)
+         request.setEndDate(currentFlight.getLastDownloadDate());
+         request.setApplicableFlightDate(lastFlight.getUsageStartDate());
+      }
+   }
+
+   /**
+    * Ajust learned value to min or max (depending on threshold type) of learned threshold if value is out of bounds.
+    *
+    * To be launched after learning and after configuration update.
+    *
+    * @param thresholdConfiguration
+    *           LearnedThresholdConfiguration
+    * @param learnedValue
+    *           initial value after learning time
+    * @return learnedValue corrected value
+    *
+    */
+   public double ajustThresholdBounds(LearnedThresholdConfiguration thresholdConfiguration, double learnedValue) {
+      // BCR-6605 kept for callers outside this class; the configured bounds, with no deviation
+      return ajustThresholdBounds(LearningParameters.of(thresholdConfiguration, null), learnedValue);
+   }
+
+   /**
+    * BCR-6605 ajust learned value to min or max of the resolved learning parameters, which may come
+    * from the configuration or from a deviation.
+    *
+    * @param parameters
+    *           the resolved learning parameters
+    * @param learnedValue
+    *           initial value after learning time
+    * @return learnedValue corrected value
+    */
+   public double ajustThresholdBounds(LearningParameters parameters, double learnedValue) {
+      if (parameters.thresholdLevel() == ThresholdLevel.HIGH) {
+         if (learnedValue > parameters.maximumThreshold()) {
+            learnedValue = parameters.maximumThreshold();
+         } else if (parameters.minimumThreshold() != null && learnedValue < parameters.minimumThreshold()) {
+            learnedValue = parameters.minimumThreshold();
+         }
+      } else if (parameters.thresholdLevel() == ThresholdLevel.LOW) {
+         if (parameters.maximumThreshold() > learnedValue) {
+            learnedValue = parameters.maximumThreshold();
+         } else if (parameters.minimumThreshold() != null && parameters.minimumThreshold() < learnedValue) {
+            learnedValue = parameters.minimumThreshold();
+         }
+      }
+      return learnedValue;
+   }
+
+   /**
+    * Gets the indicator values between dates.
+    *
+    * @param indicatorValues
+    *           the indicator values
+    * @param startDate
+    *           the start date
+    * @param endDate
+    *           the end date
+    * @return the indicator values between dates
+    */
+   private ArrayDoubleList getIndicatorValuesBetweenDates(final Set<IndicatorValueHolder> indicatorValues, final Date startDate, final Date endDate, boolean isMarms) {
+      final ArrayDoubleList result = new ArrayDoubleList();
+      for (final IndicatorValueHolder indicatorValue : indicatorValues) {
+         if (isMarms) {
+            // no filter
+            result.add(indicatorValue.getValue());
+         } else if (!indicatorValue.getDate().before(startDate) && !indicatorValue.getDate().after(endDate)) {
+            result.add(indicatorValue.getValue());
+         }
+      }
+      return result;
    }
 }
