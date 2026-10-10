@@ -1,8 +1,10 @@
-
 package com.eurocopter.mgs.datamodel.health.monitoring;
 
 import java.io.Serializable;
+import java.util.HashSet;
+import java.util.Set;
 
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.DiscriminatorColumn;
 import jakarta.persistence.DiscriminatorType;
@@ -15,6 +17,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.MappedSuperclass;
 import jakarta.persistence.NamedQuery;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 
 @Entity
@@ -56,6 +59,16 @@ public abstract class ThresholdConfiguration implements Serializable {
     */
    @Column(name = "WORK_CARD")
    private String workcard;
+
+   /**
+    * The relearn requests.
+    *
+    * BCR-6605 moved up from LearnedThresholdConfiguration: a deviation can turn a fixed threshold
+    * into a learned one, and that threshold then needs somewhere to hold its relearn request.
+    */
+   @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.EAGER, orphanRemoval = true)
+   @JoinColumn(name = "THRESHOLD_CONFIGURATION_ID")
+   private Set<RelearnThresholdRequest> relearnRequests = new HashSet<>();
 
    ThresholdConfiguration() {
    }
@@ -104,7 +117,7 @@ public abstract class ThresholdConfiguration implements Serializable {
 
    /**
     * Gets the workcard.
-    * 
+    *
     * @return the workcard
     */
    public String getWorkcard() {
@@ -113,12 +126,31 @@ public abstract class ThresholdConfiguration implements Serializable {
 
    /**
     * Sets the workcard.
-    * 
+    *
     * @param workcard
     *           the new workcard
     */
    public void setWorkcard(String workcard) {
       this.workcard = workcard;
+   }
+
+   /**
+    * Gets the relearn requests.
+    *
+    * @return the relearn requests
+    */
+   public Set<RelearnThresholdRequest> getRelearnRequests() {
+      return relearnRequests;
+   }
+
+   /**
+    * Sets the relearn requests.
+    *
+    * @param relearnRequests
+    *           the new relearn requests
+    */
+   public void setRelearnRequests(Set<RelearnThresholdRequest> relearnRequests) {
+      this.relearnRequests = relearnRequests;
    }
 
    @Override
