@@ -1,82 +1,58 @@
 
 package com.eurocopter.mgs.presentation.configuration.store.dialog;
 
-import org.eclipse.jface.dialogs.Dialog;
-import org.eclipse.jface.dialogs.IDialogConstants;
-import org.eclipse.swt.SWT;
-import org.eclipse.swt.widgets.Composite;
-import org.eclipse.swt.widgets.Control;
-import org.eclipse.swt.widgets.Display;
-import org.eclipse.swt.widgets.Shell;
-import org.eclipse.ui.PlatformUI;
-import org.eclipse.ui.forms.widgets.FormToolkit;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
 
-import com.eurocopter.mgs.aircraft.presentation.utils.ColorUtils;
-import com.eurocopter.mgs.core.presentation.i18n.Messages;
+import org.eclipse.jface.window.Window;
+import org.osgi.framework.BundleContext;
+import org.osgi.framework.FrameworkUtil;
 
-public class MgsPreferenceDialog extends Dialog {
+import com.eurocopter.mgs.business.flight.api.IFlightBusiness;
+import com.eurocopter.mgs.datamodel.aircraft.Aircraft;
+import com.eurocopter.mgs.datamodel.flight.Flight;
+import com.eurocopter.mgs.presentation.download.list.FlightComparator;
+import com.eurocopter.mgs.service.aircraft.dto.AircraftConfigurationHistoryDto;
 
-   private MgsPreferenceDialogModel model;
+public class MgsPreferenceDialogHandler {
 
-   /** The toolkit. */
-   private final FormToolkit toolkit;
+   private final Map<AircraftConfigurationHistoryDto, Flight> applicableFlight = new HashMap<>();
 
-   private MgsPreferenceDialog(Shell parentShell) {
-      super(parentShell);
-      toolkit = new FormToolkit(PlatformUI.getWorkbench().getDisplay());
+   private final Map<AircraftConfigurationHistoryDto, Boolean> okCancels = new HashMap<>();
+
+   public boolean getOkCancel(AircraftConfigurationHistoryDto configurationHistorizationDto) {
+      return okCancels.get(configurationHistorizationDto);
    }
 
-   public MgsPreferenceDialog(MgsPreferenceDialogModel model) {
-      this(PlatformUI.getWorkbench().getDisplay().getActiveShell());
-      this.model = model;
+   public Flight getApplicableFlight(AircraftConfigurationHistoryDto configurationHistorizationDto) {
+      return applicableFlight.get(configurationHistorizationDto);
    }
 
-   /**
-    * Create contents of the dialog.
-    *
-    * @param parent
-    *           the parent
-    * @return container
-    */
-   @Override
-   protected Control createDialogArea(Composite parent) {
-      parent.setBackground(Display.getDefault().getSystemColor(SWT.COLOR_WHITE));
-      parent.setBackgroundMode(SWT.INHERIT_FORCE);
-      MgsPreferenceDialogComposite composite = createComposite(parent, model);
-      toolkit.adapt(composite);
-      toolkit.adapt(parent);
-      composite.pack();
-      ColorUtils.forceBackgroundColor(parent);
-      return composite;
-   }
+   public void openDialog(Map<Aircraft, AircraftConfigurationHistoryDto> aircraftConfigurationHistoryMap) {
+      boolean okCancel = false;
+      MgsPreferenceDialogModel mgsPreferenceDialogModel = new MgsPreferenceDialogModel();
+      BundleContext flightBusinessContext = FrameworkUtil.getBundle(IFlightBusiness.class).getBundleContext();
+      IFlightBusiness flightBusiness = flightBusinessContext
+            .getService(flightBusinessContext.getServiceReference(IFlightBusiness.class));
 
-   /**
-    * Create composite.
-    *
-    * @param parent
-    *           composite parent
-    * @param style
-    *           SWT style
-    * @param model
-    *           marker model
-    * @return the composite
-    */
-   private MgsPreferenceDialogComposite createComposite(Composite parent, MgsPreferenceDialogModel model) {
-      return new MgsPreferenceDialogComposite(parent, model);
-   }
+      for (Entry<Aircraft, AircraftConfigurationHistoryDto> aircraftConfiguration : aircraftConfigurationHistoryMap
+            .entrySet()) {
+         List<Flight> flights = new ArrayList<>();
+         flights.addAll(flightBusiness.getFlights(aircraftConfiguration.getKey().getId(), true));
+         flights.sort(new FlightComparator());
 
-   /**
-    * Create contents of the button bar.
-    *
-    * @param parent
-    *           the parent
-    */
-   @Override
-   protected void createButtonsForButtonBar(Composite parent) {
-      toolkit.adapt(parent);
-      createButton(parent, IDialogConstants.OK_ID, Messages.CORE.getMnemonicEscapedString("OK"), true);
-      createButton(parent, IDialogConstants.CANCEL_ID,
-            Messages.CORE.getMnemonicEscapedString("Cancel_Button_Label"), false);
-      ColorUtils.forceBackgroundColor(parent);
+         mgsPreferenceDialogModel.setAircraft(aircraftConfiguration.getKey());
+         mgsPreferenceDialogModel.setFlights(flights);
+         MgsPreferenceDialog mgsPreferenceDialog = new MgsPreferenceDialog(mgsPreferenceDialogModel);
+         if (mgsPreferenceDialog.open() == Window.OK) {
+            okCancel = true;
+            applicableFlight.put(aircraftConfiguration.getValue(),
+                  mgsPreferenceDialogModel.getSelectedFlight());
+         }
+         okCancels.put(aircraftConfiguration.getValue(), okCancel);
+      }
    }
 }
