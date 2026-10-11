@@ -623,3 +623,152 @@ public class HealthCommonService implements IHealthCommonService {
    }
 
 }
+
+
+
+
+
+
+============================================ERROR Beno Steps RELearn Value change ======================================================
+
+java.lang.reflect.InvocationTargetException: null
+	at jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:118) ~[?:?]
+	at java.lang.reflect.Method.invoke(Method.java:580) ~[?:?]
+	at com.eurocopter.mgs.core.proxy.ServiceManager$ServiceInvocationHandler.invoke(ServiceManager.java:180) ~[?:?]
+	at com.eurocopter.mgs.core.proxy.ServiceManager$ServiceInvocationHandler.invoke(ServiceManager.java:79) ~[?:?]
+	at jdk.proxy3.$Proxy38.createRelearnThresholdRequests(Unknown Source) ~[?:?]
+	at com.eurocopter.mgs.business.health.impl.HealthCommonBusiness.createRelearnThresholdRequests(HealthCommonBusiness.java:185) ~[?:?]
+	at com.eurocopter.mgs.business.health.impl.HealthCommonBusiness.launchRelearn(HealthCommonBusiness.java:486) ~[?:?]
+	at com.eurocopter.mgs.business.health.impl.HealthCommonBusiness.createDeviations(HealthCommonBusiness.java:432) ~[?:?]
+	at jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103) ~[?:?]
+	at java.lang.reflect.Method.invoke(Method.java:580) ~[?:?]
+	at com.eurocopter.mgs.business.proxy.BusinessManager$BusinessInvocationHandler.lambda$0(BusinessManager.java:71) ~[?:?]
+	at com.eurocopter.mgs.core.persistence.PersistenceManager$PersistenceCallable.call(PersistenceManager.java:46) ~[?:?]
+	at java.util.concurrent.FutureTask.run(FutureTask.java:317) ~[?:?]
+	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1144) ~[?:?]
+	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:642) ~[?:?]
+	at java.lang.Thread.run(Thread.java:1583) ~[?:?]
+Caused by: com.eurocopter.mgs.service.exception.ConcurrentAccessException: Cannot handle relearn request: health configuration has been changed.
+	at com.eurocopter.mgs.service.health.common.ejb.HealthCommonService.createRelearnThresholdRequests(HealthCommonService.java:284) ~[?:?]
+	at jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103) ~[?:?]
+	at java.lang.reflect.Method.invoke(Method.java:580) ~[?:?]
+	at org.glassfish.exousia.AuthorizationService.lambda$invokeBeanMethod$6(AuthorizationService.java:501) ~[?:?]
+	at org.glassfish.exousia.AuthorizationService.runInScope(AuthorizationService.java:577) ~[?:?]
+	at org.glassfish.exousia.AuthorizationService.invokeBeanMethod(AuthorizationService.java:501) ~[?:?]
+	at org.glassfish.ejb.security.application.EJBSecurityManager.invoke(EJBSecurityManager.java:295) ~[?:?]
+	at com.sun.ejb.containers.BaseContainer.invokeBeanMethod(BaseContainer.java:4192) ~[?:?]
+	at com.sun.ejb.EjbInvocation.invokeBeanMethod(EjbInvocation.java:604) ~[?:?]
+	at com.sun.ejb.containers.interceptors.AroundInvokeChainImpl.invokeNext(InterceptorManager.java:705) ~[?:?]
+	at com.sun.ejb.EjbInvocation.proceed(EjbInvocation.java:553) ~[?:?]
+	at org.jboss.weld.module.ejb.AbstractEJBRequestScopeActivationInterceptor.aroundInvoke(AbstractEJBRequestScopeActivationInterceptor.java:81) ~[?:?]
+	at org.jboss.weld.module.ejb.SessionBeanInterceptor.aroundInvoke(SessionBeanInterceptor.java:52) ~[?:?]
+	at jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103) ~[?:?]
+	at java.lang.reflect.Method.invoke(Method.java:580) ~[?:?]
+	at com.sun.ejb.containers.interceptors.AroundInvokeInterceptor.intercept(InterceptorManager.java:765) ~[?:?]
+	at com.sun.ejb.containers.interceptors.AroundInvokeChainImpl.invokeNext(InterceptorManager.java:705) ~[?:?]
+	at com.sun.ejb.EjbInvocation.proceed(EjbInvocation.java:553) ~[?:?]
+	at com.sun.ejb.containers.interceptors.SystemInterceptorProxy.doCall(SystemInterceptorProxy.java:121) ~[?:?]
+	at com.sun.ejb.containers.interceptors.SystemInterceptorProxy.aroundInvoke(SystemInterceptorProxy.java:98) ~[?:?]
+	at jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103) ~[?:?]
+	at java.lang.reflect.Method.invoke(Method.java:580) ~[?:?]
+	at com.sun.ejb.containers.interceptors.AroundInvokeInterceptor.intercept(InterceptorManager.java:765) ~[?:?]
+	at com.sun.ejb.containers.interceptors.AroundInvokeChainImpl.invokeNext(InterceptorManager.java:705) ~[?:?]
+	at com.sun.ejb.containers.interceptors.InterceptorManager.intercept(InterceptorManager.java:306) ~[?:?]
+	at com.sun.ejb.containers.BaseContainer.__intercept(BaseContainer.java:4167) ~[?:?]
+	at com.sun.ejb.containers.BaseContainer.intercept(BaseContainer.java:4157) ~[?:?]
+	at com.sun.ejb.containers.EJBObjectInvocationHandler.invoke(EJBObjectInvocationHandler.java:173) ~[?:?]
+	at com.sun.ejb.containers.EJBObjectInvocationHandlerDelegate.invoke(EJBObjectInvocationHandlerDelegate.java:54) ~[?:?]
+	at jdk.proxy44.$Proxy337.createRelearnThresholdRequests(Unknown Source) ~[?:?]
+	at jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103) ~[?:?]
+	at java.lang.reflect.Method.invoke(Method.java:580) ~[?:?]
+	at com.sun.corba.ee.impl.presentation.rmi.ReflectiveTie.dispatchToMethod(ReflectiveTie.java:122) ~[?:?]
+	at com.sun.corba.ee.impl.presentation.rmi.ReflectiveTie._invoke(ReflectiveTie.java:152) ~[?:?]
+	at com.sun.corba.ee.impl.protocol.ServerRequestDispatcherImpl.dispatchToServant(ServerRequestDispatcherImpl.java:501) ~[?:?]
+	at com.sun.corba.ee.impl.protocol.ServerRequestDispatcherImpl.dispatch(ServerRequestDispatcherImpl.java:172) ~[?:?]
+	at com.sun.corba.ee.impl.protocol.MessageMediatorImpl.handleRequestRequest(MessageMediatorImpl.java:1529) ~[?:?]
+	at com.sun.corba.ee.impl.protocol.MessageMediatorImpl.handleRequest(MessageMediatorImpl.java:1405) ~[?:?]
+	at com.sun.corba.ee.impl.protocol.MessageMediatorImpl.handleInput(MessageMediatorImpl.java:910) ~[?:?]
+	at com.sun.corba.ee.impl.protocol.giopmsgheaders.RequestMessage_1_2.callback(RequestMessage_1_2.java:192) ~[?:?]
+	at com.sun.corba.ee.impl.protocol.MessageMediatorImpl.handleRequest(MessageMediatorImpl.java:674) ~[?:?]
+	at com.sun.corba.ee.impl.protocol.MessageMediatorImpl.dispatch(MessageMediatorImpl.java:476) ~[?:?]
+	at com.sun.corba.ee.impl.protocol.MessageMediatorImpl.doWork(MessageMediatorImpl.java:2202) ~[?:?]
+	at com.sun.corba.ee.impl.threadpool.ThreadPoolImpl$WorkerThread.performWork(ThreadPoolImpl.java:476) ~[?:?]
+	at com.sun.corba.ee.impl.threadpool.ThreadPoolImpl$WorkerThread.run(ThreadPoolImpl.java:519) ~[?:?]
+2026-10-11 08:37:30.193 [pool-3-thread-1] ERROR com.eurocopter.mgs.core.proxy.ServiceManager - Declared com.eurocopter.mgs.service.exception.ConcurrentAccessException; rethrow
+2026-10-11 08:37:30.193 [main] ERROR com.eurocopter.mgs.presentation.configuration.preferences.healthalarms.store.HealthAlarmsPreferenceStore - Could  not   save  deviations
+com.eurocopter.mgs.service.exception.ConcurrentAccessException: Cannot handle relearn request: health configuration has been changed.
+	at com.eurocopter.mgs.service.health.common.ejb.HealthCommonService.createRelearnThresholdRequests(HealthCommonService.java:284) ~[?:?]
+	at jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103) ~[?:?]
+	at java.lang.reflect.Method.invoke(Method.java:580) ~[?:?]
+	at org.glassfish.exousia.AuthorizationService.lambda$invokeBeanMethod$6(AuthorizationService.java:501) ~[?:?]
+	at org.glassfish.exousia.AuthorizationService.runInScope(AuthorizationService.java:577) ~[?:?]
+	at org.glassfish.exousia.AuthorizationService.invokeBeanMethod(AuthorizationService.java:501) ~[?:?]
+	at org.glassfish.ejb.security.application.EJBSecurityManager.invoke(EJBSecurityManager.java:295) ~[?:?]
+	at com.sun.ejb.containers.BaseContainer.invokeBeanMethod(BaseContainer.java:4192) ~[?:?]
+	at com.sun.ejb.EjbInvocation.invokeBeanMethod(EjbInvocation.java:604) ~[?:?]
+	at com.sun.ejb.containers.interceptors.AroundInvokeChainImpl.invokeNext(InterceptorManager.java:705) ~[?:?]
+	at com.sun.ejb.EjbInvocation.proceed(EjbInvocation.java:553) ~[?:?]
+	at org.jboss.weld.module.ejb.AbstractEJBRequestScopeActivationInterceptor.aroundInvoke(AbstractEJBRequestScopeActivationInterceptor.java:81) ~[?:?]
+	at org.jboss.weld.module.ejb.SessionBeanInterceptor.aroundInvoke(SessionBeanInterceptor.java:52) ~[?:?]
+	at jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103) ~[?:?]
+	at java.lang.reflect.Method.invoke(Method.java:580) ~[?:?]
+	at com.sun.ejb.containers.interceptors.AroundInvokeInterceptor.intercept(InterceptorManager.java:765) ~[?:?]
+	at com.sun.ejb.containers.interceptors.AroundInvokeChainImpl.invokeNext(InterceptorManager.java:705) ~[?:?]
+	at com.sun.ejb.EjbInvocation.proceed(EjbInvocation.java:553) ~[?:?]
+	at com.sun.ejb.containers.interceptors.SystemInterceptorProxy.doCall(SystemInterceptorProxy.java:121) ~[?:?]
+	at com.sun.ejb.containers.interceptors.SystemInterceptorProxy.aroundInvoke(SystemInterceptorProxy.java:98) ~[?:?]
+	at jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103) ~[?:?]
+	at java.lang.reflect.Method.invoke(Method.java:580) ~[?:?]
+	at com.sun.ejb.containers.interceptors.AroundInvokeInterceptor.intercept(InterceptorManager.java:765) ~[?:?]
+	at com.sun.ejb.containers.interceptors.AroundInvokeChainImpl.invokeNext(InterceptorManager.java:705) ~[?:?]
+	at com.sun.ejb.containers.interceptors.InterceptorManager.intercept(InterceptorManager.java:306) ~[?:?]
+	at com.sun.ejb.containers.BaseContainer.__intercept(BaseContainer.java:4167) ~[?:?]
+	at com.sun.ejb.containers.BaseContainer.intercept(BaseContainer.java:4157) ~[?:?]
+	at com.sun.ejb.containers.EJBObjectInvocationHandler.invoke(EJBObjectInvocationHandler.java:173) ~[?:?]
+	at com.sun.ejb.containers.EJBObjectInvocationHandlerDelegate.invoke(EJBObjectInvocationHandlerDelegate.java:54) ~[?:?]
+	at jdk.proxy44.$Proxy337.createRelearnThresholdRequests(Unknown Source) ~[?:?]
+	at jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103) ~[?:?]
+	at java.lang.reflect.Method.invoke(Method.java:580) ~[?:?]
+	at com.sun.corba.ee.impl.presentation.rmi.ReflectiveTie.dispatchToMethod(ReflectiveTie.java:122) ~[?:?]
+	at com.sun.corba.ee.impl.presentation.rmi.ReflectiveTie._invoke(ReflectiveTie.java:152) ~[?:?]
+	at com.sun.corba.ee.impl.protocol.ServerRequestDispatcherImpl.dispatchToServant(ServerRequestDispatcherImpl.java:501) ~[?:?]
+	at com.sun.corba.ee.impl.protocol.ServerRequestDispatcherImpl.dispatch(ServerRequestDispatcherImpl.java:172) ~[?:?]
+	at com.sun.corba.ee.impl.protocol.MessageMediatorImpl.handleRequestRequest(MessageMediatorImpl.java:1529) ~[?:?]
+	at com.sun.corba.ee.impl.protocol.MessageMediatorImpl.handleRequest(MessageMediatorImpl.java:1405) ~[?:?]
+	at com.sun.corba.ee.impl.protocol.MessageMediatorImpl.handleInput(MessageMediatorImpl.java:910) ~[?:?]
+	at com.sun.corba.ee.impl.protocol.giopmsgheaders.RequestMessage_1_2.callback(RequestMessage_1_2.java:192) ~[?:?]
+	at com.sun.corba.ee.impl.protocol.MessageMediatorImpl.handleRequest(MessageMediatorImpl.java:674) ~[?:?]
+	at com.sun.corba.ee.impl.protocol.MessageMediatorImpl.dispatch(MessageMediatorImpl.java:476) ~[?:?]
+	at com.sun.corba.ee.impl.protocol.MessageMediatorImpl.doWork(MessageMediatorImpl.java:2202) ~[?:?]
+	at com.sun.corba.ee.impl.threadpool.ThreadPoolImpl$WorkerThread.performWork(ThreadPoolImpl.java:476) ~[?:?]
+	at com.sun.corba.ee.impl.threadpool.ThreadPoolImpl$WorkerThread.run(ThreadPoolImpl.java:519) ~[?:?]
+2026-10-11 08:40:36.552 [imqConsumerReader-0-2071551550621843712-0] INFO  com.eurocopter.mgs.business.notification.NotificationManager - Dispatch notification: "ActionNotificationDto [entity=com.eurocopter.mgs.datamodel.configuration.MgsConfigurationProperties@1a966149, action=UPDATE]"
+2026-10-11 08:40:36.577 [ModalContext] INFO  com.eurocopter.mgs.business.flight.impl.DownloadManager - Start downloading flight of folder ...
+2026-10-11 08:40:36.861 [imqConsumerReader-3-2071551550825630208-3] INFO  com.eurocopter.mgs.business.notification.NotificationManager - Dispatch progress notification: ProgressNotificationDto [entity=null, progressionState=SFTP_TRANSFER]
+2026-10-11 08:40:37.644 [imqConsumerReader-3-2071551550825630208-3] INFO  com.eurocopter.mgs.business.notification.NotificationManager - Dispatch progress notification: ProgressNotificationDto [entity=com.eurocopter.mgs.service.flight.dto.DownloadProgressDto@203772a, progressionState=USAGE]
+2026-10-11 08:40:37.801 [imqConsumerReader-3-2071551550825630208-3] INFO  com.eurocopter.mgs.business.notification.NotificationManager - Dispatch progress notification: ProgressNotificationDto [entity=com.eurocopter.mgs.service.flight.dto.DownloadProgressDto@37b858ad, progressionState=HEALTH]
+2026-10-11 08:40:47.926 [imqConsumerReader-3-2071551550825630208-3] INFO  com.eurocopter.mgs.business.notification.NotificationManager - Dispatch progress notification: ProgressNotificationDto [entity=com.eurocopter.mgs.service.flight.dto.DownloadProgressDto@10f3aef5, progressionState=RTB]
+2026-10-11 08:40:47.932 [imqConsumerReader-3-2071551550825630208-3] INFO  com.eurocopter.mgs.business.notification.NotificationManager - Dispatch progress notification: ProgressNotificationDto [entity=com.eurocopter.mgs.service.flight.dto.DownloadProgressDto@4c692eb5, progressionState=SFM]
+2026-10-11 08:40:47.974 [imqConsumerReader-3-2071551550825630208-3] INFO  com.eurocopter.mgs.business.notification.NotificationManager - Dispatch progress notification: ProgressNotificationDto [entity=com.eurocopter.mgs.service.flight.dto.DownloadProgressDto@4a2904b6, progressionState=FDCR]
+2026-10-11 08:40:48.058 [imqConsumerReader-3-2071551550825630208-3] INFO  com.eurocopter.mgs.business.notification.NotificationManager - Dispatch progress notification: ProgressNotificationDto [entity=com.eurocopter.mgs.service.flight.dto.DownloadProgressDto@3f21406e, progressionState=END]
+2026-10-11 08:40:48.089 [imqConsumerReader-0-2071551550621843712-0] INFO  com.eurocopter.mgs.business.notification.NotificationManager - Dispatch notification: "ActionNotificationDto [entity=Aircraft [id=d3baaa87-51c2-4175-8dfc-46e872270d0e, aircraftType=AircraftType [name=EC175], aircraftId=05026, aircraftSerialNumber=null, registerNumber=05026], action=UPDATE]"
+2026-10-11 08:40:48.095 [imqConsumerReader-4-2071551550825638144-4] INFO  com.eurocopter.mgs.business.notification.NotificationManager - Dispatch progress notification: ProgressNotificationDto [entity={Aircraft [id=d3baaa87-51c2-4175-8dfc-46e872270d0e, aircraftType=AircraftType [name=EC175], aircraftId=05026, aircraftSerialNumber=null, registerNumber=05026]={[com.eurocopter.mgs.datamodel.flight.Flight@53c0027c]}}, progressionState=END]
+2026-10-11 08:40:48.102 [imqConsumerReader-0-2071551550621843712-0] INFO  com.eurocopter.mgs.business.notification.NotificationManager - Dispatch notification: "ActionNotificationDto [entity=[Lcom.eurocopter.mgs.datamodel.folder.Folder;@ebde8b3, action=CREATION]"
+2026-10-11 08:40:48.209 [ModalContext] INFO  com.eurocopter.mgs.business.flight.impl.DownloadManager - End downloading flight of folder in 11632 ms.
+2026-10-11 08:41:00.040 [imqConsumerReader-0-2071551550621843712-0] INFO  com.eurocopter.mgs.business.notification.NotificationManager - Dispatch notification: "ActionNotificationDto [entity=com.eurocopter.mgs.service.task.dto.TaskModel@3e75d79f, action=CREATION]"
+2026-10-11 08:41:00.064 [imqConsumerReader-0-2071551550621843712-0] INFO  com.eurocopter.mgs.business.notification.NotificationManager - Dispatch notification: "ActionNotificationDto [entity=com.eurocopter.mgs.service.task.dto.TaskModel@7a1517ed, action=CREATION]"
+2026-10-11 08:41:00.088 [imqConsumerReader-0-2071551550621843712-0] INFO  com.eurocopter.mgs.business.notification.NotificationManager - Dispatch notification: "ActionNotificationDto [entity=com.eurocopter.mgs.service.task.dto.TaskModel@d31d2d61, action=CREATION]"
+2026-10-11 08:41:00.107 [imqConsumerReader-0-2071551550621843712-0] INFO  com.eurocopter.mgs.business.notification.NotificationManager - Dispatch notification: "ActionNotificationDto [entity=com.eurocopter.mgs.service.task.dto.TaskModel@58955779, action=CREATION]"
+2026-10-11 08:41:30.029 [imqConsumerReader-0-2071551550621843712-0] INFO  com.eurocopter.mgs.business.notification.NotificationManager - Dispatch notification: "ActionNotificationDto [entity=com.eurocopter.mgs.service.task.dto.TaskModel@3e75d79f, action=UPDATE]"
+2026-10-11 08:41:30.041 [imqConsumerReader-0-2071551550621843712-0] INFO  com.eurocopter.mgs.business.notification.NotificationManager - Dispatch notification: "ActionNotificationDto [entity=com.eurocopter.mgs.service.task.dto.TaskModel@3e75d79f, action=DELETION]"
+2026-10-11 08:41:30.052 [imqConsumerReader-0-2071551550621843712-0] INFO  com.eurocopter.mgs.business.notification.NotificationManager - Dispatch notification: "ActionNotificationDto [entity=com.eurocopter.mgs.service.task.dto.TaskModel@7a1517ed, action=UPDATE]"
+2026-10-11 08:41:30.425 [imqConsumerReader-0-2071551550621843712-0] INFO  com.eurocopter.mgs.business.notification.NotificationManager - Dispatch notification: "ActionNotificationDto [entity=com.eurocopter.mgs.service.task.dto.TaskModel@7a1517ed, action=UPDATE]"
+2026-10-11 08:41:31.079 [imqConsumerReader-0-2071551550621843712-0] INFO  com.eurocopter.mgs.business.notification.NotificationManager - Dispatch notification: "ActionNotificationDto [entity=com.eurocopter.mgs.service.task.dto.TaskModel@7a1517ed, action=DELETION]"
+2026-10-11 08:41:31.090 [imqConsumerReader-0-2071551550621843712-0] INFO  com.eurocopter.mgs.business.notification.NotificationManager - Dispatch notification: "ActionNotificationDto [entity=com.eurocopter.mgs.service.task.dto.TaskModel@d31d2d61, action=UPDATE]"
+2026-10-11 08:41:31.219 [imqConsumerReader-0-2071551550621843712-0] INFO  com.eurocopter.mgs.business.notification.NotificationManager - Dispatch notification: "ActionNotificationDto [entity=com.eurocopter.mgs.service.task.dto.TaskModel@d31d2d61, action=UPDATE]"
+2026-10-11 08:41:31.228 [imqConsumerReader-0-2071551550621843712-0] INFO  com.eurocopter.mgs.business.notification.NotificationManager - Dispatch notification: "ActionNotificationDto [entity=com.eurocopter.mgs.service.task.dto.TaskModel@d31d2d61, action=DELETION]"
+2026-10-11 08:41:31.241 [imqConsumerReader-0-2071551550621843712-0] INFO  com.eurocopter.mgs.business.notification.NotificationManager - Dispatch notification: "ActionNotificationDto [entity=com.eurocopter.mgs.service.task.dto.TaskModel@58955779, action=UPDATE]"
+2026-10-11 08:41:31.308 [imqConsumerReader-0-2071551550621843712-0] INFO  com.eurocopter.mgs.business.notification.NotificationManager - Dispatch notification: "ActionNotificationDto [entity=Aircraft [id=d3baaa87-51c2-4175-8dfc-46e872270d0e, aircraftType=AircraftType [name=EC175], aircraftId=05026, aircraftSerialNumber=null, registerNumber=05026], action=UPDATE]"
+2026-10-11 08:41:31.315 [imqConsumerReader-0-2071551550621843712-0] DEBUG com.eurocopter.mgs.app.ApplicationListener - Notification received about current aircraft (SN :05026) : send update event.
+2026-10-11 08:41:31.329 [imqConsumerReader-0-2071551550621843712-0] INFO  com.eurocopter.mgs.business.notification.NotificationManager - Dispatch notification: "ActionNotificationDto [entity=com.eurocopter.mgs.service.task.dto.TaskModel@58955779, action=DELETION]"
+
