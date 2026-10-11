@@ -1,111 +1,625 @@
-java.lang.reflect.InvocationTargetException: null
-	at jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:118) ~[?:?]
-	at java.lang.reflect.Method.invoke(Method.java:580) ~[?:?]
-	at com.eurocopter.mgs.core.proxy.ServiceManager$ServiceInvocationHandler.invoke(ServiceManager.java:180) ~[?:?]
-	at com.eurocopter.mgs.core.proxy.ServiceManager$ServiceInvocationHandler.invoke(ServiceManager.java:79) ~[?:?]
-	at jdk.proxy3.$Proxy38.createRelearnThresholdRequests(Unknown Source) ~[?:?]
-	at com.eurocopter.mgs.business.health.impl.HealthCommonBusiness.createRelearnThresholdRequests(HealthCommonBusiness.java:185) ~[?:?]
-	at com.eurocopter.mgs.business.health.impl.HealthCommonBusiness.launchRelearn(HealthCommonBusiness.java:486) ~[?:?]
-	at com.eurocopter.mgs.business.health.impl.HealthCommonBusiness.createDeviations(HealthCommonBusiness.java:432) ~[?:?]
-	at jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103) ~[?:?]
-	at java.lang.reflect.Method.invoke(Method.java:580) ~[?:?]
-	at com.eurocopter.mgs.business.proxy.BusinessManager$BusinessInvocationHandler.lambda$0(BusinessManager.java:71) ~[?:?]
-	at com.eurocopter.mgs.core.persistence.PersistenceManager$PersistenceCallable.call(PersistenceManager.java:46) ~[?:?]
-	at java.util.concurrent.FutureTask.run(FutureTask.java:317) ~[?:?]
-	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1144) ~[?:?]
-	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:642) ~[?:?]
-	at java.lang.Thread.run(Thread.java:1583) ~[?:?]
-Caused by: com.eurocopter.mgs.service.exception.ConcurrentAccessException: Cannot handle relearn request: health configuration has been changed.
-	at com.eurocopter.mgs.service.health.common.ejb.HealthCommonService.createRelearnThresholdRequests(HealthCommonService.java:284) ~[?:?]
-	at jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103) ~[?:?]
-	at java.lang.reflect.Method.invoke(Method.java:580) ~[?:?]
-	at org.glassfish.exousia.AuthorizationService.lambda$invokeBeanMethod$6(AuthorizationService.java:501) ~[?:?]
-	at org.glassfish.exousia.AuthorizationService.runInScope(AuthorizationService.java:577) ~[?:?]
-	at org.glassfish.exousia.AuthorizationService.invokeBeanMethod(AuthorizationService.java:501) ~[?:?]
-	at org.glassfish.ejb.security.application.EJBSecurityManager.invoke(EJBSecurityManager.java:295) ~[?:?]
-	at com.sun.ejb.containers.BaseContainer.invokeBeanMethod(BaseContainer.java:4192) ~[?:?]
-	at com.sun.ejb.EjbInvocation.invokeBeanMethod(EjbInvocation.java:604) ~[?:?]
-	at com.sun.ejb.containers.interceptors.AroundInvokeChainImpl.invokeNext(InterceptorManager.java:705) ~[?:?]
-	at com.sun.ejb.EjbInvocation.proceed(EjbInvocation.java:553) ~[?:?]
-	at org.jboss.weld.module.ejb.AbstractEJBRequestScopeActivationInterceptor.aroundInvoke(AbstractEJBRequestScopeActivationInterceptor.java:81) ~[?:?]
-	at org.jboss.weld.module.ejb.SessionBeanInterceptor.aroundInvoke(SessionBeanInterceptor.java:52) ~[?:?]
-	at jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103) ~[?:?]
-	at java.lang.reflect.Method.invoke(Method.java:580) ~[?:?]
-	at com.sun.ejb.containers.interceptors.AroundInvokeInterceptor.intercept(InterceptorManager.java:765) ~[?:?]
-	at com.sun.ejb.containers.interceptors.AroundInvokeChainImpl.invokeNext(InterceptorManager.java:705) ~[?:?]
-	at com.sun.ejb.EjbInvocation.proceed(EjbInvocation.java:553) ~[?:?]
-	at com.sun.ejb.containers.interceptors.SystemInterceptorProxy.doCall(SystemInterceptorProxy.java:121) ~[?:?]
-	at com.sun.ejb.containers.interceptors.SystemInterceptorProxy.aroundInvoke(SystemInterceptorProxy.java:98) ~[?:?]
-	at jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103) ~[?:?]
-	at java.lang.reflect.Method.invoke(Method.java:580) ~[?:?]
-	at com.sun.ejb.containers.interceptors.AroundInvokeInterceptor.intercept(InterceptorManager.java:765) ~[?:?]
-	at com.sun.ejb.containers.interceptors.AroundInvokeChainImpl.invokeNext(InterceptorManager.java:705) ~[?:?]
-	at com.sun.ejb.containers.interceptors.InterceptorManager.intercept(InterceptorManager.java:306) ~[?:?]
-	at com.sun.ejb.containers.BaseContainer.__intercept(BaseContainer.java:4167) ~[?:?]
-	at com.sun.ejb.containers.BaseContainer.intercept(BaseContainer.java:4157) ~[?:?]
-	at com.sun.ejb.containers.EJBObjectInvocationHandler.invoke(EJBObjectInvocationHandler.java:173) ~[?:?]
-	at com.sun.ejb.containers.EJBObjectInvocationHandlerDelegate.invoke(EJBObjectInvocationHandlerDelegate.java:54) ~[?:?]
-	at jdk.proxy56.$Proxy419.createRelearnThresholdRequests(Unknown Source) ~[?:?]
-	at jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103) ~[?:?]
-	at java.lang.reflect.Method.invoke(Method.java:580) ~[?:?]
-	at com.sun.corba.ee.impl.presentation.rmi.ReflectiveTie.dispatchToMethod(ReflectiveTie.java:122) ~[?:?]
-	at com.sun.corba.ee.impl.presentation.rmi.ReflectiveTie._invoke(ReflectiveTie.java:152) ~[?:?]
-	at com.sun.corba.ee.impl.protocol.ServerRequestDispatcherImpl.dispatchToServant(ServerRequestDispatcherImpl.java:501) ~[?:?]
-	at com.sun.corba.ee.impl.protocol.ServerRequestDispatcherImpl.dispatch(ServerRequestDispatcherImpl.java:172) ~[?:?]
-	at com.sun.corba.ee.impl.protocol.MessageMediatorImpl.handleRequestRequest(MessageMediatorImpl.java:1529) ~[?:?]
-	at com.sun.corba.ee.impl.protocol.MessageMediatorImpl.handleRequest(MessageMediatorImpl.java:1405) ~[?:?]
-	at com.sun.corba.ee.impl.protocol.MessageMediatorImpl.handleInput(MessageMediatorImpl.java:910) ~[?:?]
-	at com.sun.corba.ee.impl.protocol.giopmsgheaders.RequestMessage_1_2.callback(RequestMessage_1_2.java:192) ~[?:?]
-	at com.sun.corba.ee.impl.protocol.MessageMediatorImpl.handleRequest(MessageMediatorImpl.java:674) ~[?:?]
-	at com.sun.corba.ee.impl.protocol.MessageMediatorImpl.dispatch(MessageMediatorImpl.java:476) ~[?:?]
-	at com.sun.corba.ee.impl.protocol.MessageMediatorImpl.doWork(MessageMediatorImpl.java:2202) ~[?:?]
-	at com.sun.corba.ee.impl.threadpool.ThreadPoolImpl$WorkerThread.performWork(ThreadPoolImpl.java:476) ~[?:?]
-	at com.sun.corba.ee.impl.threadpool.ThreadPoolImpl$WorkerThread.run(ThreadPoolImpl.java:519) ~[?:?]
-2026-10-10 21:26:02.643 [pool-3-thread-1] ERROR com.eurocopter.mgs.core.proxy.ServiceManager - Declared com.eurocopter.mgs.service.exception.ConcurrentAccessException; rethrow
-2026-10-10 21:26:02.644 [main] ERROR com.eurocopter.mgs.presentation.configuration.preferences.healthalarms.store.HealthAlarmsPreferenceStore - Could  not   save  deviations
-com.eurocopter.mgs.service.exception.ConcurrentAccessException: Cannot handle relearn request: health configuration has been changed.
-	at com.eurocopter.mgs.service.health.common.ejb.HealthCommonService.createRelearnThresholdRequests(HealthCommonService.java:284) ~[?:?]
-	at jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103) ~[?:?]
-	at java.lang.reflect.Method.invoke(Method.java:580) ~[?:?]
-	at org.glassfish.exousia.AuthorizationService.lambda$invokeBeanMethod$6(AuthorizationService.java:501) ~[?:?]
-	at org.glassfish.exousia.AuthorizationService.runInScope(AuthorizationService.java:577) ~[?:?]
-	at org.glassfish.exousia.AuthorizationService.invokeBeanMethod(AuthorizationService.java:501) ~[?:?]
-	at org.glassfish.ejb.security.application.EJBSecurityManager.invoke(EJBSecurityManager.java:295) ~[?:?]
-	at com.sun.ejb.containers.BaseContainer.invokeBeanMethod(BaseContainer.java:4192) ~[?:?]
-	at com.sun.ejb.EjbInvocation.invokeBeanMethod(EjbInvocation.java:604) ~[?:?]
-	at com.sun.ejb.containers.interceptors.AroundInvokeChainImpl.invokeNext(InterceptorManager.java:705) ~[?:?]
-	at com.sun.ejb.EjbInvocation.proceed(EjbInvocation.java:553) ~[?:?]
-	at org.jboss.weld.module.ejb.AbstractEJBRequestScopeActivationInterceptor.aroundInvoke(AbstractEJBRequestScopeActivationInterceptor.java:81) ~[?:?]
-	at org.jboss.weld.module.ejb.SessionBeanInterceptor.aroundInvoke(SessionBeanInterceptor.java:52) ~[?:?]
-	at jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103) ~[?:?]
-	at java.lang.reflect.Method.invoke(Method.java:580) ~[?:?]
-	at com.sun.ejb.containers.interceptors.AroundInvokeInterceptor.intercept(InterceptorManager.java:765) ~[?:?]
-	at com.sun.ejb.containers.interceptors.AroundInvokeChainImpl.invokeNext(InterceptorManager.java:705) ~[?:?]
-	at com.sun.ejb.EjbInvocation.proceed(EjbInvocation.java:553) ~[?:?]
-	at com.sun.ejb.containers.interceptors.SystemInterceptorProxy.doCall(SystemInterceptorProxy.java:121) ~[?:?]
-	at com.sun.ejb.containers.interceptors.SystemInterceptorProxy.aroundInvoke(SystemInterceptorProxy.java:98) ~[?:?]
-	at jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103) ~[?:?]
-	at java.lang.reflect.Method.invoke(Method.java:580) ~[?:?]
-	at com.sun.ejb.containers.interceptors.AroundInvokeInterceptor.intercept(InterceptorManager.java:765) ~[?:?]
-	at com.sun.ejb.containers.interceptors.AroundInvokeChainImpl.invokeNext(InterceptorManager.java:705) ~[?:?]
-	at com.sun.ejb.containers.interceptors.InterceptorManager.intercept(InterceptorManager.java:306) ~[?:?]
-	at com.sun.ejb.containers.BaseContainer.__intercept(BaseContainer.java:4167) ~[?:?]
-	at com.sun.ejb.containers.BaseContainer.intercept(BaseContainer.java:4157) ~[?:?]
-	at com.sun.ejb.containers.EJBObjectInvocationHandler.invoke(EJBObjectInvocationHandler.java:173) ~[?:?]
-	at com.sun.ejb.containers.EJBObjectInvocationHandlerDelegate.invoke(EJBObjectInvocationHandlerDelegate.java:54) ~[?:?]
-	at jdk.proxy56.$Proxy419.createRelearnThresholdRequests(Unknown Source) ~[?:?]
-	at jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103) ~[?:?]
-	at java.lang.reflect.Method.invoke(Method.java:580) ~[?:?]
-	at com.sun.corba.ee.impl.presentation.rmi.ReflectiveTie.dispatchToMethod(ReflectiveTie.java:122) ~[?:?]
-	at com.sun.corba.ee.impl.presentation.rmi.ReflectiveTie._invoke(ReflectiveTie.java:152) ~[?:?]
-	at com.sun.corba.ee.impl.protocol.ServerRequestDispatcherImpl.dispatchToServant(ServerRequestDispatcherImpl.java:501) ~[?:?]
-	at com.sun.corba.ee.impl.protocol.ServerRequestDispatcherImpl.dispatch(ServerRequestDispatcherImpl.java:172) ~[?:?]
-	at com.sun.corba.ee.impl.protocol.MessageMediatorImpl.handleRequestRequest(MessageMediatorImpl.java:1529) ~[?:?]
-	at com.sun.corba.ee.impl.protocol.MessageMediatorImpl.handleRequest(MessageMediatorImpl.java:1405) ~[?:?]
-	at com.sun.corba.ee.impl.protocol.MessageMediatorImpl.handleInput(MessageMediatorImpl.java:910) ~[?:?]
-	at com.sun.corba.ee.impl.protocol.giopmsgheaders.RequestMessage_1_2.callback(RequestMessage_1_2.java:192) ~[?:?]
-	at com.sun.corba.ee.impl.protocol.MessageMediatorImpl.handleRequest(MessageMediatorImpl.java:674) ~[?:?]
-	at com.sun.corba.ee.impl.protocol.MessageMediatorImpl.dispatch(MessageMediatorImpl.java:476) ~[?:?]
-	at com.sun.corba.ee.impl.protocol.MessageMediatorImpl.doWork(MessageMediatorImpl.java:2202) ~[?:?]
-	at com.sun.corba.ee.impl.threadpool.ThreadPoolImpl$WorkerThread.performWork(ThreadPoolImpl.java:476) ~[?:?]
-	at com.sun.corba.ee.impl.threadpool.ThreadPoolImpl$WorkerThread.run(ThreadPoolImpl.java:519) ~[?:?]
+
+package com.eurocopter.mgs.service.health.common.ejb;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Calendar;
+import java.util.Collections;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
+import java.util.TimeZone;
+import java.util.UUID;
+
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
+import com.eurocopter.mgs.datamodel.aircraft.Aircraft;
+import com.eurocopter.mgs.datamodel.aircraft.AircraftState;
+import com.eurocopter.mgs.datamodel.aircraft.Avionic;
+import com.eurocopter.mgs.datamodel.aircraft.configuration.AircraftConfiguration;
+import com.eurocopter.mgs.datamodel.alarm.Alarm;
+import com.eurocopter.mgs.datamodel.flight.Flight;
+import com.eurocopter.mgs.datamodel.flight.FlightIndicatorValue;
+import com.eurocopter.mgs.datamodel.health.common.Acquisition;
+import com.eurocopter.mgs.datamodel.health.common.HealthAlgorithm;
+import com.eurocopter.mgs.datamodel.health.common.IAcquisition;
+import com.eurocopter.mgs.datamodel.health.common.IndicatorValue;
+import com.eurocopter.mgs.datamodel.health.monitoring.AircraftDisplayData;
+import com.eurocopter.mgs.datamodel.health.monitoring.FilteringLaw;
+import com.eurocopter.mgs.datamodel.health.monitoring.FlightHourData;
+import com.eurocopter.mgs.datamodel.health.monitoring.HealthMechanicalComponent;
+import com.eurocopter.mgs.datamodel.health.monitoring.HealthMechanicalComponentConfiguration;
+import com.eurocopter.mgs.datamodel.health.monitoring.HealthMonitoringConfiguration;
+import com.eurocopter.mgs.datamodel.health.monitoring.Indicator;
+import com.eurocopter.mgs.datamodel.health.monitoring.IndicatorConfiguration;
+import com.eurocopter.mgs.datamodel.health.monitoring.IndicatorDeviation;
+import com.eurocopter.mgs.datamodel.health.monitoring.IndicatorMarker;
+import com.eurocopter.mgs.datamodel.health.monitoring.LearnedThresholdConfiguration;
+import com.eurocopter.mgs.datamodel.health.monitoring.Threshold;
+import com.eurocopter.mgs.datamodel.health.monitoring.ThresholdConfiguration;
+import com.eurocopter.mgs.parameter.health.monitoring.Color;
+import com.eurocopter.mgs.parameter.health.monitoring.HealthMonitoringParameters;
+import com.eurocopter.mgs.service.aircraft.dao.ConfigurationDao;
+import com.eurocopter.mgs.service.aircraft.ejb.AircraftLockManager;
+import com.eurocopter.mgs.service.aircraft.exception.AircraftFrozenException;
+import com.eurocopter.mgs.service.datacollection.ejb.DataCollectionService;
+import com.eurocopter.mgs.service.exception.ConcurrentAccessException;
+import com.eurocopter.mgs.service.exception.EntityNotFoundException;
+import com.eurocopter.mgs.service.health.common.api.IHealthCommonService;
+import com.eurocopter.mgs.service.health.common.dto.ContextualParameterDto;
+import com.eurocopter.mgs.service.marker.dto.BatchIndicatorMarkerDto;
+import com.eurocopter.mgs.service.marker.dto.IndicatorMarkerDto;
+import com.eurocopter.mgs.service.parameter.ejb.ParameterManager;
+import com.google.common.base.Joiner;
+
+import jakarta.ejb.EJB;
+import jakarta.ejb.Remote;
+import jakarta.ejb.Stateless;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
+import jakarta.persistence.TypedQuery;
+
+@Remote(IHealthCommonService.class)
+@Stateless(mappedName = IHealthCommonService.EJB_NAME)
+public class HealthCommonService implements IHealthCommonService {
+
+   /** LOGGER. */
+   private static final Logger LOGGER = LogManager.getLogger(HealthCommonService.class);
+
+   @EJB
+   private ParameterManager parameterManager;
+
+   @EJB
+   private AircraftLockManager aircraftLockManager;
+
+   @EJB
+   private ConfigurationDao configurationDao;
+
+   @EJB
+   private HealthDao healthDao;
+
+   @PersistenceContext
+   private EntityManager manager;
+
+   @EJB
+   private IndicatorDeviationDao deviationDao;
+
+   /** The data collection service. */
+   @EJB
+   private DataCollectionService dataCollectionService;
+
+   // field
+   @EJB
+   private FilteringLawDao filteringLawDao;
+
+   @Override
+   public Map<String, Object> getHealthParameters() {
+      Map<String, Object> result = new HashMap<>();
+      HealthMonitoringParameters healthMonitoringParameters = parameterManager.getHealthMonitoringParameters();
+      result.put(IHealthCommonService.TREND_AVERAGE_NUMBER_OF_VALUE_BEFORE_PARAMETER,
+            healthMonitoringParameters.getIndicatorTrendAverageNumberOfValueBefore());
+      result.put(IHealthCommonService.TREND_AVERAGE_NUMBER_OF_VALUE_AFTER_PARAMETER,
+            healthMonitoringParameters.getIndicatorTrendAverageNumberOfValueAfter());
+
+      List<java.awt.Color> awtColors = new ArrayList<>();
+      List<Color> colors = healthMonitoringParameters.getIndicatorColors();
+      for (Color color : colors) {
+         awtColors.add(new java.awt.Color(color.getRed(), color.getGreen(), color.getBlue()));
+      }
+      result.put(IHealthCommonService.INDICATOR_COLORLIST_PARAMETER, awtColors);
+      return result;
+   }
+
+   @Override
+   public List<HealthMechanicalComponent> getHealthMechanicalComponents(String aircraftId) {
+      TypedQuery<HealthMechanicalComponent> query = manager.createNamedQuery("findActiveHMCsByAircraft", HealthMechanicalComponent.class);
+      query.setParameter("aircraftId", aircraftId);
+      List<HealthMechanicalComponent> components = query.getResultList();
+      if (components != null) {
+         for (HealthMechanicalComponent component : components) {
+            component.getIndicators().size();
+         }
+         return components;
+      } else {
+         return Collections.emptyList();
+      }
+   }
+
+   @Override
+   public AircraftDisplayData getAircraftDisplayData(String aircraftId) {
+      Aircraft aircraft = manager.find(Aircraft.class, aircraftId);
+      return aircraft.getDisplayData();
+   }
+
+   @Override
+   public Set<ThresholdConfiguration> getThresholdConfigurations(String thresholdId) {
+      TypedQuery<ThresholdConfiguration> query = manager.createNamedQuery("findThresholdConfigurationsByThresholdId", ThresholdConfiguration.class);
+      query.setParameter("thresholdId", thresholdId);
+      return new HashSet<>(query.getResultList());
+   }
+
+   @Override
+   public Map<String, Map<IndicatorValue, IAcquisition>> getIndicatorValues(String avionicName, String aircraftId, String indicatorId) {
+      Aircraft aircraft = manager.find(Aircraft.class, aircraftId);
+      Indicator indicator = manager.find(Indicator.class, indicatorId);
+      Avionic avionic = Avionic.valueOf(avionicName);
+      Map<Date, IAcquisition> dateAcquisitionMap = new HashMap<>();
+      // Note : Read indicators for CIGALHE avionic have no accelerometers and no corresponding acquisition
+      if (avionic == Avionic.CIGALHE) {
+         Set<HealthConfigurationBounds> configurationBoundSet = getConfigurationBounds(aircraftId);
+         for (HealthConfigurationBounds configurationBounds : configurationBoundSet) {
+            // 1. Find the indicator configuration
+            TypedQuery<IndicatorConfiguration> indicatorConfigurationQuery = manager.createNamedQuery("findIndicatorConfigurationByHealthConfigurationAndIndicator", IndicatorConfiguration.class);
+            indicatorConfigurationQuery.setParameter("indicatorId", indicatorId);
+            indicatorConfigurationQuery.setParameter("configurationId", configurationBounds.getHealthMonitoringConfiguration().getId());
+            List<IndicatorConfiguration> indicatorConfigurations = indicatorConfigurationQuery.getResultList();
+            if (indicatorConfigurations.isEmpty()) {
+               // Indicator was not present => skip the configuration
+               continue;
+            }
+            IndicatorConfiguration indicatorConfiguration = indicatorConfigurations.get(0);
+            if (indicatorConfiguration.getAccelerometer() == null) {
+               // No accelerometer = read indicator
+               // Anyway, no sensor acquisition will match
+               continue;
+            }
+
+            // 2. Find acquisition matching date bounds + accelerometer
+            final TypedQuery<Object[]> sensorAcquisitionQuery;
+            if (configurationBounds.getEndDate() == null) {
+               sensorAcquisitionQuery = manager.createNamedQuery("findSensorAcquisitionsByAccelerometerIdAfterDate", Object[].class);
+               sensorAcquisitionQuery.setParameter("startDate", configurationBounds.getStartDate());
+            } else {
+               sensorAcquisitionQuery = manager.createNamedQuery("findSensorAcquisitionsByAccelerometerIdBetweenDate", Object[].class);
+               sensorAcquisitionQuery.setParameter("startDate", configurationBounds.getStartDate());
+               sensorAcquisitionQuery.setParameter("endDate", configurationBounds.getEndDate());
+            }
+            sensorAcquisitionQuery.setParameter("accelerometerId", indicatorConfiguration.getAccelerometer().getId());
+            List<Object[]> sensorAcquisitions = sensorAcquisitionQuery.getResultList();
+            for (final Object[] sensorAcquisitionData : sensorAcquisitions) {
+               String id = (String) sensorAcquisitionData[0];
+               Date startDate = (Date) sensorAcquisitionData[1];
+               String componentAcquisitionId = (String) sensorAcquisitionData[2];
+               String acquisitionType = (String) sensorAcquisitionData[3];
+               double samplingFrequency = (Double) sensorAcquisitionData[4];
+               long samplingSize = (Long) sensorAcquisitionData[5];
+               String accelerometerName = indicatorConfiguration.getAccelerometer().getName();
+               dateAcquisitionMap.put(startDate, new Acquisition(id, acquisitionType, startDate, samplingFrequency, samplingSize, componentAcquisitionId, accelerometerName));
+            }
+         }
+      } else if (avionic == Avionic.MARMS) {
+         TypedQuery<Object[]> marmsAcquisitionQuery = manager.createNamedQuery("findMarmsMechanicalComponentAcquisitionByIndicator",
+               Object[].class);
+         marmsAcquisitionQuery.setParameter("indicator", indicator);
+         List<Object[]> marmsAcquisitions = marmsAcquisitionQuery.getResultList();
+         for (Object[] marmsAcquisition : marmsAcquisitions) {
+            String id = (String) marmsAcquisition[0];
+            Date startDate = (Date) marmsAcquisition[1];
+            double samplingFrequency = (Double) marmsAcquisition[2];
+            long samplingSize = (Long) marmsAcquisition[3];
+            dateAcquisitionMap.put(startDate, new Acquisition(id, null, startDate, samplingFrequency, samplingSize, id, null));
+         }
+      }
+      Map<String, Map<IndicatorValue, IAcquisition>> indicatorValuesByFlight = new HashMap<>();
+      TypedQuery<Object[]> indicatorValuesQuery = manager.createNamedQuery("findFlightIndicatorValuesByIndicator", Object[].class);
+      indicatorValuesQuery.setParameter("indicator", indicator);
+      indicatorValuesQuery.setParameter("aircraft", aircraft);
+      for (Object[] result : indicatorValuesQuery.getResultList()) {
+         FlightIndicatorValue flightIndicatorValue = (FlightIndicatorValue) result[0];
+         Flight flight = (Flight) result[1];
+         if (!indicatorValuesByFlight.containsKey(flight.getId())) {
+            indicatorValuesByFlight.put(flight.getId(), new HashMap<>());
+         }
+         for (IndicatorValue indicatorValue : flightIndicatorValue.getValues()) {
+            indicatorValuesByFlight.get(flight.getId()).put(indicatorValue, dateAcquisitionMap.get(indicatorValue.getStartDate()));
+         }
+      }
+      return indicatorValuesByFlight;
+   }
+
+   @Override
+   public HealthMonitoringConfiguration getLatestConfiguration(String aircraftId) throws EntityNotFoundException {
+      return healthDao.getLatestConfiguration(aircraftId);
+   }
+
+   @Override
+   public HealthMonitoringConfiguration getConfigurationForFlight(String flightId) throws EntityNotFoundException {
+      return healthDao.getConfigurationForFlight(flightId);
+   }
+
+   @Override
+   public Map<String, HealthMechanicalComponentConfiguration> getMechanicalComponentConfigurationsForAircraft(String aircraftId, String mechanicalComponentId) {
+      Aircraft aircraft = manager.find(Aircraft.class, aircraftId);
+      HealthMechanicalComponent mechanicalComponent = manager.find(HealthMechanicalComponent.class, mechanicalComponentId);
+
+      Map<Integer, HealthMechanicalComponentConfiguration> configurationCache = new HashMap<>();
+      for (AircraftConfiguration aircraftConfiguration : configurationDao.findConfigurations(aircraftId)) {
+         HealthMonitoringConfiguration healthConfiguration = (HealthMonitoringConfiguration) aircraftConfiguration.getConfigurations().get(HealthMonitoringConfiguration.TYPE);
+         if (healthConfiguration != null) {
+            int serialNumber = aircraftConfiguration.getSerialNumber();
+            configurationCache.put(serialNumber, healthConfiguration.getMechanicalComponentConfigurations().get(mechanicalComponent));
+         }
+      }
+
+      Map<String, HealthMechanicalComponentConfiguration> configurations = new HashMap<>();
+      for (Flight flight : aircraft.getFlights()) {
+         if (configurationCache.get(flight.getConfigurationSerialNumber()) != null) {
+            configurations.put(flight.getId(), configurationCache.get(flight.getConfigurationSerialNumber()));
+         }
+      }
+      return configurations;
+   }
+
+   @Override
+   public void createRelearnThresholdRequests(String aircraftId, List<String> learnedThresholdIds, long historyLearningTime,
+         String comment, String login) throws ConcurrentAccessException {
+      aircraftLockManager.throwExceptionIfAircraftLocked(aircraftId);
+
+      // Check if A/C is frozen
+      Aircraft aircraft = manager.find(Aircraft.class, aircraftId);
+      long start;
+      long end;
+      start = System.currentTimeMillis();
+      LOGGER.info("Start re-learning on aircraft {}, SN : {}", aircraft.getAircraftType().getName(), aircraft.getAircraftId());
+      if (aircraft.getAircraftState() == AircraftState.FROZEN || aircraft.getAircraftState() == AircraftState.DELETED) {
+         throw new AircraftFrozenException("Cannot set thresholds in relearning on a frozen A/C.");
+      }
+
+      Set<String> activeThresholdIds = new HashSet<>();
+      try {
+         activeThresholdIds = getActiveThresholdIds(aircraftId);
+      } catch (EntityNotFoundException e) {
+         // NOTHING TO DO: NEXT INSTRUCTION WILL RAISE EXCEPTION
+         LOGGER.debug("Unable to find latest health configuration", e);
+      }
+
+      if (!activeThresholdIds.containsAll(learnedThresholdIds)) {
+         throw new ConcurrentAccessException("Cannot handle relearn request: health configuration has been changed.");
+      }
+
+      Date lastFlightDate = healthDao.getLastFlightDate(aircraftId);
+
+      for (String id : learnedThresholdIds) {
+         LearnedThresholdConfiguration learnedThreshold = manager.find(LearnedThresholdConfiguration.class, id);
+
+         Map<Indicator, String> indicatorFromThreshold = getIndicatorFromThreshold(aircraft, learnedThreshold.getThreshold());
+         Indicator indicator = null;
+         List<String> indicatorLocations = new ArrayList<>();
+         for (Entry<Indicator, String> entry : indicatorFromThreshold.entrySet()) {
+            indicator = entry.getKey();
+            indicatorLocations = Arrays.asList(entry.getValue().split(":"));
+         }
+
+         if (indicator != null) {
+            LOGGER.info("Threshold: {}/{}/{}", Joiner.on('/').join(indicatorLocations), indicator.getName(), learnedThreshold.getThreshold().getSeverity());
+
+            Calendar calendar = Calendar.getInstance(TimeZone.getTimeZone("GMT"));
+            healthDao.createRelearnThresholdRequest(aircraft, learnedThreshold, calendar.getTime(), lastFlightDate, historyLearningTime, comment, login, indicator, indicatorLocations);
+         }
+      }
+      end = System.currentTimeMillis();
+      LOGGER.info("End re-learning on aircraft {}, SN : {} in {} ms.", aircraft.getAircraftType().getName(), aircraft.getAircraftId(), (end - start));
+   }
+
+   @Override
+   public List<LearnedThresholdConfiguration> getIndicatorLatestLearnedThresholds(String aircraftId, String indicatorId) throws EntityNotFoundException {
+      Indicator indicator = manager.find(Indicator.class, indicatorId);
+      if (indicator == null) {
+         throw new EntityNotFoundException("Indicator not found.");
+      }
+      return healthDao.getIndicatorLatestLearnedThresholds(aircraftId, indicator);
+   }
+
+   @Override
+   public boolean hasLearnedThresholds(String aircraftId, String indicatorId) throws EntityNotFoundException {
+      Indicator indicator = manager.find(Indicator.class, indicatorId);
+      if (indicator == null) {
+         throw new EntityNotFoundException("Indicator not found.");
+      }
+      return healthDao.hasLearnedThresholds(aircraftId, indicator);
+   }
+
+   @Override
+   public Map<IndicatorMarker, String> getIndicatorMarkers(String aircraftId, String indicatorId) {
+      Aircraft aircraft = manager.find(Aircraft.class, aircraftId);
+      Indicator indicator = manager.find(Indicator.class, indicatorId);
+
+      Map<IndicatorMarker, String> markers = new HashMap<>();
+      for (Flight flight : aircraft.getFlights()) {
+         List<IndicatorMarker> resultList = manager.createNamedQuery("findIndicatorMarkersByFlightAndIndicator", IndicatorMarker.class)
+               .setParameter("indicator", indicator)
+               .setParameter("flight", flight)
+               .getResultList();
+         for (IndicatorMarker indicatorMarker : resultList) {
+            markers.put(indicatorMarker, flight.getId());
+         }
+      }
+      return markers;
+   }
+
+   @Override
+   public void createIndicatorMarker(IndicatorMarkerDto indicatorMarkerDto) throws EntityNotFoundException {
+      FlightIndicatorValue flightIndicatorValue = getFlightIndicatorValue(indicatorMarkerDto.getFlightId(), indicatorMarkerDto.getIndicatorId());
+      if (flightIndicatorValue == null) {
+         // Fix PR 7894 : Create flight indicator value to add marker even if flight has no value for this indicator
+         Flight flight = manager.find(Flight.class, indicatorMarkerDto.getFlightId());
+         Indicator indicator = manager.find(Indicator.class, indicatorMarkerDto.getIndicatorId());
+         if (indicator == null) {
+            throw new EntityNotFoundException("Cannot find indicator with id " + indicatorMarkerDto.getIndicatorId());
+         }
+         flightIndicatorValue = new FlightIndicatorValue(UUID.randomUUID().toString());
+         flight.getFlightIndicatorValues().add(flightIndicatorValue);
+         flightIndicatorValue.setIndicator(indicator);
+      }
+      IndicatorMarker marker = new IndicatorMarker(UUID.randomUUID().toString());
+      marker.setDateValue(indicatorMarkerDto.getDateValue());
+      marker.setDescription(indicatorMarkerDto.getDescription());
+      marker.setCreationDate(new Date());
+
+      flightIndicatorValue.getMarkers().add(marker);
+   }
+
+   @Override
+   public void createBatchIndicatorMarkers(BatchIndicatorMarkerDto batchIndicatorMarkerDto) throws EntityNotFoundException {
+      Flight flight = manager.find(Flight.class, batchIndicatorMarkerDto.getFlightId());
+      if (flight == null) {
+         throw new EntityNotFoundException("Cannot find flight with id " + batchIndicatorMarkerDto.getFlightId());
+      }
+      Set<String> indicatorIds = batchIndicatorMarkerDto.getIndicatorIds();
+      for (String indicatorId : indicatorIds) {
+         TypedQuery<FlightIndicatorValue> flightIndicatorValueQuery = manager.createNamedQuery("findFlightIndicatorValueByFlightAndIndicator", FlightIndicatorValue.class);
+         flightIndicatorValueQuery.setParameter("flightId", flight.getId());
+         flightIndicatorValueQuery.setParameter("indicatorId", indicatorId);
+         List<FlightIndicatorValue> matchingFlightIndicatorValues = flightIndicatorValueQuery.getResultList();
+         final FlightIndicatorValue flightIndicatorValue;
+         if (matchingFlightIndicatorValues.isEmpty()) {
+            Indicator indicator = manager.find(Indicator.class, indicatorId);
+            if (indicator == null) {
+               throw new EntityNotFoundException("Cannot find indicator with id " + indicatorId);
+            }
+            flightIndicatorValue = new FlightIndicatorValue(UUID.randomUUID().toString());
+            flight.getFlightIndicatorValues().add(flightIndicatorValue);
+            flightIndicatorValue.setIndicator(indicator);
+         } else {
+            flightIndicatorValue = matchingFlightIndicatorValues.iterator().next();
+         }
+
+         TypedQuery<HealthMechanicalComponent> componentQuery = manager.createNamedQuery("findHMCByIndicator", HealthMechanicalComponent.class);
+         componentQuery.setParameter("indicatorId", indicatorId);
+         HealthMechanicalComponent healthMechanicalComponent = componentQuery.getSingleResult();
+
+         IndicatorMarker marker = new IndicatorMarker(UUID.randomUUID().toString());
+         // According to the parent health mechanical component flag,
+         // the marker date is different, because "end of flight" means two different things
+         if (healthMechanicalComponent.isGroundAcquisition()) {
+            if (flight.getHealthEndDate() == null) {
+               // That flight is not selectable through UI anyway...
+               LOGGER.debug("Ignoring marker creation on flight {}, on-ground acquisitions without end date", flight.getFlightId());
+               continue;
+            }
+            marker.setDateValue(flight.getHealthEndDate());
+         } else {
+            FlightHourData flightHourData = flight.getFlightHourData();
+            if (flightHourData == null) {
+               // "in flight" acquisitions, so the current flight will not be displayed anyway
+               LOGGER.debug("Ignoring marker creation on flight {}, in-flight acquisitions without flight hour data", flight.getFlightId());
+               continue;
+            }
+            // This weird computation comes from the marker storage in database
+            // The associated date is in fact relative to the flight start date on the chart (= first take-off in that case)
+            marker.setDateValue(new Date(flightHourData.getFirstTakeoffDateTime().getTime() + flightHourData.getDuration()));
+         }
+         marker.setDescription(batchIndicatorMarkerDto.getDescription());
+         marker.setCreationDate(new Date());
+
+         flightIndicatorValue.getMarkers().add(marker);
+      }
+   }
+
+   @Override
+   public void removeIndicatorMarker(String flightIndicatorValueId, String markerId) throws EntityNotFoundException {
+      FlightIndicatorValue flightIndicatorValue = manager.find(FlightIndicatorValue.class, flightIndicatorValueId);
+      if (flightIndicatorValue == null) {
+         throw new EntityNotFoundException("Cannot find flightIndicatorValue with id " + flightIndicatorValueId);
+      }
+      Set<IndicatorMarker> marker = flightIndicatorValue.getMarkers();
+      marker.remove(new IndicatorMarker(markerId));
+   }
+
+   @Override
+   public FlightIndicatorValue getFlightIndicatorValue(String flightId, String indicatorId) throws EntityNotFoundException {
+      Flight flight = manager.find(Flight.class, flightId);
+      if (flight == null) {
+         throw new EntityNotFoundException("Cannot find flight with id " + flightId);
+      }
+      Set<FlightIndicatorValue> flightIndicatorValues = flight.getFlightIndicatorValues();
+      for (FlightIndicatorValue flightIndicatorValue : flightIndicatorValues) {
+         if (flightIndicatorValue.getIndicator().getId().equals(indicatorId)) {
+            // Initialize marker collection
+            flightIndicatorValue.getMarkers().size();
+            return flightIndicatorValue;
+         }
+      }
+      return null;
+   }
+
+   @Override
+   public void removeAcknowledgementMarker(String alarmId) throws EntityNotFoundException {
+      Alarm alarm = manager.find(Alarm.class, alarmId);
+      if (alarm == null) {
+         throw new EntityNotFoundException("Cannot find alarm with id " + alarmId);
+      }
+      alarm.setCreateMarker(false);
+   }
+
+   @Override
+   public Map<HealthMechanicalComponent, HealthMechanicalComponentConfiguration> getActiveComponentsAndConfiguration(String aircraftId) {
+      Map<HealthMechanicalComponent, HealthMechanicalComponentConfiguration> hmcConfigurations = configurationDao.getLatestHealthMechanicalComponentConfigurations(aircraftId);
+      for (Entry<HealthMechanicalComponent, HealthMechanicalComponentConfiguration> entry : hmcConfigurations.entrySet()) {
+         // FETCH
+         entry.getKey().getIndicators().size();
+      }
+      return hmcConfigurations;
+   }
+
+   @Override
+   public boolean hasReadIndicators(String aircraftId, String mechanicalComponentId) {
+      HealthMonitoringConfiguration healthConfiguration;
+      try {
+         healthConfiguration = healthDao.getLatestConfiguration(aircraftId);
+      } catch (EntityNotFoundException e) {
+         return false;
+      }
+      HealthMechanicalComponent healthMechanicalComponent = manager.find(HealthMechanicalComponent.class, mechanicalComponentId);
+      if (!healthConfiguration.getMechanicalComponentConfigurations().containsKey(healthMechanicalComponent)) {
+         return false;
+      }
+      HealthMechanicalComponentConfiguration mechanicalComponentConfiguration = healthConfiguration.getMechanicalComponentConfigurations().get(healthMechanicalComponent);
+      for (IndicatorConfiguration indicatorConfiguration : mechanicalComponentConfiguration.getIndicatorConfigurations().values()) {
+         if (indicatorConfiguration.getHealthAlgorithm() == HealthAlgorithm.Read) {
+            return true;
+         }
+      }
+      return false;
+   }
+
+   private Set<String> getActiveThresholdIds(String aircraftId) throws EntityNotFoundException {
+      Set<String> result = new HashSet<>();
+      for (HealthMechanicalComponentConfiguration mcc : getLatestConfiguration(aircraftId).getMechanicalComponentConfigurations().values()) {
+         for (IndicatorConfiguration ic : mcc.getIndicatorConfigurations().values()) {
+            for (ThresholdConfiguration tc : ic.getThresholdConfigurations()) {
+               result.add(tc.getId());
+            }
+         }
+      }
+      return result;
+   }
+
+   private Map<Indicator, String> getIndicatorFromThreshold(Aircraft aircraft, Threshold threshold) {
+      Map<Indicator, String> indicatorPath = new HashMap<>(1);
+      for (HealthMechanicalComponent component : aircraft.getHealthComponents()) {
+         for (Entry<String, Indicator> entry : component.getIndicators().entrySet()) {
+            if (entry.getValue().getThresholds().contains(threshold)) {
+               indicatorPath.put(entry.getValue(), component.getPath());
+            }
+         }
+      }
+      return indicatorPath;
+   }
+
+   private Set<HealthConfigurationBounds> getConfigurationBounds(String aircraftId) {
+      Date maxDate = null;
+      Set<HealthConfigurationBounds> boundSet = new HashSet<>();
+
+      TypedQuery<Object[]> query = manager.createNamedQuery("findConfigurationByType", Object[].class);
+      query.setParameter("id", aircraftId);
+      query.setParameter("type", HealthMonitoringConfiguration.class);
+      List<Object[]> configurations = query.getResultList();
+      for (Object[] configurationArray : configurations) {
+         HealthMonitoringConfiguration configuration = (HealthMonitoringConfiguration) configurationArray[0];
+         AircraftConfiguration aircraftConfiguration = (AircraftConfiguration) configurationArray[1];
+         Date applicableDate = aircraftConfiguration.getApplicableDate();
+
+         HealthConfigurationBounds bounds = new HealthConfigurationBounds();
+         bounds.setHealthMonitoringConfiguration(configuration);
+         if (maxDate == null) {
+            // Last configuration (= first iteration)
+            bounds.setStartDate(applicableDate);
+            bounds.setEndDate(null);
+            boundSet.add(bounds);
+            maxDate = applicableDate;
+         } else if (applicableDate.before(maxDate)) {
+            bounds.setStartDate(applicableDate);
+            bounds.setEndDate(maxDate);
+            boundSet.add(bounds);
+            maxDate = applicableDate;
+         }
+      }
+      return boundSet;
+   }
+
+   @Override
+   public List<String> getFilteringLawNames(String aircraftId) throws EntityNotFoundException {
+      List<String> names = new ArrayList<>();
+      HealthMonitoringConfiguration configuration = getLatestConfiguration(aircraftId);
+      for (FilteringLaw law : configuration.getFilteringLaws()) {
+         names.add(law.getName());
+      }
+      names.sort(String::compareTo);
+      return names;
+   }
+
+   @Override
+   public List<IndicatorDeviation> findActiveDeviations(List<String> indicatorConfigurationIds) {
+      return deviationDao.findActive(indicatorConfigurationIds);
+   }
+
+   @Override
+   public List<IndicatorDeviation> findDeviationHistory(List<String> indicatorConfigurationIds) {
+      return deviationDao.findHistory(indicatorConfigurationIds);
+   }
+
+   @Override
+   public void createDeviation(IndicatorDeviation deviation) {
+      deviationDao.create(deviation);
+   }
+
+   @Override
+   public void acknowledgeDeviation(String deviationId, Date endDate) {
+      deviationDao.acknowledge(deviationId, endDate);
+   }
+
+   @Override
+   public IndicatorConfiguration findIndicatorConfiguration(String id) {
+      return deviationDao.findIndicatorConfiguration(id);
+   }
+
+   @Override
+   public FilteringLaw findFilteringLaw(String id) {
+      return deviationDao.findFilteringLaw(id);
+   }
+
+   @Override
+   public List findFilteringLaws(String aircraftId) throws EntityNotFoundException {
+      return filteringLawDao.findAll(aircraftId);
+   }
+
+   /*
+    * @Override public FilteringLaw findFilteringLawById(String lawId) { return filteringLawDao.find(lawId); }
+    */
+   /*
+    * @Override public void createFilteringLaw(String aircraftId, FilteringLaw law) throws EntityNotFoundException { filteringLawDao.create(aircraftId, law); }
+    */
+
+   @Override
+   public void createFilteringLaw(String aircraftId, String name,
+         List<ContextualParameterDto> parameters) throws EntityNotFoundException {
+      filteringLawDao.create(aircraftId, name, parameters);
+   }
+
+   @Override
+   public void updateFilteringLaw(String lawId, String name, List<ContextualParameterDto> parameters) {
+      filteringLawDao.update(lawId, name, parameters);
+   }
+
+   @Override
+   public void deleteFilteringLaw(String aircraftId, String lawId) throws EntityNotFoundException {
+      filteringLawDao.delete(aircraftId, lawId);
+   }
+
+   @Override
+   public boolean isFilteringLawUsedByConfiguration(String aircraftId, String lawName) throws EntityNotFoundException {
+      return filteringLawDao.isUsedByConfiguration(aircraftId, lawName);
+   }
+
+   @Override
+   public boolean isFilteringLawUsedByDeviation(String lawId) {
+      return filteringLawDao.isUsedByDeviation(lawId);
+   }
+
+}
