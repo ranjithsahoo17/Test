@@ -1396,3 +1396,267 @@ public class IndicatorTrendComposite extends Composite implements MgsEventListen
       }
    }
 }
+
+
+
+
+
+
+
+
+
+
+=================================================================================
+
+
+
+/***************************************/
+/** Copyright Airbus Helicopters 2019 **/
+/***************************************/
+package com.eurocopter.mgs.health.presentation.chart;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.eclipse.core.runtime.IProgressMonitor;
+import org.eclipse.core.runtime.IStatus;
+import org.eclipse.core.runtime.Status;
+import org.eclipse.core.runtime.jobs.Job;
+import org.eclipse.ui.progress.UIJob;
+
+import com.eurocopter.mgs.chart.ChartElementModel;
+import com.eurocopter.mgs.core.presentation.i18n.Messages;
+import com.eurocopter.mgs.datamodel.health.monitoring.Indicator;
+import com.eurocopter.mgs.health.activator.Activator;
+import com.eurocopter.mgs.health.presentation.action.DeselectAllIndicatorNodesAction;
+import com.eurocopter.mgs.health.presentation.extension.HealthIndicatorChartView;
+import com.eurocopter.mgs.health.presentation.model.IHealthTreeViewNodeModel;
+import com.eurocopter.mgs.health.presentation.model.IndicatorHmcModel;
+import com.eurocopter.mgs.health.presentation.model.IndicatorNodeModel;
+import com.eurocopter.mgs.presentation.aircraft.main.tree.model.ITreeViewNodeElement;
+import com.eurocopter.mgs.presentation.common.exception.details.MgsDetailsLogException;
+import com.eurocopter.mgs.presentation.flight.model.FlightModel;
+
+/**
+ * Indicator chart model update Job.
+ */
+public class UpdateIndicatorChartJob extends Job {
+
+   private static final Logger LOGGER = LogManager.getLogger(UpdateIndicatorChartJob.class);
+
+   private static final String UPDATE_CHART_JOB_NAME = Messages.CORE.getString("updateChartJobName");
+
+   /** the selected component node. */
+   private final IHealthTreeViewNodeModel node;
+
+   /** the set of indicators to be added to the view */
+   private final Set<IndicatorHmcModel> indicatorsAdded = new HashSet<>();
+
+   /** The HealthIndicatorChartView */
+   private HealthIndicatorChartView view;
+
+   private IHealthTreeViewNodeModel nodeToUpdate;
+
+   private Job additionalJob;
+
+   private DeselectAllIndicatorNodesAction deselectAction;
+
+   /**
+    * Default constructor. Builds a UpdateIndicatorChartJob.
+    * 
+    * @param node
+    *           the component node.
+    * @param view
+    *           the heal indicator chart view
+    */
+   public UpdateIndicatorChartJob(IHealthTreeViewNodeModel node, HealthIndicatorChartView view) {
+      super(UPDATE_CHART_JOB_NAME);
+      this.view = view;
+      this.node = node;
+      this.deselectAction = new DeselectAllIndicatorNodesAction(this.node);
+      setUser(true);
+      this.additionalJob = null;
+   }
+
+   /**
+    * Default constructor. Builds a UpdateIndicatorChartJob.
+    * 
+    * @param node
+    *           the component node.
+    * @param view
+    *           the heal indicator chart view
+    * @param nodeToUpdate
+    *           node to update
+    */
+   private UpdateIndicatorChartJob(IHealthTreeViewNodeModel node, HealthIndicatorChartView view,
+         IHealthTreeViewNodeModel nodeToUpdate) {
+      this(node, view);
+      this.nodeToUpdate = nodeToUpdate;
+   }
+
+   /**
+    * Default constructor. Builds a UpdateIndicatorChartJob.
+    * 
+    * @param node
+    *           the component node.
+    * @param view
+    *           the heal indicator chart view
+    * @param nodeToUpdate
+    *           node to update
+    * @param job
+    *           additional job
+    */
+   public UpdateIndicatorChartJob(IHealthTreeViewNodeModel node, HealthIndicatorChartView view,
+         IHealthTreeViewNodeModel nodeToUpdate, Job job) {
+      this(node, view, nodeToUpdate);
+      this.additionalJob = job;
+   }
+
+   @Override
+   public IStatus run(IProgressMonitor monitor) {
+      /** the list of indicator chart models, indexed by indicator */
+      final Map<Indicator, List<ChartElementModel<Double>>> indicatorChartModels = new HashMap<>();
+
+      /** the list of success rate chart models, indexed by indicator */
+      final Map<Indicator, ChartElementModel<Double>> successRateChartModels = new HashMap<>();
+
+      final Set<IndicatorHmcModel> locIndicatorsAdded;
+
+      synchronized (this) {
+         monitor.beginTask(UPDATE_CHART_JOB_NAME, 10);
+         locIndicatorsAdded = new HashSet<>(this.indicatorsAdded);
+         this.indicatorsAdded.clear();
+
+         if (nodeToUpdate != null) {
+            locIndicatorsAdded.addAll(getCheckedIndicator(node));
+         }
+      }
+      monitor.worked(2);
+
+      CreateIndicatorChartModelsJob indicatorChartModelJob = new CreateIndicatorChartModelsJob(locIndicatorsAdded, view);
+      indicatorChartModelJob.schedule();
+      try {
+         indicatorChartModelJob.join();
+      } catch (InterruptedException e) {
+         LOGGER.error(e.getMessage(), e);
+         MgsDetailsLogException detailsLogException = new MgsDetailsLogException(Messages.CORE.getMnemonicEscapedString("Details_log")); // #1687
+         Thread.currentThread().interrupt();
+         return new Status(IStatus.ERROR, Activator.PLUGIN_ID, Messages.CORE.getString("errorChartCreation"), detailsLogException);
+      }
+      indicatorChartModels.putAll(indicatorChartModelJob.getChartElementModels());
+      successRateChartModels.putAll(indicatorChartModelJob.getSuccessRateModels());
+      final List<FlightModel> flightModels = indicatorChartModelJob.getFlightModels();
+      final List<ChartElementModel<Double>> newModels = new ArrayList<>();
+
+      // Hold the number of curve to graphe , excluding sub curve ie ( trend curve)
+      int numberOfCurveWithoutSubCurve = 0;
+      for (IndicatorHmcModel indicator : locIndicatorsAdded) {
+         List<ChartElementModel<Double>> models = indicatorChartModels.get(indicator.getIndicator());
+         if (models != null) {
+            newModels.addAll(indicatorChartModels.get(indicator.getIndicator()));
+            for (ChartElementModel<Double> model : models) {
+               if (!model.isFlagIsSubCurve()) {
+                  numberOfCurveWithoutSubCurve++;
+               }
+            }
+         }
+      }
+
+      final int tmpNumberOfCurveWithoutSubCurve = numberOfCurveWithoutSubCurve;
+
+      monitor.worked(6);
+      UIJob refreshJob = new UIJob(Messages.CORE.getString("refreshChartJobName")) {
+         @Override
+         public IStatus runInUIThread(IProgressMonitor monitor) {
+            monitor.beginTask(Messages.CORE.getString("refreshChartTaskName"), 3);
+            monitor.worked(1);
+            view.setIndicatorCompositesTitle(node.getName());
+            ChartElementModel<Double> successRateChartModel = (tmpNumberOfCurveWithoutSubCurve == 1) ? successRateChartModels.get(((IndicatorHmcModel) locIndicatorsAdded.toArray()[0]).getIndicator())
+                  : null;
+            view.update(flightModels, newModels, successRateChartModel);
+            monitor.worked(2);
+            monitor.done();
+            return Status.OK_STATUS;
+         }
+      };
+      monitor.worked(2);
+      refreshJob.schedule();
+
+      try {
+         refreshJob.join();
+      } catch (InterruptedException e) {
+         LOGGER.error(e.getMessage(), e);// Log the error
+         MgsDetailsLogException detailsLogException = new MgsDetailsLogException(Messages.CORE.getString("Details_log")); // #1687
+         Thread.currentThread().interrupt();
+         return new Status(IStatus.ERROR, Activator.PLUGIN_ID, Messages.CORE.getString("errorChartRefresh"), detailsLogException);
+      }
+
+      if (this.additionalJob != null) {
+         this.additionalJob.schedule();
+         try {
+            this.additionalJob.join();
+         } catch (InterruptedException e) {
+            LOGGER.error(e.getMessage(), e);// Log the error
+            MgsDetailsLogException detailsLogException = new MgsDetailsLogException(Messages.CORE.getString("Details_log")); // #1687
+            Thread.currentThread().interrupt();
+            return new Status(IStatus.ERROR, Activator.PLUGIN_ID, Messages.CORE.getString("errorChartRefresh"), detailsLogException);
+         }
+      }
+
+      if (this.deselectAction != null) {
+         this.deselectAction.dispose();
+         this.deselectAction = null;
+      }
+      monitor.done();
+      return Status.OK_STATUS;
+   }
+
+   /**
+    * Add an indicator to the view.
+    * 
+    * @param indicator
+    *           the indicator to be added.
+    */
+   private synchronized void addIndicator(IndicatorHmcModel indicator) {
+      indicatorsAdded.add(indicator);
+   }
+
+   /**
+    * Retrieve the list of checked indicator in a given node.
+    * 
+    * @param pNode
+    *           node to browse
+    * @return the list of checked indicator in a given node
+    */
+   public static List<IndicatorHmcModel> getCheckedIndicator(ITreeViewNodeElement pNode) {
+      List<IndicatorHmcModel> listCheckedIndicator = new ArrayList<>();
+      for (ITreeViewNodeElement nodeElement : pNode.getChildren()) {
+         if (nodeElement instanceof IndicatorNodeModel indicatorNodeModel) {
+            if (indicatorNodeModel.isChecked()) {
+               IndicatorHmcModel indicator = (IndicatorHmcModel) indicatorNodeModel.getObject();
+               listCheckedIndicator.add(indicator);
+            }
+         }
+      }
+      return listCheckedIndicator;
+   }
+
+   /**
+    * Refreshs the indicators chart.
+    * 
+    * @param pNode
+    *           node to browse
+    */
+   public synchronized void refresh(ITreeViewNodeElement pNode) {
+      for (IndicatorHmcModel indicatorTmp : getCheckedIndicator(pNode)) {
+         addIndicator(indicatorTmp);
+      }
+   }
+}
+
