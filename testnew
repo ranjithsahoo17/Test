@@ -1,48 +1,17 @@
-Step1: 
-SELECT	id,	startdate,startflightdate,historylearningtime,handled,learnedvalue,description 
+Step 1. Open the MGS client.
+
+Step 2. Download a flight for that aircraft (or replay an existing one — whatever your test setup uses to feed a new flight through analysis).
+
+Step 3. Wait for the download/analysis to finish.
+
+Step 4. In pgAdmin, run:
+
+sql
+SELECT handled, learned_value, applicable_flight_date
 FROM public.relearn_threshold_request
-ORDER BY startdate DESC	LIMIT 5;
-==============================================================
+WHERE id = '6cd11dc3-8031-46d4-8412-3c0e9c7b87d0';
 
+Step 5. Read the result:
 
-startflightdate,
-historylearningtime,  Colunm not available.
-
-ERROR:  column "startflightdate" does not exist
-LINE 1: SELECT id, startdate,startflightdate,historylearningtime,han...
-                             ^
-HINT:  Perhaps you meant to reference the column "relearn_threshold_request.start_flight_date". 
-
-SQL state: 42703
-Character: 22
-
-===========================================================================================
-
-Step 3: You	should	see	handled	=	false	and	historylearningtime	=	0.	T
-
-Column
-
-SELECT	id,	startdate,handled,learnedvalue,description FROM public.relearn_threshold_request
-ORDER BY startdate DESC	LIMIT 5;
-
-
-"6cd11dc3-8031-46d4-8412-3c0e9c7b87d0"	"2026-10-13 07:16:57.14"	false	11	"New  deviation   -  BENO"
-"94a6f51a-1417-4576-add6-c7b8613a71d3"	"2026-10-13 07:13:53.481"	false	0.3	"A/C Configuration update"
-"097b7d7d-6f58-4557-b44b-c777d2c56fdd"	"2026-10-13 07:13:53.481"	false	0.4	"A/C Configuration update"
-"61bbba44-b35f-49ea-a9e8-d660060a257c"	"2026-10-13 07:13:53.48"	false	0.3	"A/C Configuration update"
-"fccb49f7-b63c-4bf4-9d8f-e01cf230cc2c"	"2026-10-13 07:13:53.48"	false	0.5	"A/C Configuration update"
-
-===========================================================================================================
-
-
-Step 3: You	should	see	handled	=	false	  (Yes)
-
-
-and	historylearningtime	=	0.	T ( No Comumn)
-================================================================================================
-
-4:
-
-
-				
-				
+handled = true and learned_value no longer 11 → working. Done. Open the graph, the line sits at the new value.
+handled = false still → real bug. Send me the server log from that download.
