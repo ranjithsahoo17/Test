@@ -1,17 +1,367 @@
-Step 1. Open the MGS client.
+[2026-10-13T14:27:57.748648+05:30] [] [INFO] [NCLS-GFLAUNCHER-00005] [jakarta.enterprise.launcher] [tid: _ThreadID=1 _ThreadName=main] [levelValue: 800] [[
+  JVM invocation command line:
+C:\Program Files\Eclipse Adoptium\jdk-21.0.6+7\bin\java.exe
+-cp
+C:/glassfish7/glassfish/modules/glassfish.jar
+-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:9009
+-DWALL_CLOCK_START=2026-10-13T08:57:57.022961200Z
+-XX:+UnlockDiagnosticVMOptions
+-XX:NewRatio=2
+-Xmx512m
+--add-opens=java.base/java.io=ALL-UNNAMED
+--add-opens=java.base/java.lang=ALL-UNNAMED
+--add-opens=java.base/java.util=ALL-UNNAMED
+--add-opens=java.base/sun.net.www.protocol.jrt=ALL-UNNAMED
+--add-opens=java.naming/javax.naming.spi=ALL-UNNAMED
+--add-opens=java.rmi/sun.rmi.transport=ALL-UNNAMED
+--add-opens=jdk.management/com.sun.management.internal=ALL-UNNAMED
+--add-exports=java.naming/com.sun.jndi.ldap=ALL-UNNAMED
+--add-exports=java.base/jdk.internal.vm.annotation=ALL-UNNAMED
+--add-opens=java.base/jdk.internal.vm.annotation=ALL-UNNAMED
+-javaagent:C:/glassfish7/glassfish/lib/monitor/flashlight-agent.jar
+-Djava.awt.headless=true
+-Djdk.corba.allowOutputStreamSubclass=true
+-Djdk.tls.rejectClientInitiatedRenegotiation=true
+-Djavax.xml.accessExternalSchema=all
+-Djava.security.policy=C:\glassfish7\glassfish\domains\mgs/config/server.policy
+-Djava.security.auth.login.config=C:\glassfish7\glassfish\domains\mgs/config/login.conf
+-Dcom.sun.enterprise.security.httpsOutboundKeyAlias=s1as
+-Djavax.net.ssl.keyStore=C:\glassfish7\glassfish\domains\mgs/config/keystore.jks
+-Djavax.net.ssl.trustStore=C:\glassfish7\glassfish\domains\mgs/config/cacerts.jks
+-Djdbc.drivers=org.apache.derby.jdbc.ClientDriver
+-DANTLR_USE_DIRECT_CLASS_LOADING=true
+-Dcom.sun.enterprise.config.config_environment_factory_class=com.sun.enterprise.config.serverbeans.AppserverConfigEnvironmentFactory
+-Dorg.glassfish.additionalOSGiBundlesToStart=org.apache.felix.shell,org.apache.felix.gogo.runtime,org.apache.felix.gogo.shell,org.apache.felix.gogo.command,org.apache.felix.shell.remote,org.apache.felix.fileinstall
+-Dosgi.shell.telnet.port=6666
+-Dosgi.shell.telnet.maxconn=1
+-Dosgi.shell.telnet.ip=127.0.0.1
+-Dgosh.args=--nointeractive
+-Dfelix.fileinstall.dir=C:\glassfish7\glassfish/modules/autostart/
+-Dfelix.fileinstall.poll=5000
+-Dfelix.fileinstall.log.level=2
+-Dfelix.fileinstall.bundles.new.start=true
+-Dfelix.fileinstall.bundles.startTransient=true
+-Dfelix.fileinstall.disableConfigSave=false
+-Dorg.glassfish.gmbal.no.multipleUpperBoundsException=true
+-Dcom.ctc.wstx.returnNullForDefaultNamespace=true
+-Djdk.attach.allowAttachSelf=true
+-Dcom.sun.aas.instanceRoot=C:\glassfish7\glassfish\domains\mgs
+-Dcom.sun.aas.installRoot=C:\glassfish7\glassfish
+-Djava.library.path=C:/glassfish7/glassfish/lib;C:/Program Files/Eclipse Adoptium/jdk-21.0.6+7/bin;C:/Windows/Sun/Java/bin;C:/Windows/System32;C:/Windows;C:/Windows/System32/wbem;C:/Windows/System32/WindowsPowerShell/v1.0;C:/Windows/System32/OpenSSH;C:/apache-maven-3.9.9/bin;C:/glassfish7/glassfish/bin;C:/Program Files/TortoiseGit/bin;C:/Program Files/ServiceNow/agent-client-collector/bin;C:/Program Files/ServiceNow/agent-client-collector/embedded/bin;C:/Program Files/Git/cmd;C:/Program Files/nodejs;C:/Users/ranjitsa/AppData/Local/Microsoft/WindowsApps;C:/Users/ranjitsa/AppData/Roaming/npm;C:/sources-V2/mgs/maintenance-ground-station/mgs-ear
+com.sun.enterprise.glassfish.bootstrap.ASMain
+-upgrade
+false
+-domaindir
+C:/glassfish7/glassfish/domains/mgs
+-read-stdin
+true
+-asadmin-args
+--host,,,localhost,,,--port,,,4848,,,--user,,,admin,,,--passwordfile,,,C:/glassfish7/glassfish/password.txt,,,--secure=false,,,--terse=true,,,--echo=false,,,--interactive=false,,,start-domain,,,--verbose=false,,,--watchdog=false,,,--debug=true,,,--domaindir,,,C:\glassfish7\glassfish\domains,,,mgs
+-domainname
+mgs
+-instancename
+server
+-type
+DAS
+-verbose
+false
+-asadmin-classpath
+C:/glassfish7/glassfish/lib/client/appserver-cli.jar
+-debug
+true
+-asadmin-classname
+com.sun.enterprise.admin.cli.AdminMain]]
 
-Step 2. Download a flight for that aircraft (or replay an existing one — whatever your test setup uses to feed a new flight through analysis).
+[2026-10-13T14:28:06.382478+05:30] [GF 7.0.3] [INFO] [] [com.sun.enterprise.server.logging.LogManagerService] [tid: _ThreadID=1 _ThreadName=main] [levelValue: 800] [[
+  Using property file: C:\glassfish7\glassfish\domains\mgs\config\logging.properties]]
 
-Step 3. Wait for the download/analysis to finish.
+[2026-10-13T14:28:06.542700+05:30] [GF 7.0.3] [INFO] [NCLS-LOGGING-00009] [com.sun.enterprise.server.logging.LogManagerService] [tid: _ThreadID=1 _ThreadName=main] [levelValue: 800] [[
+  Running GlassFish Version: Eclipse GlassFish 7.0.3 (branch: master, commit: 8e1807085bf84d182c5344675a3fb243a5134037, timestamp: 2023-03-29T19:58:00Z)]]
 
-Step 4. In pgAdmin, run:
+[2026-10-13T14:28:07.029871+05:30] [GF 7.0.3] [INFO] [NCLS-SECURITY-01115] [jakarta.enterprise.system.core.security] [tid: _ThreadID=1 _ThreadName=main] [levelValue: 800] [[
+  Realm [admin-realm] of classtype [com.sun.enterprise.security.auth.realm.file.FileRealm] successfully created.]]
 
-sql
-SELECT handled, learned_value, applicable_flight_date
-FROM public.relearn_threshold_request
-WHERE id = '6cd11dc3-8031-46d4-8412-3c0e9c7b87d0';
+[2026-10-13T14:28:07.030885+05:30] [GF 7.0.3] [INFO] [NCLS-SECURITY-01115] [jakarta.enterprise.system.core.security] [tid: _ThreadID=1 _ThreadName=main] [levelValue: 800] [[
+  Realm [file] of classtype [com.sun.enterprise.security.auth.realm.file.FileRealm] successfully created.]]
 
-Step 5. Read the result:
+[2026-10-13T14:28:07.048619+05:30] [GF 7.0.3] [INFO] [NCLS-SECURITY-01115] [jakarta.enterprise.system.core.security] [tid: _ThreadID=1 _ThreadName=main] [levelValue: 800] [[
+  Realm [certificate] of classtype [com.sun.enterprise.security.auth.realm.certificate.CertificateRealm] successfully created.]]
 
-handled = true and learned_value no longer 11 → working. Done. Open the graph, the line sits at the new value.
-handled = false still → real bug. Send me the server log from that download.
+[2026-10-13T14:28:08.145625+05:30] [GF 7.0.3] [INFO] [NCLS-CORE-00087] [jakarta.enterprise.system.core] [tid: _ThreadID=1 _ThreadName=main] [levelValue: 800] [[
+  Grizzly Framework 4.0.0 started in: 244ms - bound to [/0.0.0.0:8080]]]
+
+[2026-10-13T14:28:08.216938+05:30] [GF 7.0.3] [INFO] [NCLS-CORE-00087] [jakarta.enterprise.system.core] [tid: _ThreadID=1 _ThreadName=main] [levelValue: 800] [[
+  Grizzly Framework 4.0.0 started in: 14ms - bound to [/0.0.0.0:8443]]]
+
+[2026-10-13T14:28:08.241048+05:30] [GF 7.0.3] [INFO] [NCLS-CORE-00087] [jakarta.enterprise.system.core] [tid: _ThreadID=1 _ThreadName=main] [levelValue: 800] [[
+  Grizzly Framework 4.0.0 started in: 11ms - bound to [/0.0.0.0:4848]]]
+
+[2026-10-13T14:28:08.457647+05:30] [GF 7.0.3] [INFO] [SEC-SVCS-00100] [jakarta.enterprise.security.services] [tid: _ThreadID=1 _ThreadName=main] [levelValue: 800] [[
+  Authorization Service has successfully initialized.]]
+
+[2026-10-13T14:28:08.652293+05:30] [GF 7.0.3] [INFO] [] [org.glassfish.ha.store.spi.BackingStoreFactoryRegistry] [tid: _ThreadID=1 _ThreadName=main] [levelValue: 800] [[
+  Registered org.glassfish.ha.store.adapter.cache.ShoalBackingStoreProxy for persistence-type = replicated in BackingStoreFactoryRegistry]]
+
+[2026-10-13T14:28:09.766059+05:30] [GF 7.0.3] [INFO] [NCLS-CORE-00087] [jakarta.enterprise.system.core] [tid: _ThreadID=1 _ThreadName=main] [levelValue: 800] [[
+  Grizzly Framework 4.0.0 started in: 13ms - bound to [/0.0.0.0:3700]]]
+
+[2026-10-13T14:28:09.940673+05:30] [GF 7.0.3] [INFO] [NCLS-CORE-00017] [jakarta.enterprise.system.core] [tid: _ThreadID=1 _ThreadName=main] [levelValue: 800] [[
+  Eclipse GlassFish 7.0.3 (branch: master, commit: 8e1807085bf84d182c5344675a3fb243a5134037, timestamp: 2023-03-29T19:58:00Z) startup time: Embedded (7,671 ms), startup services (3,722 ms), total (11,393 ms)]]
+
+[2026-10-13T14:28:09.940673+05:30] [GF 7.0.3] [INFO] [NCLS-CORE-00018] [jakarta.enterprise.system.core] [tid: _ThreadID=1 _ThreadName=main] [levelValue: 800] [[
+  Total startup time including CLI: 12,917 ms]]
+
+[2026-10-13T14:28:10.482631+05:30] [GF 7.0.3] [INFO] [NCLS-CORE-00087] [jakarta.enterprise.system.core] [tid: _ThreadID=1 _ThreadName=main] [levelValue: 800] [[
+  Grizzly Framework 4.0.0 started in: 5ms - bound to [/0.0.0.0:7676]]]
+
+[2026-10-13T14:28:11.005774+05:30] [GF 7.0.3] [INFO] [NCLS-JMX-00005] [jakarta.enterprise.system.jmx] [tid: _ThreadID=92 _ThreadName=Thread-9] [levelValue: 800] [[
+  JMXStartupService has started JMXConnector on JMXService URL service:jmx:rmi://LIN-PG02V9NE.corp.capgemini.com:8686/jndi/rmi://LIN-PG02V9NE.corp.capgemini.com:8686/jmxrmi]]
+
+[2026-10-13T14:28:13.560390+05:30] [GF 7.0.3] [INFO] [NCLS-REST-00001] [jakarta.enterprise.admin.rest] [tid: _ThreadID=65 _ThreadName=admin-listener(2)] [levelValue: 800] [[
+  Listening to REST requests at context: /command/domain.]]
+
+[2026-10-13T14:28:15.857105+05:30] [GF 7.0.3] [INFO] [] [com.sun.enterprise.server.logging.LogManagerService] [tid: _ThreadID=124 _ThreadName=pool-18-thread-1] [levelValue: 800] [[
+  Detected change of file: C:\glassfish7\glassfish\domains\mgs\config\logging.properties]]
+
+[2026-10-13T14:28:15.858617+05:30] [GF 7.0.3] [INFO] [] [com.sun.enterprise.server.logging.LogManagerService] [tid: _ThreadID=124 _ThreadName=pool-18-thread-1] [levelValue: 800] [[
+  Using property file: C:\glassfish7\glassfish\domains\mgs\config\logging.properties]]
+
+[2026-10-13T14:28:17.359309+05:30] [GF 7.0.3] [INFO] [] [com.sun.enterprise.server.logging.LogManagerService] [tid: _ThreadID=124 _ThreadName=pool-18-thread-1] [levelValue: 800] [[
+  Detected change of file: C:\glassfish7\glassfish\domains\mgs\config\logging.properties]]
+
+[2026-10-13T14:28:17.360313+05:30] [GF 7.0.3] [INFO] [] [com.sun.enterprise.server.logging.LogManagerService] [tid: _ThreadID=124 _ThreadName=pool-18-thread-1] [levelValue: 800] [[
+  Using property file: C:\glassfish7\glassfish\domains\mgs\config\logging.properties]]
+
+[2026-10-13T14:28:18.864736+05:30] [GF 7.0.3] [INFO] [] [com.sun.enterprise.server.logging.LogManagerService] [tid: _ThreadID=124 _ThreadName=pool-18-thread-1] [levelValue: 800] [[
+  Detected change of file: C:\glassfish7\glassfish\domains\mgs\config\logging.properties]]
+
+[2026-10-13T14:28:18.865738+05:30] [GF 7.0.3] [INFO] [] [com.sun.enterprise.server.logging.LogManagerService] [tid: _ThreadID=124 _ThreadName=pool-18-thread-1] [levelValue: 800] [[
+  Using property file: C:\glassfish7\glassfish\domains\mgs\config\logging.properties]]
+
+[2026-10-13T14:28:20.370473+05:30] [GF 7.0.3] [INFO] [] [com.sun.enterprise.server.logging.LogManagerService] [tid: _ThreadID=124 _ThreadName=pool-18-thread-1] [levelValue: 800] [[
+  Detected change of file: C:\glassfish7\glassfish\domains\mgs\config\logging.properties]]
+
+[2026-10-13T14:28:20.370473+05:30] [GF 7.0.3] [INFO] [] [com.sun.enterprise.server.logging.LogManagerService] [tid: _ThreadID=124 _ThreadName=pool-18-thread-1] [levelValue: 800] [[
+  Using property file: C:\glassfish7\glassfish\domains\mgs\config\logging.properties]]
+
+[2026-10-13T14:28:21.873801+05:30] [GF 7.0.3] [INFO] [] [com.sun.enterprise.server.logging.LogManagerService] [tid: _ThreadID=124 _ThreadName=pool-18-thread-1] [levelValue: 800] [[
+  Detected change of file: C:\glassfish7\glassfish\domains\mgs\config\logging.properties]]
+
+[2026-10-13T14:28:21.874798+05:30] [GF 7.0.3] [INFO] [] [com.sun.enterprise.server.logging.LogManagerService] [tid: _ThreadID=124 _ThreadName=pool-18-thread-1] [levelValue: 800] [[
+  Using property file: C:\glassfish7\glassfish\domains\mgs\config\logging.properties]]
+
+[2026-10-13T14:28:48.657436+05:30] [] [INFO] [NCLS-GFLAUNCHER-00005] [jakarta.enterprise.launcher] [tid: _ThreadID=1 _ThreadName=main] [levelValue: 800] [[
+  JVM invocation command line:
+C:\Program Files\Eclipse Adoptium\jdk-21.0.6+7\bin\java.exe
+-cp
+C:/glassfish7/glassfish/modules/glassfish.jar
+-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:9009
+-DWALL_CLOCK_START=2026-10-13T08:58:47.994946200Z
+-XX:+UnlockDiagnosticVMOptions
+-XX:NewRatio=2
+-Xmx512m
+--add-opens=java.base/java.io=ALL-UNNAMED
+--add-opens=java.base/java.lang=ALL-UNNAMED
+--add-opens=java.base/java.util=ALL-UNNAMED
+--add-opens=java.base/sun.net.www.protocol.jrt=ALL-UNNAMED
+--add-opens=java.naming/javax.naming.spi=ALL-UNNAMED
+--add-opens=java.rmi/sun.rmi.transport=ALL-UNNAMED
+--add-opens=jdk.management/com.sun.management.internal=ALL-UNNAMED
+--add-exports=java.naming/com.sun.jndi.ldap=ALL-UNNAMED
+--add-exports=java.base/jdk.internal.vm.annotation=ALL-UNNAMED
+--add-opens=java.base/jdk.internal.vm.annotation=ALL-UNNAMED
+-javaagent:C:/glassfish7/glassfish/lib/monitor/flashlight-agent.jar
+-Djava.awt.headless=true
+-Djdk.corba.allowOutputStreamSubclass=true
+-Djdk.tls.rejectClientInitiatedRenegotiation=true
+-Djavax.xml.accessExternalSchema=all
+-Djava.security.policy=C:\glassfish7\glassfish\domains\mgs/config/server.policy
+-Djava.security.auth.login.config=C:\glassfish7\glassfish\domains\mgs/config/login.conf
+-Dcom.sun.enterprise.security.httpsOutboundKeyAlias=s1as
+-Djavax.net.ssl.keyStore=C:\glassfish7\glassfish\domains\mgs/config/keystore.jks
+-Djavax.net.ssl.trustStore=C:\glassfish7\glassfish\domains\mgs/config/cacerts.jks
+-Djdbc.drivers=org.apache.derby.jdbc.ClientDriver
+-DANTLR_USE_DIRECT_CLASS_LOADING=true
+-Dcom.sun.enterprise.config.config_environment_factory_class=com.sun.enterprise.config.serverbeans.AppserverConfigEnvironmentFactory
+-Dorg.glassfish.additionalOSGiBundlesToStart=org.apache.felix.shell,org.apache.felix.gogo.runtime,org.apache.felix.gogo.shell,org.apache.felix.gogo.command,org.apache.felix.shell.remote,org.apache.felix.fileinstall
+-Dosgi.shell.telnet.port=6666
+-Dosgi.shell.telnet.maxconn=1
+-Dosgi.shell.telnet.ip=127.0.0.1
+-Dgosh.args=--nointeractive
+-Dfelix.fileinstall.dir=C:\glassfish7\glassfish/modules/autostart/
+-Dfelix.fileinstall.poll=5000
+-Dfelix.fileinstall.log.level=2
+-Dfelix.fileinstall.bundles.new.start=true
+-Dfelix.fileinstall.bundles.startTransient=true
+-Dfelix.fileinstall.disableConfigSave=false
+-Dorg.glassfish.gmbal.no.multipleUpperBoundsException=true
+-Dcom.ctc.wstx.returnNullForDefaultNamespace=true
+-Djdk.attach.allowAttachSelf=true
+-Dcom.sun.aas.instanceRoot=C:\glassfish7\glassfish\domains\mgs
+-Dcom.sun.aas.installRoot=C:\glassfish7\glassfish
+-Djava.library.path=C:/glassfish7/glassfish/lib;C:/Program Files/Eclipse Adoptium/jdk-21.0.6+7/bin;C:/Windows/Sun/Java/bin;C:/Windows/System32;C:/Windows;C:/Windows/System32/wbem;C:/Windows/System32/WindowsPowerShell/v1.0;C:/Windows/System32/OpenSSH;C:/apache-maven-3.9.9/bin;C:/glassfish7/glassfish/bin;C:/Program Files/TortoiseGit/bin;C:/Program Files/ServiceNow/agent-client-collector/bin;C:/Program Files/ServiceNow/agent-client-collector/embedded/bin;C:/Program Files/Git/cmd;C:/Program Files/nodejs;C:/Users/ranjitsa/AppData/Local/Microsoft/WindowsApps;C:/Users/ranjitsa/AppData/Roaming/npm;C:/sources-V2/mgs/maintenance-ground-station/mgs-ear
+com.sun.enterprise.glassfish.bootstrap.ASMain
+-upgrade
+false
+-domaindir
+C:/glassfish7/glassfish/domains/mgs
+-read-stdin
+true
+-asadmin-args
+--host,,,localhost,,,--port,,,4848,,,--user,,,admin,,,--passwordfile,,,C:/glassfish7/glassfish/password.txt,,,--secure=false,,,--terse=true,,,--echo=false,,,--interactive=false,,,start-domain,,,--verbose=false,,,--watchdog=false,,,--debug=true,,,--domaindir,,,C:\glassfish7\glassfish\domains,,,mgs
+-domainname
+mgs
+-instancename
+server
+-type
+DAS
+-verbose
+false
+-asadmin-classpath
+C:/glassfish7/glassfish/lib/client/appserver-cli.jar
+-debug
+true
+-asadmin-classname
+com.sun.enterprise.admin.cli.AdminMain]]
+
+[2026-10-13T14:28:54.552211+05:30] [GF 7.0.3] [INFO] [] [com.sun.enterprise.server.logging.LogManagerService] [tid: _ThreadID=1 _ThreadName=main] [levelValue: 800] [[
+  Using property file: C:\glassfish7\glassfish\domains\mgs\config\logging.properties]]
+
+[2026-10-13T14:28:54.662992+05:30] [GF 7.0.3] [INFO] [NCLS-LOGGING-00009] [com.sun.enterprise.server.logging.LogManagerService] [tid: _ThreadID=1 _ThreadName=main] [levelValue: 800] [[
+  Running GlassFish Version: Eclipse GlassFish 7.0.3 (branch: master, commit: 8e1807085bf84d182c5344675a3fb243a5134037, timestamp: 2023-03-29T19:58:00Z)]]
+
+[2026-10-13T14:29:32.466309+05:30] [GF 7.0.3] [WARNING] [] [] [tid: _ThreadID=116 _ThreadName=pool-13-thread-1] [levelValue: 900] [[
+  Unprocessed event : UnprocessedChangeEvent{PropertyName=jvm-options, OldValue = [-Djava.awt.headless=true, -Djdk.corba.allowOutputStreamSubclass=true, -Djdk.tls.rejectClientInitiatedRenegotiation=true, -Djavax.xml.accessExternalSchema=all, -Djavax.management.builder.initial=com.sun.enterprise.v3.admin.AppServerMBeanServerBuilder, -XX:+UnlockDiagnosticVMOptions, -Djava.security.policy=${com.sun.aas.instanceRoot}/config/server.policy, -Djava.security.auth.login.config=${com.sun.aas.instanceRoot}/config/login.conf, -Dcom.sun.enterprise.security.httpsOutboundKeyAlias=s1as, -Xmx512m, -Djavax.net.ssl.keyStore=${com.sun.aas.instanceRoot}/config/keystore.jks, -Djavax.net.ssl.trustStore=${com.sun.aas.instanceRoot}/config/cacerts.jks, -Djdbc.drivers=org.apache.derby.jdbc.ClientDriver, -DANTLR_USE_DIRECT_CLASS_LOADING=true, -Dcom.sun.enterprise.config.config_environment_factory_class=com.sun.enterprise.config.serverbeans.AppserverConfigEnvironmentFactory, -Dorg.glassfish.additionalOSGiBundlesToStart=org.apache.felix.shell,org.apache.felix.gogo.runtime,org.apache.felix.gogo.shell,org.apache.felix.gogo.command,org.apache.felix.shell.remote,org.apache.felix.fileinstall, -Dosgi.shell.telnet.port=6666, -Dosgi.shell.telnet.maxconn=1, -Dosgi.shell.telnet.ip=127.0.0.1, -Dgosh.args=--nointeractive, -Dfelix.fileinstall.dir=${com.sun.aas.installRoot}/modules/autostart/, -Dfelix.fileinstall.poll=5000, -Dfelix.fileinstall.log.level=2, -Dfelix.fileinstall.bundles.new.start=true, -Dfelix.fileinstall.bundles.startTransient=true, -Dfelix.fileinstall.disableConfigSave=false, -Dorg.glassfish.gmbal.no.multipleUpperBoundsException=true, -Dcom.ctc.wstx.returnNullForDefaultNamespace=true, -XX:NewRatio=2, --add-opens=java.base/java.io=ALL-UNNAMED, --add-opens=java.base/java.lang=ALL-UNNAMED, --add-opens=java.base/java.util=ALL-UNNAMED, --add-opens=java.base/sun.net.www.protocol.jrt=ALL-UNNAMED, --add-opens=java.naming/javax.naming.spi=ALL-UNNAMED, --add-opens=java.rmi/sun.rmi.transport=ALL-UNNAMED, --add-opens=jdk.management/com.sun.management.internal=ALL-UNNAMED, --add-exports=java.naming/com.sun.jndi.ldap=ALL-UNNAMED, --add-exports=java.base/jdk.internal.vm.annotation=ALL-UNNAMED, --add-opens=java.base/jdk.internal.vm.annotation=ALL-UNNAMED, -Djdk.attach.allowAttachSelf=true], NewValue = [-Djava.awt.headless=true, -Djdk.corba.allowOutputStreamSubclass=true, -Djdk.tls.rejectClientInitiatedRenegotiation=true, -Djavax.xml.accessExternalSchema=all, -Djavax.management.builder.initial=com.sun.enterprise.v3.admin.AppServerMBeanServerBuilder, -XX:+UnlockDiagnosticVMOptions, -Djava.security.policy=${com.sun.aas.instanceRoot}/config/server.policy, -Djava.security.auth.login.config=${com.sun.aas.instanceRoot}/config/login.conf, -Dcom.sun.enterprise.security.httpsOutboundKeyAlias=s1as, -Djavax.net.ssl.keyStore=${com.sun.aas.instanceRoot}/config/keystore.jks, -Djavax.net.ssl.trustStore=${com.sun.aas.instanceRoot}/config/cacerts.jks, -Djdbc.drivers=org.apache.derby.jdbc.ClientDriver, -DANTLR_USE_DIRECT_CLASS_LOADING=true, -Dcom.sun.enterprise.config.config_environment_factory_class=com.sun.enterprise.config.serverbeans.AppserverConfigEnvironmentFactory, -Dorg.glassfish.additionalOSGiBundlesToStart=org.apache.felix.shell,org.apache.felix.gogo.runtime,org.apache.felix.gogo.shell,org.apache.felix.gogo.command,org.apache.felix.shell.remote,org.apache.felix.fileinstall, -Dosgi.shell.telnet.port=6666, -Dosgi.shell.telnet.maxconn=1, -Dosgi.shell.telnet.ip=127.0.0.1, -Dgosh.args=--nointeractive, -Dfelix.fileinstall.dir=${com.sun.aas.installRoot}/modules/autostart/, -Dfelix.fileinstall.poll=5000, -Dfelix.fileinstall.log.level=2, -Dfelix.fileinstall.bundles.new.start=true, -Dfelix.fileinstall.bundles.startTransient=true, -Dfelix.fileinstall.disableConfigSave=false, -Dorg.glassfish.gmbal.no.multipleUpperBoundsException=true, -Dcom.ctc.wstx.returnNullForDefaultNamespace=true, -XX:NewRatio=2, --add-opens=java.base/java.io=ALL-UNNAMED, --add-opens=java.base/java.lang=ALL-UNNAMED, --add-opens=java.base/java.util=ALL-UNNAMED, --add-opens=java.base/sun.net.www.protocol.jrt=ALL-UNNAMED, --add-opens=java.naming/javax.naming.spi=ALL-UNNAMED, --add-opens=java.rmi/sun.rmi.transport=ALL-UNNAMED, --add-opens=jdk.management/com.sun.management.internal=ALL-UNNAMED, --add-exports=java.naming/com.sun.jndi.ldap=ALL-UNNAMED, --add-exports=java.base/jdk.internal.vm.annotation=ALL-UNNAMED, --add-opens=java.base/jdk.internal.vm.annotation=ALL-UNNAMED, -Djdk.attach.allowAttachSelf=true], Source = GlassFishConfigBean.com.sun.enterprise.config.serverbeans.JavaConfig}, reason = Removal of: -Xmx512m cannot take effect without server restart, when = 1791881972461]]
+
+[2026-10-13T14:29:33.978580+05:30] [GF 7.0.3] [WARNING] [] [] [tid: _ThreadID=133 _ThreadName=pool-20-thread-1] [levelValue: 900] [[
+  Unprocessed event : UnprocessedChangeEvent{PropertyName=jvm-options, OldValue = [-Djava.awt.headless=true, -Djdk.corba.allowOutputStreamSubclass=true, -Djdk.tls.rejectClientInitiatedRenegotiation=true, -Djavax.xml.accessExternalSchema=all, -Djavax.management.builder.initial=com.sun.enterprise.v3.admin.AppServerMBeanServerBuilder, -XX:+UnlockDiagnosticVMOptions, -Djava.security.policy=${com.sun.aas.instanceRoot}/config/server.policy, -Djava.security.auth.login.config=${com.sun.aas.instanceRoot}/config/login.conf, -Dcom.sun.enterprise.security.httpsOutboundKeyAlias=s1as, -Djavax.net.ssl.keyStore=${com.sun.aas.instanceRoot}/config/keystore.jks, -Djavax.net.ssl.trustStore=${com.sun.aas.instanceRoot}/config/cacerts.jks, -Djdbc.drivers=org.apache.derby.jdbc.ClientDriver, -DANTLR_USE_DIRECT_CLASS_LOADING=true, -Dcom.sun.enterprise.config.config_environment_factory_class=com.sun.enterprise.config.serverbeans.AppserverConfigEnvironmentFactory, -Dorg.glassfish.additionalOSGiBundlesToStart=org.apache.felix.shell,org.apache.felix.gogo.runtime,org.apache.felix.gogo.shell,org.apache.felix.gogo.command,org.apache.felix.shell.remote,org.apache.felix.fileinstall, -Dosgi.shell.telnet.port=6666, -Dosgi.shell.telnet.maxconn=1, -Dosgi.shell.telnet.ip=127.0.0.1, -Dgosh.args=--nointeractive, -Dfelix.fileinstall.dir=${com.sun.aas.installRoot}/modules/autostart/, -Dfelix.fileinstall.poll=5000, -Dfelix.fileinstall.log.level=2, -Dfelix.fileinstall.bundles.new.start=true, -Dfelix.fileinstall.bundles.startTransient=true, -Dfelix.fileinstall.disableConfigSave=false, -Dorg.glassfish.gmbal.no.multipleUpperBoundsException=true, -Dcom.ctc.wstx.returnNullForDefaultNamespace=true, -XX:NewRatio=2, --add-opens=java.base/java.io=ALL-UNNAMED, --add-opens=java.base/java.lang=ALL-UNNAMED, --add-opens=java.base/java.util=ALL-UNNAMED, --add-opens=java.base/sun.net.www.protocol.jrt=ALL-UNNAMED, --add-opens=java.naming/javax.naming.spi=ALL-UNNAMED, --add-opens=java.rmi/sun.rmi.transport=ALL-UNNAMED, --add-opens=jdk.management/com.sun.management.internal=ALL-UNNAMED, --add-exports=java.naming/com.sun.jndi.ldap=ALL-UNNAMED, --add-exports=java.base/jdk.internal.vm.annotation=ALL-UNNAMED, --add-opens=java.base/jdk.internal.vm.annotation=ALL-UNNAMED, -Djdk.attach.allowAttachSelf=true], NewValue = [-Djava.awt.headless=true, -Djdk.corba.allowOutputStreamSubclass=true, -Djdk.tls.rejectClientInitiatedRenegotiation=true, -Djavax.xml.accessExternalSchema=all, -Djavax.management.builder.initial=com.sun.enterprise.v3.admin.AppServerMBeanServerBuilder, -XX:+UnlockDiagnosticVMOptions, -Djava.security.policy=${com.sun.aas.instanceRoot}/config/server.policy, -Djava.security.auth.login.config=${com.sun.aas.instanceRoot}/config/login.conf, -Dcom.sun.enterprise.security.httpsOutboundKeyAlias=s1as, -Djavax.net.ssl.keyStore=${com.sun.aas.instanceRoot}/config/keystore.jks, -Djavax.net.ssl.trustStore=${com.sun.aas.instanceRoot}/config/cacerts.jks, -Djdbc.drivers=org.apache.derby.jdbc.ClientDriver, -DANTLR_USE_DIRECT_CLASS_LOADING=true, -Dcom.sun.enterprise.config.config_environment_factory_class=com.sun.enterprise.config.serverbeans.AppserverConfigEnvironmentFactory, -Dorg.glassfish.additionalOSGiBundlesToStart=org.apache.felix.shell,org.apache.felix.gogo.runtime,org.apache.felix.gogo.shell,org.apache.felix.gogo.command,org.apache.felix.shell.remote,org.apache.felix.fileinstall, -Dosgi.shell.telnet.port=6666, -Dosgi.shell.telnet.maxconn=1, -Dosgi.shell.telnet.ip=127.0.0.1, -Dgosh.args=--nointeractive, -Dfelix.fileinstall.dir=${com.sun.aas.installRoot}/modules/autostart/, -Dfelix.fileinstall.poll=5000, -Dfelix.fileinstall.log.level=2, -Dfelix.fileinstall.bundles.new.start=true, -Dfelix.fileinstall.bundles.startTransient=true, -Dfelix.fileinstall.disableConfigSave=false, -Dorg.glassfish.gmbal.no.multipleUpperBoundsException=true, -Dcom.ctc.wstx.returnNullForDefaultNamespace=true, -XX:NewRatio=2, --add-opens=java.base/java.io=ALL-UNNAMED, --add-opens=java.base/java.lang=ALL-UNNAMED, --add-opens=java.base/java.util=ALL-UNNAMED, --add-opens=java.base/sun.net.www.protocol.jrt=ALL-UNNAMED, --add-opens=java.naming/javax.naming.spi=ALL-UNNAMED, --add-opens=java.rmi/sun.rmi.transport=ALL-UNNAMED, --add-opens=jdk.management/com.sun.management.internal=ALL-UNNAMED, --add-exports=java.naming/com.sun.jndi.ldap=ALL-UNNAMED, --add-exports=java.base/jdk.internal.vm.annotation=ALL-UNNAMED, --add-opens=java.base/jdk.internal.vm.annotation=ALL-UNNAMED, -Djdk.attach.allowAttachSelf=true, -Xmx1g], Source = GlassFishConfigBean.com.sun.enterprise.config.serverbeans.JavaConfig}, reason = Addition of: '-Xmx1g' cannot take effect without server restart, when = 1791881973978]]
+
+[2026-10-13T14:29:52.735768+05:30] [] [INFO] [NCLS-GFLAUNCHER-00005] [jakarta.enterprise.launcher] [tid: _ThreadID=1 _ThreadName=main] [levelValue: 800] [[
+  JVM invocation command line:
+C:\Program Files\Eclipse Adoptium\jdk-21.0.6+7\bin\java.exe
+-cp
+C:/glassfish7/glassfish/modules/glassfish.jar
+-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:9009
+-DWALL_CLOCK_START=2026-10-13T08:59:52.068165800Z
+-XX:+UnlockDiagnosticVMOptions
+-XX:NewRatio=2
+-Xmx1g
+--add-opens=java.base/java.io=ALL-UNNAMED
+--add-opens=java.base/java.lang=ALL-UNNAMED
+--add-opens=java.base/java.util=ALL-UNNAMED
+--add-opens=java.base/sun.net.www.protocol.jrt=ALL-UNNAMED
+--add-opens=java.naming/javax.naming.spi=ALL-UNNAMED
+--add-opens=java.rmi/sun.rmi.transport=ALL-UNNAMED
+--add-opens=jdk.management/com.sun.management.internal=ALL-UNNAMED
+--add-exports=java.naming/com.sun.jndi.ldap=ALL-UNNAMED
+--add-exports=java.base/jdk.internal.vm.annotation=ALL-UNNAMED
+--add-opens=java.base/jdk.internal.vm.annotation=ALL-UNNAMED
+-javaagent:C:/glassfish7/glassfish/lib/monitor/flashlight-agent.jar
+-Djava.awt.headless=true
+-Djdk.corba.allowOutputStreamSubclass=true
+-Djdk.tls.rejectClientInitiatedRenegotiation=true
+-Djavax.xml.accessExternalSchema=all
+-Djava.security.policy=C:\glassfish7\glassfish\domains\mgs/config/server.policy
+-Djava.security.auth.login.config=C:\glassfish7\glassfish\domains\mgs/config/login.conf
+-Dcom.sun.enterprise.security.httpsOutboundKeyAlias=s1as
+-Djavax.net.ssl.keyStore=C:\glassfish7\glassfish\domains\mgs/config/keystore.jks
+-Djavax.net.ssl.trustStore=C:\glassfish7\glassfish\domains\mgs/config/cacerts.jks
+-Djdbc.drivers=org.apache.derby.jdbc.ClientDriver
+-DANTLR_USE_DIRECT_CLASS_LOADING=true
+-Dcom.sun.enterprise.config.config_environment_factory_class=com.sun.enterprise.config.serverbeans.AppserverConfigEnvironmentFactory
+-Dorg.glassfish.additionalOSGiBundlesToStart=org.apache.felix.shell,org.apache.felix.gogo.runtime,org.apache.felix.gogo.shell,org.apache.felix.gogo.command,org.apache.felix.shell.remote,org.apache.felix.fileinstall
+-Dosgi.shell.telnet.port=6666
+-Dosgi.shell.telnet.maxconn=1
+-Dosgi.shell.telnet.ip=127.0.0.1
+-Dgosh.args=--nointeractive
+-Dfelix.fileinstall.dir=C:\glassfish7\glassfish/modules/autostart/
+-Dfelix.fileinstall.poll=5000
+-Dfelix.fileinstall.log.level=2
+-Dfelix.fileinstall.bundles.new.start=true
+-Dfelix.fileinstall.bundles.startTransient=true
+-Dfelix.fileinstall.disableConfigSave=false
+-Dorg.glassfish.gmbal.no.multipleUpperBoundsException=true
+-Dcom.ctc.wstx.returnNullForDefaultNamespace=true
+-Djdk.attach.allowAttachSelf=true
+-Duser.timezone=GMT
+-Dlog4j2.debug=true
+-Dcom.sun.aas.instanceRoot=C:\glassfish7\glassfish\domains\mgs
+-Dcom.sun.aas.installRoot=C:\glassfish7\glassfish
+-Djava.library.path=C:/glassfish7/glassfish/lib;C:/Program Files/Eclipse Adoptium/jdk-21.0.6+7/bin;C:/Windows/Sun/Java/bin;C:/Windows/System32;C:/Windows;C:/Windows/System32/wbem;C:/Windows/System32/WindowsPowerShell/v1.0;C:/Windows/System32/OpenSSH;C:/apache-maven-3.9.9/bin;C:/glassfish7/glassfish/bin;C:/Program Files/TortoiseGit/bin;C:/Program Files/ServiceNow/agent-client-collector/bin;C:/Program Files/ServiceNow/agent-client-collector/embedded/bin;C:/Program Files/Git/cmd;C:/Program Files/nodejs;C:/Users/ranjitsa/AppData/Local/Microsoft/WindowsApps;C:/Users/ranjitsa/AppData/Roaming/npm;C:/sources-V2/mgs/maintenance-ground-station/mgs-ear
+com.sun.enterprise.glassfish.bootstrap.ASMain
+-upgrade
+false
+-domaindir
+C:/glassfish7/glassfish/domains/mgs
+-read-stdin
+true
+-asadmin-args
+--host,,,localhost,,,--port,,,4848,,,--user,,,admin,,,--passwordfile,,,C:/glassfish7/glassfish/password.txt,,,--secure=false,,,--terse=false,,,--echo=false,,,--interactive=false,,,start-domain,,,--verbose=false,,,--watchdog=false,,,--debug=true,,,--domaindir,,,C:\glassfish7\glassfish\domains,,,mgs
+-domainname
+mgs
+-instancename
+server
+-type
+DAS
+-verbose
+false
+-asadmin-classpath
+C:/glassfish7/glassfish/lib/client/appserver-cli.jar
+-debug
+true
+-asadmin-classname
+com.sun.enterprise.admin.cli.AdminMain]]
+
+[2026-10-13T09:00:00.981284Z] [GF 7.0.3] [INFO] [] [com.sun.enterprise.server.logging.LogManagerService] [tid: _ThreadID=1 _ThreadName=main] [levelValue: 800] [[
+  Using property file: C:\glassfish7\glassfish\domains\mgs\config\logging.properties]]
+
+[2026-10-13T09:00:01.204757Z] [GF 7.0.3] [INFO] [NCLS-LOGGING-00009] [com.sun.enterprise.server.logging.LogManagerService] [tid: _ThreadID=1 _ThreadName=main] [levelValue: 800] [[
+  Running GlassFish Version: Eclipse GlassFish 7.0.3 (branch: master, commit: 8e1807085bf84d182c5344675a3fb243a5134037, timestamp: 2023-03-29T19:58:00Z)]]
+
+[2026-10-13T09:00:24.536750Z] [GF 7.0.3] [SEVERE] [] [jakarta.enterprise.system.tools.deployment.common] [tid: _ThreadID=101 _ThreadName=deployment-jar-scanner] [levelValue: 1000] [[
+  Exception while visiting META-INF/versions/22/com/fasterxml/jackson/core/internal/shaded/fdp/v2_18_1/FastDoubleSwar.class of size 8346
+java.lang.IllegalArgumentException: Unsupported class file major version 66
+	at org.objectweb.asm.ClassReader.<init>(ClassReader.java:199)
+	at org.objectweb.asm.ClassReader.<init>(ClassReader.java:180)
+	at org.objectweb.asm.ClassReader.<init>(ClassReader.java:166)
+	at org.objectweb.asm.ClassReader.<init>(ClassReader.java:287)
+	at org.glassfish.hk2.classmodel.reflect.Parser$5.on(Parser.java:347)
+	at com.sun.enterprise.v3.server.ReadableArchiveScannerAdapter.handleEntry(ReadableArchiveScannerAdapter.java:137)
+	at com.sun.enterprise.v3.server.ReadableArchiveScannerAdapter.onSelectedEntries(ReadableArchiveScannerAdapter.java:100)
+	at org.glassfish.hk2.classmodel.reflect.Parser.doJob(Parser.java:333)
+	at org.glassfish.hk2.classmodel.reflect.Parser$3.call(Parser.java:292)
+	at org.glassfish.hk2.classmodel.reflect.Parser$3.call(Parser.java:281)
+	at java.base/java.util.concurrent.FutureTask.run(FutureTask.java:317)
+	at java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1144)
+	at java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:642)
+	at java.base/java.lang.Thread.run(Thread.java:1583)
+]]
+
+[2026-10-13T09:00:24.541755Z] [GF 7.0.3] [SEVERE] [] [jakarta.enterprise.system.tools.deployment.common] [tid: _ThreadID=101 _ThreadName=deployment-jar-scanner] [levelValue: 1000] [[
+  Exception while visiting META-INF/versions/22/com/fasterxml/jackson/core/internal/shaded/fdp/v2_18_1/FastIntegerMath.class of size 5130
+java.lang.IllegalArgumentException: Unsupported class file major version 66
+	at org.objectweb.asm.ClassReader.<init>(ClassReader.java:199)
+	at org.objectweb.asm.ClassReader.<init>(ClassReader.java:180)
+	at org.objectweb.asm.ClassReader.<init>(ClassReader.java:166)
+	at org.objectweb.asm.ClassReader.<init>(ClassReader.java:287)
+	at org.glassfish.hk2.classmodel.reflect.Parser$5.on(Parser.java:347)
+	at com.sun.enterprise.v3.server.ReadableArchiveScannerAdapter.handleEntry(ReadableArchiveScannerAdapter.java:137)
+	at com.sun.enterprise.v3.server.ReadableArchiveScannerAdapter.onSelectedEntries(ReadableArchiveScannerAdapter.java:100)
+	at org.glassfish.hk2.classmodel.reflect.Parser.doJob(Parser.java:333)
+	at org.glassfish.hk2.classmodel.reflect.Parser$3.call(Parser.java:292)
+	at org.glassfish.hk2.classmodel.reflect.Parser$3.call(Parser.java:281)
+	at java.base/java.util.concurrent.FutureTask.run(FutureTask.java:317)
+	at java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1144)
+	at java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:642)
+	at java.base/java.lang.Thread.run(Thread.java:1583)
+]]
+
+[2026-10-13T09:01:18.218150Z] [GF 7.0.3] [INFO] [] [org.eclipse.persistence.session./file:/C:/glassfish7/glassfish/domains/mgs/applications/ejb-timer-service-app/WEB-INF/classes/___EJB__Timer__App] [tid: _ThreadID=54 _ThreadName=admin-listener(5)] [levelValue: 800] [[
+  EclipseLink, version: Eclipse Persistence Services - 4.0.1.v202302241130]]
+
+[2026-10-13T09:03:04.691605Z] [GF 7.0.3] [INFO] [] [org.glassfish.admingui] [tid: _ThreadID=54 _ThreadName=admin-listener(5)] [levelValue: 800] [[
+  Redirecting to &#x2f;index.jsf]]
+
+[2026-10-13T09:03:04.999659Z] [GF 7.0.3] [INFO] [] [org.glassfish.admingui] [tid: _ThreadID=52 _ThreadName=admin-listener(3)] [levelValue: 800] [[
+  Admin Console: Initializing Session Attributes...]]
+
