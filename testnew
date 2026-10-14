@@ -1,1362 +1,1118 @@
 
-package com.eurocopter.mgs.presentation.configuration.preferences.healthalarms;
+package com.eurocopter.mgs.health.presentation.chart;
 
-public enum WCModelDisplayProperty {
-   // BCR-6605 check box remove.
-   COMPONENT("MonitoredComponents", 200), SEVERITY("Severity", 60), LEVEL("ThresholdLevel", 60), TYPE("Type", 80), VALUE("ThresholdValue", 50), MIN_VALUE("LearningThresholdMinValue",
-         50), MAX_VALUE("LearningThresholdMaxValue", 50), LEARN_TIME("healthAlarmPageColumn8", 50), WORKCARD_REF("WorkCardRef", 100), MIN_DEV("LearningThresholdMinDev", 50), MEAN_MULT_FACTOR(
-               "LearningThresholdMeanMultFactor", 50), DEV_COEF("LearningThresholdDevCoef",
-                     50), NB_POINTS("NbSuccessivePtForAlarmRaising", 50), MAX_TIME_WO_ACQ("MaxTimeWithoutAcquisition", 60), FILTERING_LAW("FilteringLaw", 100), TE("TeReference", 120);
-
-   private final String key;
-
-   private final int columnSize;
-
-   WCModelDisplayProperty(String key, int columnSize) {
-      this.key = key;
-      this.columnSize = columnSize;
-   }
-
-   public String getKey() {
-      return key;
-   }
-
-   public int getColumnSize() {
-      return columnSize;
-   }
-
-   public static WCModelDisplayProperty fromKey(String property) {
-      for (WCModelDisplayProperty prop : values()) {
-         if (prop.getKey().equals(property)) {
-            return prop;
-         }
-      }
-      return null;
-   }
-}
-================================================================
-
-
-/***************************************/
-/** Copyright Airbus Helicopters 2019 **/
-/***************************************/
-package com.eurocopter.mgs.download.analysis.health.algo;
-
+import java.awt.Color;
 import java.util.ArrayList;
-import java.util.List;
-
-import com.eurocopter.mgs.download.analysis.health.impl.HealthIndicatorValueAdapter;
-
-public final class FilteringAlgorithm {
-
-   /**
-    * Default constructor. Builds a FilteringAlgorithm.
-    */
-   private FilteringAlgorithm() {
-      // Nothing to do
-   }
-
-   public static List<HealthIndicatorValueAdapter> filterHealthIndicatorValues(List<HealthIndicatorValueAdapter> values, int maxPointsPerHour) {
-      final List<HealthIndicatorValueAdapter> res = new ArrayList<>();
-
-      if (values.size() <= maxPointsPerHour) {
-         return values;
-      }
-
-      if (maxPointsPerHour == 1) {
-         res.add(values.get(values.size() - 1));
-         return res;
-      }
-
-      res.add(values.get(0));
-      for (int i = 2; i <= maxPointsPerHour; i++) {
-         final int minIndex = maxPointsPerHour + (i * (i - 1)) / 2;
-         final int maxIndex = maxPointsPerHour + (i * (i + 1)) / 2 - 1;
-         res.add(values.get(getIndex(i, minIndex, maxIndex, values.size(), i == maxPointsPerHour) - 1));
-      }
-      return res;
-   }
-
-   private static int getIndex(int i, int min, int max, int valueCount, boolean lastIndex) {
-      if (valueCount < min) {
-         return i;
-      }
-      if (lastIndex) {
-         return valueCount;
-      }
-      return Math.min(max, valueCount);
-   }
-
-}
-
-
-=================================================================================
-
-
-package com.eurocopter.mgs.download.analysis.health.impl.filtering;
-
-import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.Comparator;
+import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Properties;
 import java.util.Set;
-
-import com.eurocopter.mgs.datamodel.health.monitoring.FilteringLaw;
-import com.eurocopter.mgs.datamodel.health.monitoring.HealthMonitoringConfiguration;
-import com.eurocopter.mgs.datamodel.health.monitoring.Indicator;
-import com.eurocopter.mgs.datamodel.health.monitoring.IndicatorConfiguration;
-import com.eurocopter.mgs.download.analysis.health.algo.FilteringAlgorithm;
-import com.eurocopter.mgs.download.analysis.health.data.IHealthIndicatorValueAcquisition;
-import com.eurocopter.mgs.download.analysis.health.impl.HealthIndicatorValueAdapter;
-
-public abstract class AbstractFilteringRuleAlgorithm<K> implements IFilteringRuleAlgorithm {
-
-   private static final Comparator<HealthIndicatorValueAdapter> INDICATOR_VALUE_COMPARATOR = Comparator.comparing(HealthIndicatorValueAdapter::getAcquisitionDate);
-   private final Map<K, Map<IndicatorConfiguration, List<HealthIndicatorValueAdapter>>> healthIndicatorValueAdapterByFileIdAndIndConf;
-
-   public AbstractFilteringRuleAlgorithm() {
-      this.healthIndicatorValueAdapterByFileIdAndIndConf = new HashMap<>();
-   }
-
-   protected abstract boolean isFilteringLawApplicable(List<HealthIndicatorValueAdapter> indicatorValueAdapters);
-
-   protected abstract K getKey(IHealthIndicatorValueAcquisition acquisition);
-
-   protected abstract int getMaxPointsAtKey(K key, int configuredMaxPointsPerHour);
-
-   protected abstract void applyFilteringLawAlgorithm(List<HealthIndicatorValueAdapter> values, Set<FilteringLaw> filteringLaws, String indicatorFilteringLaw);
-
-   @Override
-   public void recordAcquisition(IHealthIndicatorValueAcquisition acquisition, String indicatorId, Indicator indicator, IndicatorConfiguration indicatorConfiguration) {
-      K key = getKey(acquisition);
-      final Map<IndicatorConfiguration, List<HealthIndicatorValueAdapter>> indicatorsInFile = healthIndicatorValueAdapterByFileIdAndIndConf.computeIfAbsent(key, k -> new HashMap<>());
-      final List<HealthIndicatorValueAdapter> indicatorValues = indicatorsInFile.computeIfAbsent(indicatorConfiguration, k -> new ArrayList<>());
-      indicatorValues.add(new HealthIndicatorValueAdapter(acquisition, indicatorConfiguration, indicatorId, indicator));
-   }
-
-   @Override
-   public List<HealthIndicatorValueAdapter> getFilteredValues(HealthMonitoringConfiguration healthConfiguration) {
-      for (Map<IndicatorConfiguration, List<HealthIndicatorValueAdapter>> indicators : healthIndicatorValueAdapterByFileIdAndIndConf.values()) {
-         for (Entry<IndicatorConfiguration, List<HealthIndicatorValueAdapter>> entry2 : indicators.entrySet()) {
-            final IndicatorConfiguration indicatorConfiguration = entry2.getKey();
-            final Set<FilteringLaw> filteringLaws = healthConfiguration.getFilteringLaws();
-            List<HealthIndicatorValueAdapter> indicatorValueAdapters = entry2.getValue();
-            if (indicatorConfiguration.getFilteringLaw() != null && isFilteringLawApplicable(indicatorValueAdapters)) {
-               applyFilteringLawAlgorithm(indicatorValueAdapters, filteringLaws, indicatorConfiguration.getFilteringLaw());
-            }
-         }
-      }
-
-      final List<HealthIndicatorValueAdapter> valuesToSave = new ArrayList<>();
-      for (Map.Entry<K, Map<IndicatorConfiguration, List<HealthIndicatorValueAdapter>>> indicatorsEntry : healthIndicatorValueAdapterByFileIdAndIndConf.entrySet()) {
-         K key = indicatorsEntry.getKey();
-         Map<IndicatorConfiguration, List<HealthIndicatorValueAdapter>> indicators = indicatorsEntry.getValue();
-         for (Entry<IndicatorConfiguration, List<HealthIndicatorValueAdapter>> indicatorEntry : indicators.entrySet()) {
-            final IndicatorConfiguration conf = indicatorEntry.getKey();
-            final List<HealthIndicatorValueAdapter> healthIndicatorValueAdapterValues = indicatorEntry.getValue();
-            if (conf.getMaxPointsPerHour() == null) {
-               valuesToSave.addAll(healthIndicatorValueAdapterValues);
-            } else {
-               healthIndicatorValueAdapterValues.sort(INDICATOR_VALUE_COMPARATOR);
-               int maxPointsPerHour = getMaxPointsAtKey(key, conf.getMaxPointsPerHour());
-               if (maxPointsPerHour > 0) {
-                  valuesToSave.addAll(FilteringAlgorithm.filterHealthIndicatorValues(healthIndicatorValueAdapterValues, maxPointsPerHour));
-               }
-            }
-         }
-      }
-      return valuesToSave;
-   }
-
-}
-
-========================================================
-
-package com.eurocopter.mgs.download.analysis.health.impl.filtering;
-
-import java.util.List;
-import java.util.ListIterator;
-import java.util.Set;
-
-import com.eurocopter.mgs.datamodel.health.monitoring.ContextualParameter;
-import com.eurocopter.mgs.datamodel.health.monitoring.FilteringLaw;
-import com.eurocopter.mgs.download.analysis.health.data.IHealthIndicatorValueAcquisition;
-import com.eurocopter.mgs.download.analysis.health.impl.HealthIndicatorValueAdapter;
-
-public class HelionixFilteringPerFileAlgorithm extends AbstractFilteringRuleAlgorithm<String> {
-
-   @Override
-   protected boolean isFilteringLawApplicable(List<HealthIndicatorValueAdapter> indicatorValueAdapters) {
-      return true;
-   }
-
-   @Override
-   protected String getKey(IHealthIndicatorValueAcquisition acquisition) {
-      return acquisition.getFileId();
-   }
-
-   @Override
-   protected int getMaxPointsAtKey(String key, int configuredMaxPointsPerHour) {
-      // Per file, the number of point is the configured one
-      return configuredMaxPointsPerHour;
-   }
-
-   @Override
-   protected void applyFilteringLawAlgorithm(List<HealthIndicatorValueAdapter> values, Set<FilteringLaw> filteringLaws, String indicatorFilteringLaw) {
-      for (FilteringLaw filteringLaw : filteringLaws) {
-         if (!filteringLaw.getName().equals(indicatorFilteringLaw)) {
-            continue;
-         }
-         final Set<ContextualParameter> contextualParameters = filteringLaw.getContextualParameters();
-         for (ContextualParameter contextualParameter : contextualParameters) {
-            String name = contextualParameter.getName();
-            double min = contextualParameter.getMinValue();
-            double max = contextualParameter.getMaxValue();
-            double s = contextualParameter.getThresholdOfVariabilityValue();
-
-            ListIterator<HealthIndicatorValueAdapter> iter = values.listIterator();
-
-            while (iter.hasNext()) {
-               HealthIndicatorValueAdapter healthIndicatorValue = iter.next();
-               if (healthIndicatorValue.getMinContextualValues().get(name) != null) {
-                  double minValueContextualParameter = healthIndicatorValue.getMinContextualValues().get(name).getValue();
-                  double maxValueContextualParameter = healthIndicatorValue.getMaxContextualValues().get(name).getValue();
-                  double meanValueContextualParameter = healthIndicatorValue.getMeanContextualValues().get(name).getValue();
-
-                  // Use the Filtering rules
-                  if (!(min <= meanValueContextualParameter) || !(meanValueContextualParameter <= max)) {
-                     iter.remove();
-                  } else {
-                     if (!((maxValueContextualParameter - minValueContextualParameter) <= s)) {
-                        iter.remove();
-                     }
-                  }
-               } else {
-                  // The contextual parameter is not present for this indicator value
-                  // We have to remove this indicator value as well
-                  iter.remove();
-               }
-            }
-         }
-      }
-   }
-}
-
-=========================================================
-
-package com.eurocopter.mgs.download.analysis.health.impl.filtering;
-
-import java.util.HashMap;
-import java.util.List;
-import java.util.ListIterator;
-import java.util.Map;
-import java.util.Set;
-
-import com.eurocopter.mgs.datamodel.health.monitoring.ContextualParameter;
-import com.eurocopter.mgs.datamodel.health.monitoring.FilteringLaw;
-import com.eurocopter.mgs.download.analysis.health.data.IHealthIndicatorValueAcquisition;
-import com.eurocopter.mgs.download.analysis.health.impl.HealthIndicatorValueAdapter;
-
-public class MarmsFilteringPerFlightHoursAlgorithm extends AbstractFilteringRuleAlgorithm<Long> {
-
-   private static final Map<String, com.eurocopter.mgs.datamodel.health.common.ContextualParameter> MAPPING_CONTEXTUAL_PARAMETERS = new HashMap<>();
-   static {
-      MAPPING_CONTEXTUAL_PARAMETERS.put("NR", com.eurocopter.mgs.datamodel.health.common.ContextualParameter.MARMS_MEAN_NR);
-      MAPPING_CONTEXTUAL_PARAMETERS.put("TRQ1_TRQ2", com.eurocopter.mgs.datamodel.health.common.ContextualParameter.MARMS_MEAN_TRQ1_TRQ2);
-      MAPPING_CONTEXTUAL_PARAMETERS.put("IAS", com.eurocopter.mgs.datamodel.health.common.ContextualParameter.MARMS_MEAN_IAS);
-      MAPPING_CONTEXTUAL_PARAMETERS.put("ZB", com.eurocopter.mgs.datamodel.health.common.ContextualParameter.MARMS_MEAN_ZB);
-      MAPPING_CONTEXTUAL_PARAMETERS.put("COLL_PITCH", com.eurocopter.mgs.datamodel.health.common.ContextualParameter.MARMS_MEAN_COLL_PITCH);
-      MAPPING_CONTEXTUAL_PARAMETERS.put("LONG_PITCH", com.eurocopter.mgs.datamodel.health.common.ContextualParameter.MARMS_MEAN_LONG_PITCH);
-      MAPPING_CONTEXTUAL_PARAMETERS.put("LATT_PITCH", com.eurocopter.mgs.datamodel.health.common.ContextualParameter.MARMS_MEAN_LATT_PITCH);
-      MAPPING_CONTEXTUAL_PARAMETERS.put("PITCH_ATT", com.eurocopter.mgs.datamodel.health.common.ContextualParameter.MARMS_MEAN_PITCH_ATT);
-      MAPPING_CONTEXTUAL_PARAMETERS.put("ROLL_ATT", com.eurocopter.mgs.datamodel.health.common.ContextualParameter.MARMS_MEAN_ROLL_ATT);
-   }
-
-   private final long flightDuration;
-
-   public MarmsFilteringPerFlightHoursAlgorithm(long flightDuration) {
-      this.flightDuration = flightDuration;
-   }
-
-   @Override
-   protected boolean isFilteringLawApplicable(List<HealthIndicatorValueAdapter> indicatorValueAdapters) {
-      if (indicatorValueAdapters.isEmpty()) {
-         // Shall not happen
-         return true;
-      }
-      HealthIndicatorValueAdapter firstIndicatorValueAdapter = indicatorValueAdapters.get(0);
-      // Apply filtering law only on EHMS indicator (i.e. those with contextual values)
-      return !firstIndicatorValueAdapter.getContextualValues().isEmpty();
-   }
-
-   @Override
-   protected Long getKey(IHealthIndicatorValueAcquisition acquisition) {
-      return Math.round(Math.floor((double) acquisition.getCumulatedFlightTime() / (double) 3600));
-   }
-
-   @Override
-   protected int getMaxPointsAtKey(Long hour, int configuredMaxPointsPerHour) {
-      long lastHourId = Math.round(Math.floor((double) flightDuration / (double) (3600 * 1000)));
-      if (hour == lastHourId) {
-         long lastFlightHourDuration = flightDuration % (3600 * 1000);
-         double durationRatio = (double) lastFlightHourDuration / (double) (3600 * 1000);
-         return (int) Math.round(Math.ceil(durationRatio * configuredMaxPointsPerHour));
-      }
-      if (hour > lastHourId) {
-         // A weird edge case, where some points are after the last flight hour
-         return 0;
-      }
-      // Full flight hour
-      return configuredMaxPointsPerHour;
-   }
-
-   @Override
-   protected void applyFilteringLawAlgorithm(List<HealthIndicatorValueAdapter> values, Set<FilteringLaw> filteringLaws, String indicatorFilteringLaw) {
-      for (FilteringLaw filteringLaw : filteringLaws) {
-         if (!filteringLaw.getName().equals(indicatorFilteringLaw)) {
-            continue;
-         }
-         final Set<ContextualParameter> contextualParameters = filteringLaw.getContextualParameters();
-         for (ContextualParameter contextualParameter : contextualParameters) {
-            String configuredName = contextualParameter.getName();
-            if (!MAPPING_CONTEXTUAL_PARAMETERS.containsKey(configuredName)) {
-               // Ignoring unknown contextual parameter
-               continue;
-            }
-            String actualName = MAPPING_CONTEXTUAL_PARAMETERS.get(configuredName).name();
-            double min = contextualParameter.getMinValue();
-            double max = contextualParameter.getMaxValue();
-
-            ListIterator<HealthIndicatorValueAdapter> iter = values.listIterator();
-            while (iter.hasNext()) {
-               HealthIndicatorValueAdapter healthIndicatorValue = iter.next();
-               if (healthIndicatorValue.getContextualValues().get(actualName) != null) {
-                  double meanValueContextualParameter = healthIndicatorValue.getContextualValues().get(actualName).getValue();
-
-                  if (!(min <= meanValueContextualParameter) || !(meanValueContextualParameter <= max)) {
-                     iter.remove();
-                  }
-               } else {
-                  // The contextual parameter is not present for this indicator value
-                  // We have to remove this indicator value as well
-                  iter.remove();
-               }
-            }
-         }
-      }
-   }
-}
-
-========================================================
-
-
-package com.eurocopter.mgs.datamodel.health.monitoring;
-
-import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-
-import com.eurocopter.mgs.datamodel.health.common.Accelerometer;
-import com.eurocopter.mgs.datamodel.health.common.HealthAlgorithm;
-
-public class IndicatorConfiguration implements Serializable {
-
-   private static final long serialVersionUID = 1L;
-
-   private String id;
-
-   private Indicator indicator;
-
-   private String reference;
-
-   private String referenceIndicator;
-
-   private Integer slidingMedian;
-
-   private String healthAlgorithm;
-
-   /**
-    * Algorithm parameters.
-    */
-   private List<Double> parameters = new ArrayList<>();
-
-   private Set<ThresholdConfiguration> thresholdConfigurations = new HashSet<>();
-
-   /**
-    * Accelerometer that monitors the component.
-    */
-   private Accelerometer accelerometer;
-
-   /**
-    * Filtering Law
-    */
-   private String filteringLaw;
-
-   /**
-    * Max points per hour
-    */
-   private Integer maxPointsPerHour;
-
-   /**
-    * Min Sensor anomaly
-    */
-   private Double minSensor;
-
-   /**
-    * Max Sensor Anomaly
-    */
-   private Double maxSensor;
-
-   private String sensorAnomalyWorkcard;
-
-   private Integer sensorAnomalySuccessivePoints;
-
-   private String invalidityWorkcard;
-
-   private Double invalidityThreshold;
-
-   private Double multiplier;
-
-   IndicatorConfiguration() {
-   }
-
-   public IndicatorConfiguration(String id) {
-      this.id = id;
-   }
-
-   public final String getId() {
-      return id;
-   }
-
-   public final Indicator getIndicator() {
-      return indicator;
-   }
-
-   public String getReference() {
-      return reference;
-   }
-
-   public void setReference(String reference) {
-      this.reference = reference;
-   }
-
-   public String getReferenceIndicator() {
-      return referenceIndicator;
-   }
-
-   public void setReferenceIndicator(String referenceIndicator) {
-      this.referenceIndicator = referenceIndicator;
-   }
-
-   public Integer getSlidingMedian() {
-      return slidingMedian;
-   }
-
-   public void setSlidingMedian(Integer slidingMedian) {
-      this.slidingMedian = slidingMedian;
-   }
-
-   public final void setIndicator(Indicator indicator) {
-      this.indicator = indicator;
-   }
-
-   public final HealthAlgorithm getHealthAlgorithm() {
-      return healthAlgorithm != null ? HealthAlgorithm.valueOf(healthAlgorithm) : null;
-   }
-
-   public final void setHealthAlgorithm(HealthAlgorithm healthAlgorithm) {
-      this.healthAlgorithm = healthAlgorithm != null ? healthAlgorithm.name() : null;
-   }
-
-   public List<Double> getParameters() {
-      return parameters;
-   }
-
-   public void setParameters(List<Double> parameters) {
-      this.parameters = parameters;
-   }
-
-   public Set<ThresholdConfiguration> getThresholdConfigurations() {
-      return thresholdConfigurations;
-   }
-
-   public void setThresholdConfigurations(Set<ThresholdConfiguration> thresholdConfigurations) {
-      this.thresholdConfigurations = thresholdConfigurations;
-   }
-
-   public Accelerometer getAccelerometer() {
-      return accelerometer;
-   }
-
-   public void setAccelerometer(Accelerometer accelerometer) {
-      this.accelerometer = accelerometer;
-   }
-
-   public String getFilteringLaw() {
-      return filteringLaw;
-   }
-
-   public void setFilteringLaw(String filteringLaw) {
-      this.filteringLaw = filteringLaw;
-   }
-
-   public Integer getMaxPointsPerHour() {
-      return maxPointsPerHour;
-   }
-
-   public void setMaxPointsPerHour(Integer maxPointsPerHour) {
-      this.maxPointsPerHour = maxPointsPerHour;
-   }
-
-   public Double getMinSensor() {
-      return minSensor;
-   }
-
-   public void setMinSensor(Double minSensor) {
-      this.minSensor = minSensor;
-   }
-
-   public Double getMaxSensor() {
-      return maxSensor;
-   }
-
-   public void setMaxSensor(Double maxSensor) {
-      this.maxSensor = maxSensor;
-   }
-
-   public String getSensorAnomalyWorkcard() {
-      return sensorAnomalyWorkcard;
-   }
-
-   public void setSensorAnomalyWorkcard(String sensorAnomalyWorkcard) {
-      this.sensorAnomalyWorkcard = sensorAnomalyWorkcard;
-   }
-
-   public Integer getSensorAnomalySuccessivePoints() {
-      return sensorAnomalySuccessivePoints;
-   }
-
-   public void setSensorAnomalySuccessivePoints(Integer sensorAnomalySuccessivePoints) {
-      this.sensorAnomalySuccessivePoints = sensorAnomalySuccessivePoints;
-   }
-
-   public Double getInvalidityThreshold() {
-      return invalidityThreshold;
-   }
-
-   public void setInvalidityThreshold(Double invalidityThreshold) {
-      this.invalidityThreshold = invalidityThreshold;
-   }
-
-   public String getInvalidityWorkcard() {
-      return invalidityWorkcard;
-   }
-
-   public void setInvalidityWorkcard(String invalidityWorkcard) {
-      this.invalidityWorkcard = invalidityWorkcard;
-   }
-
-   public Double getMultiplier() {
-      return multiplier;
-   }
-
-   public void setMultiplier(Double multiplier) {
-      this.multiplier = multiplier;
-   }
-}
-
-
-=============================================
-
-/***************************************/
-/** Copyright Airbus Helicopters 2019 **/
-/***************************************/
-package com.eurocopter.mgs.xml.aircraftconfiguration.health.common;
-
-import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Locale;
-
-import com.eurocopter.mgs.datamodel.health.common.HealthAlgorithm;
-
-import jakarta.xml.bind.annotation.XmlAccessType;
-import jakarta.xml.bind.annotation.XmlAccessorType;
-import jakarta.xml.bind.annotation.XmlAttribute;
-import jakarta.xml.bind.annotation.XmlElement;
-import jakarta.xml.bind.annotation.XmlElementWrapper;
-import jakarta.xml.bind.annotation.XmlID;
-import jakarta.xml.bind.annotation.XmlIDREF;
-import jakarta.xml.bind.annotation.XmlSchemaType;
-
-/**
- * This class represents a health indicator.
- * <P>
- * This class is intended to be used to map the related XML element in aircraft health configuration xml file.
- */
-@XmlAccessorType(XmlAccessType.FIELD)
-public class IndicatorXMLBean implements Serializable {
-
-   private static final long serialVersionUID = 1L;
-
-   /**
-    * The name of the indicator.
-    */
-   @XmlAttribute(required = true)
-   @XmlSchemaType(name = "nonEmptyString", namespace = "http://www.eurocopter.com/mgs/types")
-   private String name;
-
-   /**
-    * The ID of the indicator.
-    */
-   @XmlAttribute(required = true)
-   @XmlID
-   private String id;
-
-   /**
-    * Color of the indicator. Use HTML code color.
-    */
-   @XmlAttribute
-   private String color;
-
-   /**
-    * style
-    */
-   @XmlAttribute
-   private String style;
-
-   /**
-    * trendColor
-    */
-   @XmlAttribute
-   private String trendColor;
-
-   /**
-    * trendStyle
-    */
-   @XmlAttribute
-   private String trendStyle;
-
-   /**
-    * successrateColor
-    */
-   @XmlAttribute
-   private String successrateColor;
-
-   /**
-    * successRateStyle
-    */
-   @XmlAttribute
-   private String successRateStyle;
-
-   /**
-    * List of the thresholds associated to the indicator.
-    */
-   @XmlElement(name = "threshold")
-   @XmlElementWrapper(name = "thresholds")
-   private List<ThresholdXMLBean> thresholds = new ArrayList<>();
-
-   /** Algorithm to apply to compute the indicator. */
-   @XmlAttribute(required = true)
-   private String algorithm;
-
-   /** The indicator parameters for the indicator algorithm */
-   @XmlAttribute
-   private List<Double> parameters = new ArrayList<>();
-
-   /**
-    * Accelerometer name that monitors the component.
-    */
-   @XmlAttribute(required = true)
-   @XmlIDREF
-   private AccelerometerXMLBean accelerometer;
-
-   /** The indicator unit */
-   @XmlAttribute(required = true)
-   private String unit;
-
-   @XmlAttribute
-   private String referenceIndicator;
-
-   @XmlAttribute()
-   private Integer slidingMedian;
-
-   @XmlAttribute
-   private String reference;
-
-   @XmlAttribute()
-   private String filteringLaw;
-
-   @XmlAttribute()
-   private Integer maxPointsPerHour;
-
-   @XmlAttribute(name = "min")
-   private Double minSensor;
-
-   @XmlAttribute(name = "max")
-   private Double maxSensor;
-
-   @XmlAttribute(name = "invalidityThreshold")
-   private Double invalidityThreshold;
-
-   @XmlAttribute(name = "lsb")
-   private Double lsb;
-
-   /**
-    * Default constructor. Builds a IndicatorXMLBean.
-    */
-   public IndicatorXMLBean() {
-      // Nothing to do
-   }
-
-   /**
-    * Gets the name.
-    *
-    * @return the name.
-    */
-   public String getName() {
-      return name;
-   }
-
-   /**
-    * Sets the name.
-    *
-    * @param name
-    *           the name to set
-    */
-   public void setName(String name) {
-      this.name = name;
-   }
-
-   public String getId() {
-      return id;
-   }
-
-   public void setId(String id) {
-      this.id = id;
-   }
-
-   public String getFunctionalId() {
-      return getId() != null ? getId() : getName();
-   }
-
-   /**
-    * Gets the thresholds.
-    *
-    * @return the thresholds.
-    */
-   public List<ThresholdXMLBean> getThresholds() {
-      return thresholds;
-   }
-
-   /**
-    * Sets the thresholds.
-    *
-    * @param thresholds
-    *           the thresholds to set
-    */
-   public void setThresholds(List<ThresholdXMLBean> thresholds) {
-      this.thresholds = thresholds;
-   }
-
-   /**
-    * Gets the color.
-    *
-    * @return the color.
-    */
-   public String getColor() {
-      return color;
-   }
-
-   /**
-    * Sets the color.
-    *
-    * @param color
-    *           the color to set
-    */
-   public void setColor(String color) {
-      this.color = color;
-   }
-
-   /**
-    * Gets the algorithm.
-    *
-    * @return the algorithm.
-    */
-   public HealthAlgorithm getAlgorithm() {
-      return algorithm != null ? HealthAlgorithm.valueOf(algorithm) : null;
-   }
-
-   /**
-    * Sets the algorithm.
-    *
-    * @param algorithm
-    *           the algorithm to set
-    */
-   public void setAlgorithm(HealthAlgorithm algorithm) {
-      this.algorithm = algorithm != null ? algorithm.name() : null;
-   }
-
-   /**
-    * Gets the parameters.
-    *
-    * @return the parameters.
-    */
-   public List<Double> getParameters() {
-      return parameters;
-   }
-
-   /**
-    * Sets the parameters.
-    *
-    * @param parameters
-    *           the parameters to set
-    */
-   public void setParameters(List<Double> parameters) {
-      this.parameters = parameters;
-   }
-
-   /**
-    * Gets the accelerometer.
-    *
-    * @return the accelerometer.
-    */
-   public AccelerometerXMLBean getAccelerometer() {
-      return accelerometer;
-   }
-
-   /**
-    * Sets the accelerometer.
-    *
-    * @param accelerometer
-    *           the accelerometer to set
-    */
-   public void setAccelerometer(AccelerometerXMLBean accelerometer) {
-      this.accelerometer = accelerometer;
-   }
-
-   /**
-    * Gets the unit.
-    *
-    * @return the unit.
-    */
-   public String getUnit() {
-      return unit;
-   }
-
-   /**
-    * Sets the unit.
-    *
-    * @param unit
-    *           the unit to set
-    */
-   public void setUnit(String unit) {
-      this.unit = unit;
-   }
-
-   @Override
-   public boolean equals(Object obj) {
-      if (obj == null || obj.getClass() != this.getClass()) {
-         return false;
-      }
-      IndicatorXMLBean other = (IndicatorXMLBean) obj;
-      return this == obj || name != null && name.equalsIgnoreCase(other.getName());
-   }
-
-   @Override
-   public int hashCode() {
-      int result = 0;
-      if (this.name != null) {
-         result = this.name.toLowerCase(Locale.ENGLISH).hashCode();
-      }
-      return result;
-   }
-
-   @Override
-   public String toString() {
-      return name;
-   }
-
-   /**
-    * Gets the style.
-    *
-    * @return the style.
-    */
-   public StyleXMLBean getStyle() {
-      return style != null ? StyleXMLBean.valueOf(style) : null;
-   }
-
-   /**
-    * Sets the style.
-    *
-    * @param style
-    *           the style to set
-    */
-   public void setStyle(StyleXMLBean style) {
-      this.style = style != null ? style.name() : null;
-   }
-
-   /**
-    * Gets the trendColor.
-    *
-    * @return the trendColor.
-    */
-   public String getTrendColor() {
-      return trendColor;
-   }
-
-   /**
-    * Sets the trendColor.
-    *
-    * @param trendColor
-    *           the trendColor to set
-    */
-   public void setTrendColor(String trendColor) {
-      this.trendColor = trendColor;
-   }
-
-   /**
-    * Gets the trendStyle.
-    *
-    * @return the trendStyle.
-    */
-   public StyleXMLBean getTrendStyle() {
-      return trendStyle != null ? StyleXMLBean.valueOf(trendStyle) : null;
-   }
-
-   /**
-    * Sets the trendStyle.
-    *
-    * @param trendStyle
-    *           the trendStyle to set
-    */
-   public void setTrendStyle(StyleXMLBean trendStyle) {
-      this.trendStyle = trendStyle != null ? trendStyle.name() : null;
-   }
-
-   /**
-    * Gets the successrateColor.
-    *
-    * @return the successrateColor.
-    */
-   public String getSuccessRateColor() {
-      return successrateColor;
-   }
-
-   /**
-    * Sets the successrateColor.
-    *
-    * @param successrateColor
-    *           the successrateColor to set
-    */
-   public void setSuccessRateColor(String successrateColor) {
-      this.successrateColor = successrateColor;
-   }
-
-   /**
-    * Gets the successRateStyle.
-    *
-    * @return the successRateStyle.
-    */
-   public StyleXMLBean getSuccessRateStyle() {
-      return successRateStyle != null ? StyleXMLBean.valueOf(successRateStyle) : null;
-   }
-
-   /**
-    * Sets the successRateStyle.
-    *
-    * @param successRateStyle
-    *           the successRateStyle to set
-    */
-   public void setSuccessRateStyle(StyleXMLBean successRateStyle) {
-      this.successRateStyle = successRateStyle != null ? successRateStyle.name() : null;
-   }
-
-   public String getReferenceIndicator() {
-      return referenceIndicator;
-   }
-
-   public void setReferenceIndicator(String referenceIndicator) {
-      this.referenceIndicator = referenceIndicator;
-   }
-
-   /**
-    * Get the slidingMedian
-    */
-   public Integer getSlidingMedian() {
-      return slidingMedian;
-   }
-
-   /**
-    * Set the slidingMedian
-    * 
-    * @param slidingMedian
-    *           The slidingMedian to set
-    */
-   public void setSlidingMedian(Integer slidingMedian) {
-      this.slidingMedian = slidingMedian;
-   }
-
-   public String getReference() {
-      return reference;
-   }
-
-   public void setReference(String reference) {
-      this.reference = reference;
-   }
-
-   public String getFilteringLaw() {
-      return filteringLaw;
-   }
-
-   public void setFilteringLaw(String filteringLaw) {
-      this.filteringLaw = filteringLaw;
-   }
-
-   public Integer getMaxPointsPerHour() {
-      return maxPointsPerHour;
-   }
-
-   public void setMaxPointsPerHour(Integer maxPointsPerHour) {
-      this.maxPointsPerHour = maxPointsPerHour;
-   }
-
-   public Double getMinSensor() {
-      return minSensor;
-   }
-
-   public void setMinSensor(Double minSensor) {
-      this.minSensor = minSensor;
-   }
-
-   public Double getMaxSensor() {
-      return maxSensor;
-   }
-
-   public void setMaxSensor(Double maxSensor) {
-      this.maxSensor = maxSensor;
-   }
-
-   public Double getInvalidityThreshold() {
-      return invalidityThreshold;
-   }
-
-   public void setInvalidityThreshold(Double invalidityThreshold) {
-      this.invalidityThreshold = invalidityThreshold;
-   }
-
-   public Double getLsb() {
-      return lsb;
-   }
-
-   public void setLsb(Double lsb) {
-      this.lsb = lsb;
-   }
-}
-=========================================================
-
-/***************************************/
-/** Copyright Airbus Helicopters 2019 **/
-/***************************************/
-package com.eurocopter.mgs.delegate.health;
-
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
-
-import org.apache.commons.lang.StringUtils;
-
+import java.util.SortedSet;
+import java.util.TreeSet;
+
+import org.apache.commons.collections.MultiMap;
+import org.apache.commons.collections.map.MultiValueMap;
+import org.apache.commons.collections.map.SingletonMap;
+import org.apache.commons.lang.ArrayUtils;
+import org.apache.commons.math.stat.StatUtils;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.eclipse.core.runtime.IProgressMonitor;
+import org.eclipse.core.runtime.IStatus;
+import org.eclipse.core.runtime.Status;
+import org.eclipse.core.runtime.SubMonitor;
+import org.eclipse.core.runtime.jobs.Job;
+import org.eclipse.swt.graphics.RGB;
+import org.joda.time.Duration;
+import org.osgi.framework.BundleContext;
+import org.osgi.framework.FrameworkUtil;
+
+import com.eurocopter.mgs.aircraft.presentation.utils.ColorUtils;
+import com.eurocopter.mgs.business.health.api.IHealthCommonBusiness;
+import com.eurocopter.mgs.business.user.api.IUnitBusiness;
+import com.eurocopter.mgs.business.user.api.IUserBusiness;
+import com.eurocopter.mgs.chart.ChartElementModel;
+import com.eurocopter.mgs.chart.annotation.marker.ChartMarker;
+import com.eurocopter.mgs.core.presentation.i18n.Messages;
+import com.eurocopter.mgs.core.presentation.utils.ConvertUtils;
+import com.eurocopter.mgs.datamodel.aircraft.Aircraft;
+import com.eurocopter.mgs.datamodel.aircraft.AircraftState;
 import com.eurocopter.mgs.datamodel.aircraft.Avionic;
-import com.eurocopter.mgs.datamodel.health.common.Accelerometer;
-import com.eurocopter.mgs.datamodel.health.common.HealthAlgorithm;
-import com.eurocopter.mgs.datamodel.health.common.Style;
-import com.eurocopter.mgs.datamodel.health.monitoring.HealthMechanicalComponent;
+import com.eurocopter.mgs.datamodel.alarm.Alarm;
+import com.eurocopter.mgs.datamodel.alarm.Severity;
+import com.eurocopter.mgs.datamodel.flight.Flight;
+import com.eurocopter.mgs.datamodel.health.common.IAcquisition;
+import com.eurocopter.mgs.datamodel.health.common.IndicatorValue;
+import com.eurocopter.mgs.datamodel.health.monitoring.FixedThresholdConfiguration;
 import com.eurocopter.mgs.datamodel.health.monitoring.HealthMechanicalComponentConfiguration;
 import com.eurocopter.mgs.datamodel.health.monitoring.Indicator;
 import com.eurocopter.mgs.datamodel.health.monitoring.IndicatorConfiguration;
 import com.eurocopter.mgs.datamodel.health.monitoring.IndicatorDisplay;
+import com.eurocopter.mgs.datamodel.health.monitoring.LearnedThresholdConfiguration;
 import com.eurocopter.mgs.datamodel.health.monitoring.RelearnThresholdRequest;
+import com.eurocopter.mgs.datamodel.health.monitoring.RelearnThresholdRequestComparator;
 import com.eurocopter.mgs.datamodel.health.monitoring.Threshold;
-import com.eurocopter.mgs.delegate.exception.DelegateException;
-import com.eurocopter.mgs.xml.aircraftconfiguration.health.common.AccelerometerXMLBean;
-import com.eurocopter.mgs.xml.aircraftconfiguration.health.common.FilteringLawXMLBean;
-import com.eurocopter.mgs.xml.aircraftconfiguration.health.common.HealthConfigurationXMLBean;
-import com.eurocopter.mgs.xml.aircraftconfiguration.health.common.HealthMechanicalComponentXMLBean;
-import com.eurocopter.mgs.xml.aircraftconfiguration.health.common.IndicatorXMLBean;
-import com.eurocopter.mgs.xml.aircraftconfiguration.health.common.ThresholdXMLBean;
-import com.eurocopter.mgs.xml.configuration.unit.Unit;
+import com.eurocopter.mgs.datamodel.health.monitoring.ThresholdConfiguration;
+import com.eurocopter.mgs.health.presentation.HealthMonitoringUtil;
+import com.eurocopter.mgs.health.presentation.extension.HealthIndicatorChartView;
+import com.eurocopter.mgs.health.presentation.model.IndicatorChartModelData;
+import com.eurocopter.mgs.health.presentation.model.IndicatorHmcModel;
+import com.eurocopter.mgs.health.presentation.model.ThresholdLearningData;
+import com.eurocopter.mgs.presentation.chart.ChartFactory;
+import com.eurocopter.mgs.presentation.common.MgsSession;
+import com.eurocopter.mgs.presentation.flight.model.FlightModel;
+import com.eurocopter.mgs.presentation.utils.MgsColor;
+import com.eurocopter.mgs.service.exception.EntityNotFoundException;
+import com.eurocopter.mgs.service.health.common.dto.IndicatorDeviationDto;
 
-class HealthIndicatorDelegate {
+/**
+ * Indicator chart models creation Job.
+ */
+public class CreateIndicatorChartModelsJob extends Job {
 
-   private static final HealthThresholdDelegate THRESHOLD_DELEGATE = new HealthThresholdDelegate();
+   private static final Logger LOGGER = LogManager.getLogger(CreateIndicatorChartModelsJob.class);
 
-   void validateIndicator(Avionic avionic, IndicatorXMLBean indicatorXMLBean, HealthMechanicalComponentXMLBean mechanicalComponent, HealthConfigurationXMLBean healthConfigurationBean)
-         throws DelegateException {
-      // Check the number of parameters
-      HealthAlgorithm algorithm = indicatorXMLBean.getAlgorithm();
-      List<Double> parameters = indicatorXMLBean.getParameters();
-      String filteringLawAttribute = indicatorXMLBean.getFilteringLaw();
-      final int minParamCount;
-      switch (avionic) {
-         case CIGALHE -> {
-            if (indicatorXMLBean.getAlgorithm() != HealthAlgorithm.Read && indicatorXMLBean.getAlgorithm() != HealthAlgorithm.ACQUISITION_RATE && indicatorXMLBean.getAccelerometer() == null) {
-               throw new DelegateException("HealthMonitoring: Missing accelerometer for indicator '" + indicatorXMLBean.getName() + "' in " + mechanicalComponent.getName());
+   private final IHealthCommonBusiness healthBusiness;
+
+   /** the collection of selected indicators. */
+   private final Collection<IndicatorHmcModel> indicators;
+
+   /** the list of indicator chart models, indexed by indicator. */
+   private final Map<Indicator, List<ChartElementModel<Double>>> chartElementModels = new HashMap<>();
+
+   /** the list of indicator success rate chart model, indexed by indicator. */
+   private final Map<Indicator, ChartElementModel<Double>> successRateModels = new HashMap<>();
+
+   private List<FlightModel> flightModels;
+
+   /** The chart parameters. */
+   private ChartParameter chartParameter;
+
+   private final ChartFactory chartFactory;
+
+   private Map<Indicator, IndicatorDisplay> indicatorDisplayMap = new HashMap<>();
+
+   private boolean groundAcquisitionMode = false;
+
+   private final Map<Indicator, Map<Flight, Map<Severity, ThresholdValue>>> thresholdDataByFlightAndIndicator = new HashMap<>();
+
+   // private static final Comparator<ThresholdValue> THRESHOLD_VALUES_COMPARATOR = (o1, o2) -> o1.getBeginningDuration().compareTo(o2.getBeginningDuration());
+
+   private static final Comparator<ThresholdValue> THRESHOLD_VALUES_COMPARATOR = (o1, o2) -> o1.getBeginningDuration().compareTo(o2.getBeginningDuration());
+   /** BCR-6605 active deviations of the displayed aircraft, keyed indicator.id + "|" + severity. */
+   private final Map<String, IndicatorDeviationDto> deviations = new HashMap<>();
+   private boolean deviationsLoaded = false;
+
+   private IndicatorDeviationDto getApplicableDeviation(final Indicator indicator, final Severity severity, final Flight flight) {
+      if (!deviationsLoaded) {
+         deviationsLoaded = true;
+         Aircraft aircraft = MgsSession.getInstance().getAircraft();
+         if (aircraft != null) {
+            try {
+               for (IndicatorDeviationDto dto : healthBusiness.findActiveDeviations(aircraft.getId())) {
+                  deviations.put(dto.getIndicatorId() + "|" + dto.getSeverity(), dto);
+               }
+            } catch (Exception e) {
+               LOGGER.warn("BCR-6605   could not   load  the   deviations  for   the   chart", e);
             }
-            minParamCount = algorithm.getCigalheMinParameters();
-         }
-         case MARMS -> minParamCount = algorithm.getMarmsMinParameters();
-         default -> throw new IllegalStateException("Unsupported avionic: " + avionic);
-      }
-
-      if (parameters.size() < minParamCount) {
-         throw new DelegateException("HealthMonitoring: Invalid number of parameters for the indicator '" + indicatorXMLBean.getName()
-               + "' of '" + mechanicalComponent.getName()
-               + "' mechanical component : algorithm '" + algorithm + "' must have at least "
-               + minParamCount + " parameters.");
-      }
-
-      // Check the alpha parameter value of the Acquisition rate algorithm
-      if (HealthAlgorithm.ACQUISITION_RATE == indicatorXMLBean.getAlgorithm()) {
-         Double alpha = parameters.get(0);
-         if (alpha < 0 || alpha > 1) {
-            throw new DelegateException("HealthMonitoring: Invalid parameter for the indicator '" + indicatorXMLBean.getName()
-                  + "' of '" + mechanicalComponent.getName()
-                  + "' mechanical component : the parameter value of the algorithm '" + algorithm + "' must be between 0 and 1 included");
          }
       }
+      IndicatorDeviationDto deviation = deviations.get(indicator.getId() + "|" + severity.name());
+      if (deviation == null) {
+         return null;
+      }
 
-      // Check thresholds
-      THRESHOLD_DELEGATE.checkThresholdValues(indicatorXMLBean, mechanicalComponent.getFunctionalId());
+      Date sessionDate = flight.getHealthStartDate() != null ? flight.getHealthStartDate()
+            : flight.getUsageStartDate();
+      if (sessionDate == null) {
+         return null;
+      }
+      if (deviation.getStartDate() != null && deviation.getStartDate().after(sessionDate)) {
 
-      // Check the filtering law
-      if (filteringLawAttribute != null) {
-         Set<FilteringLawXMLBean> filteringLaws = healthConfigurationBean.getFilteringLaws();
-         List<String> nameLaws = new ArrayList<>();
-         StringBuilder listOfFilteringLawName = new StringBuilder();
-         for (FilteringLawXMLBean filteringLaw : filteringLaws) {
-            nameLaws.add(filteringLaw.getName());
-            if (listOfFilteringLawName.isEmpty()) {
-               listOfFilteringLawName = new StringBuilder(filteringLaw.getName());
+         return null;
+      }
+      if (deviation.getEndDate() != null && deviation.getEndDate().before(sessionDate)) {
+
+         return null;
+      }
+      return deviation;
+   }
+
+   /**
+    * Builds a CreateIndicatorChartModelsJob.
+    * 
+    * @param indicators
+    *           the collection of selected indicators.
+    * @param view
+    *           fthe view
+    */
+   public CreateIndicatorChartModelsJob(Collection<IndicatorHmcModel> indicators, HealthIndicatorChartView view) {
+      super("Indicator chart models creation");
+      this.indicators = indicators;
+      final BundleContext userBundleContext = FrameworkUtil.getBundle(IUserBusiness.class).getBundleContext();
+      final IUserBusiness userBusiness = userBundleContext.getService(userBundleContext.getServiceReference(IUserBusiness.class));
+      Properties properties = userBusiness.getUserConfigurationProperties(MgsSession.getInstance().getUser().getId());
+      chartFactory = new ChartFactory(properties);
+      Aircraft aircraft = MgsSession.getInstance().getAircraft();
+      if (aircraft != null) {
+         try {
+            indicatorDisplayMap = userBusiness.getIndicatorDisplays(
+                  MgsSession.getInstance().getUser().getId(),
+                  aircraft.getId());
+         } catch (EntityNotFoundException e) {
+            LOGGER.error("Cannot find indicator display.", e);
+         }
+      }
+      if (view.getIndicatorTrendComposite() != null) {
+         chartParameter = view.getIndicatorTrendComposite().getChartParameter();
+      }
+
+      final BundleContext healthBundleContext = FrameworkUtil.getBundle(IHealthCommonBusiness.class).getBundleContext();
+      healthBusiness = healthBundleContext.getService(healthBundleContext.getServiceReference(IHealthCommonBusiness.class));
+   }
+
+   @Override
+   protected IStatus run(IProgressMonitor pMonitor) {
+      SubMonitor localMonitor = SubMonitor.convert(pMonitor,
+            "Creating indicator chart model for indicators", indicators.size());
+      localMonitor.beginTask("Creating indicator chart model for indicators", indicators.size());
+
+      for (IndicatorHmcModel indicatorModel : indicators) {
+         if (!groundAcquisitionMode && indicatorModel.getParentComponent().isGroundAcquisition()) {
+            groundAcquisitionMode = true;
+            chartParameter.setGroundAcquisitionMode(true);
+         }
+      }
+
+      if (indicators.isEmpty()) {
+         localMonitor.done();
+         return Status.OK_STATUS;
+      }
+
+      this.flightModels = HealthMonitoringUtil.getFlightsDisplayed(groundAcquisitionMode);
+      if (flightModels != null && !flightModels.isEmpty()) {
+         flightModels.sort((f1, f2) -> {
+            if (f1.getFlight().getHealthStartDate() == null || f2.getFlight().getHealthStartDate() == null) {
+               return f1.getFlight().getUsageStartDate().compareTo(f2.getFlight().getUsageStartDate());
             } else {
-               listOfFilteringLawName.append(" | ").append(filteringLaw.getName());
+               return f1.getFlight().getHealthStartDate().compareTo(f2.getFlight().getHealthStartDate());
+            }
+         });
+
+         for (IndicatorHmcModel indicatorModel : indicators) {
+            List<Double> xIndicator = new ArrayList<>();
+            List<Double> yIndicator = new ArrayList<>();
+            List<Double> ySuccessRate = new ArrayList<>();
+            MultiMap xyThresholds = new MultiValueMap();
+            MultiMap thresholdMarkers = new MultiValueMap();
+            IndicatorChartModelData indicatorChartModelData = new IndicatorChartModelData(indicatorModel);
+
+            Set<ThresholdConfiguration> displayedThresholdConfigurations = new HashSet<>();
+
+            // READ THE DATA FROM THE SERVER
+            readFlightData(flightModels, indicatorChartModelData, indicatorModel, xIndicator, yIndicator, ySuccessRate);
+
+            readFlightThresholdData(flightModels, indicatorModel, xyThresholds, thresholdMarkers, displayedThresholdConfigurations);
+
+            List<ChartMarker<Double>> markers = readFlightMarkers(flightModels, indicatorModel);
+
+            if (yIndicator.isEmpty()) {
+               // No indicator value to display
+               localMonitor.worked(1);
+               continue;
+            }
+
+            double[] bounds = null;
+            if (chartParameter != null) {
+               bounds = chartParameter.computeBounds(groundAcquisitionMode);
+            }
+
+            if (bounds == null || bounds.length == 0) {
+               // No flight to display
+               localMonitor.worked(1);
+               continue;
+            }
+
+            final double startXInit = bounds[0];
+            final double endXInit = bounds[1];
+
+            List<ChartElementModel<Double>> models = new ArrayList<>();
+            chartElementModels.put(indicatorModel.getIndicator(), models);
+            // indicator curve
+            ChartElementModel<Double> indicatorChartModel = createIndicatorChartModel(indicatorModel, xIndicator, yIndicator, indicatorChartModelData, startXInit, endXInit, markers);
+            models.add(indicatorChartModel);
+            // trend
+            ChartElementModel<Double> trendCurveModel = createTrendCurveModel(indicatorModel, xIndicator, yIndicator, startXInit, endXInit);
+            if (null != trendCurveModel) {
+               models.add(trendCurveModel);
+            }
+            // thresholds
+            // learned thresholds from latest configuration
+            List<LearnedThresholdConfiguration> latestLearnedThresholds;
+            Aircraft aircraft = MgsSession.getInstance().getAircraft();
+            if (aircraft == null) {
+               latestLearnedThresholds = Collections.emptyList();
+            } else {
+               try {
+                  latestLearnedThresholds = healthBusiness.getIndicatorLatestLearnedThresholds(aircraft.getId(), indicatorModel.getIndicator().getId());
+               } catch (EntityNotFoundException e) {
+                  LOGGER.warn("Entity not found", e);
+                  latestLearnedThresholds = Collections.emptyList();
+               }
+            }
+            for (ThresholdConfiguration thresholdConf : displayedThresholdConfigurations) {
+               Threshold threshold = thresholdConf.getThreshold();
+               ChartElementModel<Double> chartElementModel = createThresholdChartModel(indicatorModel, threshold, xyThresholds, thresholdMarkers, startXInit, endXInit, indicatorChartModel);
+               if (null != chartElementModel) {
+                  initializePopupMenu(latestLearnedThresholds, chartElementModel);
+                  models.add(chartElementModel);
+               }
+            }
+            // success rate
+            if (!ySuccessRate.isEmpty()) {
+               ChartElementModel<Double> chartElementModel = createSuccessRateChartModel(
+                     indicatorModel.getIndicator(), indicatorDisplayMap, xIndicator, ySuccessRate, startXInit, endXInit);
+               successRateModels.put(indicatorModel.getIndicator(), chartElementModel);
+            }
+            localMonitor.worked(1);
+         }
+      }
+      localMonitor.done();
+      return Status.OK_STATUS;
+   }
+
+   private void initializePopupMenu(List<LearnedThresholdConfiguration> latestLearnedThresholds, ChartElementModel<Double> chartElementModel) {
+      // Search if a learned configuration exists in the last health configuration for the given threshold
+      final Set<String> learnedThresholds = new HashSet<>();
+      long learningTime = 0;
+      for (LearnedThresholdConfiguration conf : latestLearnedThresholds) {
+         learnedThresholds.add(conf.getId());
+         learningTime = conf.getLearningTime();
+      }
+
+      final Aircraft aircraft = MgsSession.getInstance().getAircraft();
+      final boolean aircraftActive = aircraft != null && aircraft.getAircraftState() != AircraftState.FROZEN;
+      final boolean canLaunchRelearning = MgsSession.getInstance().getUser().getProfile().canRunThresholdRelearning();
+      if (!learnedThresholds.isEmpty() && aircraftActive && canLaunchRelearning) {
+         chartElementModel.setData(new ThresholdLearningData(learnedThresholds, learningTime));
+         // create the contextual menu to launch a threshold learning
+         Map<String, String> popUpMenuItems = new HashMap<>();
+         popUpMenuItems.put("1", Messages.CORE.getString("ClickLearnThresholdAction"));
+         chartElementModel.setPopUpMenuItems(popUpMenuItems);
+      }
+   }
+
+   /**
+    * Create the success rate chart model.
+    * 
+    * @param indicator
+    *           the indicator.
+    * @param xIndicator
+    *           the indicator x values.
+    * @param ySuccessRate
+    *           the the success rate y values.
+    * @param startX
+    *           the starting x coordinate.
+    * @param endX
+    *           the ending x coordinate.
+    * @param indicatorDisplayMap
+    * 
+    * @return the success rate chart model.
+    */
+   private ChartElementModel<Double> createSuccessRateChartModel(
+         Indicator indicator, Map<Indicator, IndicatorDisplay> indicatorDisplayMap,
+         List<Double> xIndicator, List<Double> ySuccessRate, double startX, double endX) {
+
+      ChartElementModel<Double> chartElementModel = chartFactory.getChartElementModel();
+      chartElementModel.setXTitle(Messages.CORE.getString("Flight_hours"));
+      String name = Messages.CORE.getString("CreateIndicatorChartModelsJob_4");
+      chartElementModel.setMainTitle(name);
+      chartElementModel.setYTitle(name);
+
+      double end = Math.max(xIndicator.size(), ySuccessRate.size());
+      for (int i = 0; i < end; i++) {
+         chartElementModel.addPoint(xIndicator.get(i), ySuccessRate.get(i));
+      }
+
+      chartElementModel.setStartX(startX);
+      chartElementModel.setEndX(endX);
+
+      IndicatorDisplay indicatorDisplay = indicatorDisplayMap.get(indicator);
+      if (indicatorDisplay == null) {
+         indicatorDisplay = indicator.getDisplay();
+      }
+      Color color = ColorUtils.fromString(indicatorDisplay.getSuccessRateColor());
+      chartElementModel.setColor(color);
+      chartElementModel.setStyle(1.5f, indicatorDisplay.getSuccessRateStyle().name());
+
+      chartElementModel.setyUnit(Messages.CORE.getString("CreateIndicatorChartModelsJob_successRateUnit"));
+      chartElementModel.setDisplayToolTip(true);
+      return chartElementModel;
+   }
+
+   /**
+    * Create the threshold chart model.
+    * 
+    * @param indicator
+    *           the indicator.
+    * @param thresholdConf
+    *           the threshold.
+    * @param thresholdConfMap
+    * @param xyThresholds
+    *           the xy threshold values.
+    * @param thresholdMarkers
+    *           the threshold markers.
+    * @param startX
+    *           the starting x coordinate.
+    * @param endX
+    *           the ending x coordinate.
+    * @param latestLearnedThreshold
+    * @param indicatorChartModel
+    * 
+    * @return the threshold chart model.
+    */
+   private ChartElementModel<Double> createThresholdChartModel(final IndicatorHmcModel indicatorModel,
+         Threshold threshold, MultiMap xyThresholds, MultiMap thresholdMarkers, double startX, double endX, ChartElementModel<Double> indicatorChartModel) {
+
+      ChartElementModel<Double> chartElementModel = null;
+      Collection<SingletonMap> values = (Collection<SingletonMap>) xyThresholds.get(threshold);
+      if (values != null) {
+
+         chartElementModel = chartFactory.getChartElementModel();
+         chartElementModel.setLeftClickListener(new HealthIndicatorLeftClickListener(indicatorModel, thresholdDataByFlightAndIndicator));
+         chartElementModel.setXTitle(Messages.CORE.getString("Flight_hours"));
+         Indicator indicator = indicatorModel.getIndicator();
+         String name = indicator.getName();
+         chartElementModel.setMainTitle(name);
+         chartElementModel.setYTitle(threshold.getId());
+
+         switch (threshold.getSeverity()) {
+            case AMBER -> {
+               RGB amber = MgsColor.getColorAmber();
+               chartElementModel.setColor(new Color(amber.red, amber.green, amber.blue));
+            }
+            case RED -> {
+               RGB red = MgsColor.getColorRed();
+               chartElementModel.setColor(new Color(red.red, red.green, red.blue));
+            }
+            default -> {
+            }
+            // nothing
+         }
+
+         for (SingletonMap xy : values) {
+            chartElementModel.addPoint((Double) xy.getKey(), (Double) xy.getValue());
+         }
+
+         chartElementModel.setStartX(startX);
+         chartElementModel.setEndX(endX);
+
+         // Retrieve Unit symbol
+         chartElementModel.setyUnit(getUnitLabel(indicator));
+
+         chartElementModel.setStyle(1.5f, chartParameter.getThresholdCurveStyle());
+
+         if (thresholdMarkers.containsKey(threshold)) {
+            List<ChartMarker<Double>> chartMarkerList = new ArrayList<>((Collection<ChartMarker<Double>>) thresholdMarkers.get(threshold));
+            chartElementModel.setChartMarkerList(chartMarkerList);
+         }
+         chartElementModel.setFlagIsSubCurve(true);
+      } else {
+         // PR8299 : Add relearn request markers to indicator charts when threshold value is undefined
+         if (thresholdMarkers.containsKey(threshold)) {
+            List<ChartMarker<Double>> chartMarkerList = new ArrayList<>(
+                  (Collection<ChartMarker<Double>>) thresholdMarkers.get(threshold));
+            indicatorChartModel.getChartMarkerList().addAll(chartMarkerList);
+         }
+      }
+
+      return chartElementModel;
+   }
+
+   /**
+    * Create the indicator trend chart model.
+    * 
+    * @param indicator
+    *           the indicator.
+    * @param xIndicator
+    *           the indicator x values.
+    * @param yIndicator
+    *           the indicator y values.
+    * @param startX
+    *           the starting x coordinate.
+    * @param endX
+    *           the ending x coordinate.
+    * 
+    * @return the indicator trend chart model.
+    */
+   private ChartElementModel<Double> createTrendCurveModel(IndicatorHmcModel indicatorModel,
+         List<Double> xIndicator, List<Double> yIndicator, double startX, double endX) {
+
+      ChartElementModel<Double> chartElementModel = null;
+
+      List<Double> xTrend = new ArrayList<>();
+      List<Double> yTrend = new ArrayList<>();
+
+      double[] xArray = ArrayUtils.toPrimitive(xIndicator.toArray(new Double[0]));
+      double[] yArray = ArrayUtils.toPrimitive(yIndicator.toArray(new Double[0]));
+      // sort x and y arrays wrt x ascending order
+      sort(xArray, yArray);
+
+      int numberOfValue = chartParameter.getIndicatorTrendAverageNumberOfValueBefore() + 1
+            + chartParameter.getIndicatorTrendAverageNumberOfValueAfter();
+      // do not convert trend values into another unit, it is a average compute of already converted indicator values
+      for (int i = chartParameter.getIndicatorTrendAverageNumberOfValueBefore(); i < yArray.length - chartParameter.getIndicatorTrendAverageNumberOfValueAfter(); i++) {
+         double mean = StatUtils.sum(yArray, i - chartParameter.getIndicatorTrendAverageNumberOfValueBefore(), numberOfValue) / numberOfValue;
+         xTrend.add(xArray[i]);
+         yTrend.add(mean);
+      }
+      if (!xTrend.isEmpty()) {
+         chartElementModel = chartFactory.getChartElementModel();
+         Indicator indicator = indicatorModel.getIndicator();
+         String name = indicator.getName();
+         chartElementModel.setMainTitle(name);
+         chartElementModel.setXTitle(Messages.CORE.getString("Flight_hours"));
+         chartElementModel.setYTitle(name + Messages.CORE.getString("CreateIndicatorChartModelsJob_9"));
+         chartElementModel.setStartX(startX);
+         chartElementModel.setEndX(endX);
+
+         double end = Math.max(xTrend.size(), yTrend.size());
+         for (int i = 0; i < end; i++) {
+            chartElementModel.addPoint(xTrend.get(i), yTrend.get(i));
+         }
+
+         IndicatorDisplay indicatorDisplay = indicatorDisplayMap.get(indicator);
+         if (indicatorDisplay == null) {
+            indicatorDisplay = indicator.getDisplay();
+         }
+
+         String colorRgb = indicatorDisplay.getTrendColor();
+
+         if (colorRgb != null) {
+            chartElementModel.setColor(ColorUtils.fromString(colorRgb));
+         }
+
+         chartElementModel.setStyle(0.5f, indicatorDisplay.getTrendStyle().name());
+
+         // Retrieve Unit symbol
+         chartElementModel.setyUnit(getUnitLabel(indicator));
+         chartElementModel.setFlagIsSubCurve(true);
+      }
+      return chartElementModel;
+   }
+
+   // sort x and y arrays wrt x ascending order
+   private void sort(double[] xArray, double[] yArray) {
+      for (int i = xArray.length; i > 0; i--) {
+         for (int j = 0; j < i - 1; j++) {
+            if (xArray[j] > xArray[j + 1]) {
+               double tmp = xArray[j];
+               xArray[j] = xArray[j + 1];
+               xArray[j + 1] = tmp;
+               tmp = yArray[j];
+               yArray[j] = yArray[j + 1];
+               yArray[j + 1] = tmp;
+            }
+         }
+      }
+   }
+
+   /**
+    * Create the indicator chart model.
+    * 
+    * @param indicator
+    *           the indicator.
+    * @param indicatorDisplayMap
+    * @param xIndicator
+    *           the indicator x values.
+    * @param yIndicator
+    *           the indicator y values.
+    * @param indicatorChartModelData
+    *           the indicator chart model data.
+    * @param startXInit
+    *           the starting x coordinate at first display.
+    * @param endXInit
+    *           the ending x coordinate at first display.
+    * @param markers
+    *           the list of chart markers.
+    * @return the indicator chart model.
+    */
+   private ChartElementModel<Double> createIndicatorChartModel(IndicatorHmcModel indicatorModel, List<Double> xIndicator, List<Double> yIndicator,
+         IndicatorChartModelData indicatorChartModelData, double startXInit, double endXInit, List<ChartMarker<Double>> markers) {
+      ChartElementModel<Double> chartElementModel = chartFactory.getChartElementModel();
+      chartElementModel.setDisplayedSelectedPoint(true);
+      chartElementModel.setXTitle(Messages.CORE.getString("Flight_hours"));
+      chartElementModel.setStaticText("");
+      Indicator indicator = indicatorModel.getIndicator();
+      String name = indicator.getName();
+      chartElementModel.setYTitle(name);
+
+      // Compute nb point (max of X and Y points)
+      double end = Math.max(xIndicator.size(), yIndicator.size());
+      for (int i = 0; i < end; i++) {
+         // Add current point
+         chartElementModel.addPoint(xIndicator.get(i), yIndicator.get(i));
+      }
+
+      // Set values min/max of the chart's data
+      chartElementModel.setStartX(startXInit);
+      chartElementModel.setEndX(endXInit);
+
+      IndicatorDisplay indicatorDisplay = indicatorDisplayMap.get(indicator);
+      if (indicatorDisplay == null) {
+         indicatorDisplay = indicator.getDisplay();
+      }
+
+      // Set indicator color
+      String colorUser = indicatorDisplay.getColor();
+      if (colorUser != null) {
+         chartElementModel.setColor(ColorUtils.fromString(colorUser));
+      }
+
+      // set indicator style
+      chartElementModel.setStyle(2f, indicatorDisplay.getStyle().name());
+
+      // Retrieve Unit symbol
+      chartElementModel.setyUnit(getUnitLabel(indicator));
+
+      chartElementModel.setChartMarkerList(markers);
+      chartElementModel.setDisplayToolTip(true);
+      chartElementModel.setData(indicatorChartModelData);
+      return chartElementModel;
+   }
+
+   /**
+    * Read the flights data from the server.
+    * 
+    * @param flightModels
+    * @param indicatorChartModelData
+    * @param indicatorModel
+    * @param xIndicator
+    * @param yIndicator
+    * @param ySuccessRate
+    */
+
+   // READ THE DATA FROM THE SERVER
+   private void readFlightData(List<FlightModel> flightModels, IndicatorChartModelData indicatorChartModelData,
+         IndicatorHmcModel indicatorModel, List<Double> xIndicator, List<Double> yIndicator, List<Double> ySuccessRate) {
+      // END THE DATA FROM THE SERVER
+
+      final BundleContext unitBundleContext = FrameworkUtil.getBundle(IUnitBusiness.class).getBundleContext();
+      final IUnitBusiness unitBusiness = unitBundleContext.getService(unitBundleContext.getServiceReference(IUnitBusiness.class));
+
+      Indicator indicator = indicatorModel.getIndicator();
+
+      String defaultIndicatorUnit = indicator.getDisplay().getUnitName();
+      // Recover the default unit
+      IndicatorDisplay userIndicatorDisplay = indicatorDisplayMap.get(indicator);
+
+      /**
+       * Initialize the indicator values and the success rates.
+       */
+      Aircraft aircraft = MgsSession.getInstance().getAircraft();
+      if (aircraft == null) {
+         return;
+      }
+      Avionic avionic = aircraft.getAircraftType().getAvionic();
+      Map<String, Map<IndicatorValue, IAcquisition>> indicatorValuesFlightMap = healthBusiness.getIndicatorValues(avionic.name(), aircraft.getId(), indicator.getId());
+      for (FlightModel flightModel : flightModels) {
+         Flight flight = flightModel.getFlight();
+         if (indicatorValuesFlightMap.containsKey(flight.getId())) {
+            Map<IndicatorValue, IAcquisition> indicatorValuesMap = indicatorValuesFlightMap.get(flight.getId());
+            for (Entry<IndicatorValue, IAcquisition> entry : indicatorValuesMap.entrySet()) {
+               IndicatorValue indicatorValue = entry.getKey();
+               final Duration duration;
+               if (groundAcquisitionMode || indicatorValue.getCumulatedFlightTime() == null) {
+                  // Use the absolute date on X-axis
+                  long flightHours = flightModel.computeRelativeDateForDisplay(indicatorValue.getStartDate(), groundAcquisitionMode, true);
+                  duration = new Duration(flightHours);
+               } else {
+                  // Use the cumulated flight time (= relative)
+                  duration = new Duration(flightModel.clampFlightRelativeDateForDisplay(indicatorValue.getCumulatedFlightTime()));
+               }
+               double x = convertToCoordinate(duration);
+               xIndicator.add(x);
+
+               final double convertedY;
+               if (indicator.getUnitSymbolOverride() == null && userIndicatorDisplay != null) {
+                  convertedY = unitBusiness.convert(indicatorValue.getValue(), defaultIndicatorUnit, userIndicatorDisplay.getUnitName());
+               } else {
+                  convertedY = indicatorValue.getValue();
+               }
+               yIndicator.add(convertedY);
+
+               if (indicatorValue.getSuccessRateValue() != null) {
+                  ySuccessRate.add(indicatorValue.getSuccessRateValue() * 100.0);// to convert into percentage
+               }
+               indicatorChartModelData.addData(x, flight, indicatorValue, entry.getValue());
+            }
+         }
+      }
+   }
+
+   private void readFlightThresholdData(List<FlightModel> flightModels, IndicatorHmcModel indicatorModel, MultiMap xyThresholds,
+         MultiMap thresholdMarkers, Set<ThresholdConfiguration> displayedThresholdConfigurations) {
+
+      Indicator indicator = indicatorModel.getIndicator();
+
+      thresholdDataByFlightAndIndicator.put(indicator, new HashMap<>());
+
+      /**
+       * Initialize the threshold relearn request markers.
+       */
+      Map<Duration, Threshold> thresholdMarkerDurations = new HashMap<>();
+
+      Set<Threshold> allThresholds = new HashSet<>();
+      Map<String, HealthMechanicalComponentConfiguration> healthMechanicalComponentConfigurations;
+
+      Aircraft aircraft = MgsSession.getInstance().getAircraft();
+      if (aircraft == null) {
+         healthMechanicalComponentConfigurations = Collections.emptyMap();
+      } else {
+         try {
+            healthMechanicalComponentConfigurations = healthBusiness
+                  .getMechanicalComponentConfigurationsForAircraft(aircraft.getId(), indicatorModel.getParentComponent().getId());
+         } catch (EntityNotFoundException e1) {
+            LOGGER.error("Unable to get configurations.", e1);
+            healthMechanicalComponentConfigurations = Collections.emptyMap();
+         }
+      }
+
+      FlightModel firstFlightDisplayed = null;
+      FlightModel lastFlightDisplayed = null;
+      List<FlightModel> flightsDisplayed = new ArrayList<>();
+      if (groundAcquisitionMode) {
+         firstFlightDisplayed = flightModels.get(0);
+         lastFlightDisplayed = flightModels.get(flightModels.size() - 1);
+         flightsDisplayed.addAll(flightModels);
+      } else {
+         for (FlightModel flightModel : flightModels) {
+            if (firstFlightDisplayed == null && flightModel.getDisplayStartDate(groundAcquisitionMode) != null) {
+               firstFlightDisplayed = flightModel;
+            }
+            if (flightModel.getDisplayEndDate(groundAcquisitionMode) != null) {
+               lastFlightDisplayed = flightModel;
+            }
+            if (flightModel.getDisplayStartDate(groundAcquisitionMode) != null && flightModel.getDisplayEndDate(groundAcquisitionMode) != null) {
+               flightsDisplayed.add(flightModel);
+            }
+         }
+      }
+
+      Map<Threshold, Map<Flight, ThresholdConfiguration>> allThresholdConfigurations = new HashMap<>();
+      if (firstFlightDisplayed != null) {
+         // AT LEAST ONE FLIGHT IS DISPLAYED
+         for (FlightModel flightModel : flightsDisplayed) {
+            Set<Threshold> flightThresholds = new HashSet<>();
+            Map<String, Set<RelearnThresholdRequest>> relearnRequestMap = new HashMap<>();
+            HealthMechanicalComponentConfiguration healthMechanicalComponentConfiguration = healthMechanicalComponentConfigurations.get(flightModel.getFlight().getId());
+            if (healthMechanicalComponentConfiguration != null) {
+               IndicatorConfiguration indicatorConfiguration = healthMechanicalComponentConfiguration.getIndicatorConfigurations().get(indicator);
+               if (indicatorConfiguration != null) {
+                  for (ThresholdConfiguration thresholdConfiguration : indicatorConfiguration.getThresholdConfigurations()) {
+                     flightThresholds.add(thresholdConfiguration.getThreshold());
+                  }
+                  // Store threshold configurations used
+                  displayedThresholdConfigurations.addAll(indicatorConfiguration.getThresholdConfigurations());
+                  for (ThresholdConfiguration thrConf : indicatorConfiguration.getThresholdConfigurations()) {
+                     Threshold threshold = thrConf.getThreshold();
+                     allThresholds.add(threshold);
+                     if (!allThresholdConfigurations.containsKey(threshold)) {
+                        allThresholdConfigurations.put(threshold, new HashMap<>());
+                     }
+                     if (!relearnRequestMap.containsKey(threshold.getId())) {
+                        relearnRequestMap.put(threshold.getId(), new TreeSet<>(Collections.reverseOrder(new RelearnThresholdRequestComparator())));
+                     }
+                     allThresholdConfigurations.get(threshold).put(flightModel.getFlight(), thrConf);
+                     if (thrConf instanceof LearnedThresholdConfiguration) {
+                        relearnRequestMap.get(threshold.getId()).addAll(((LearnedThresholdConfiguration) thrConf).getRelearnRequests());
+                     }
+                  }
+               }
+            }
+
+            // Do not display marker multiple times
+            for (Threshold flightThreshold : flightThresholds) {
+               for (RelearnThresholdRequest request : relearnRequestMap.get(flightThreshold.getId())) {
+                  Date effectiveDateTime = request.getStartFlightDate();
+                  Duration duration = null;
+                  if (effectiveDateTime.after(lastFlightDisplayed.getDisplayEndDate(groundAcquisitionMode)) || effectiveDateTime.equals(lastFlightDisplayed.getDisplayEndDate(groundAcquisitionMode))) {
+                     // the date time is after the last flight
+                     duration = lastFlightDisplayed.getEndOfFlightForDisplay(groundAcquisitionMode);
+                  } else if (effectiveDateTime.before(firstFlightDisplayed.getDisplayStartDate(groundAcquisitionMode))
+                        || effectiveDateTime.equals(firstFlightDisplayed.getDisplayStartDate(groundAcquisitionMode))) {
+                     // the date time is before the first flight
+                     duration = firstFlightDisplayed.getBeginningOfFlightForDisplay(groundAcquisitionMode);
+                  } else {
+                     for (FlightModel otherFlightModel : flightModels) {
+                        if (effectiveDateTime.before(otherFlightModel.getDisplayEndDate(groundAcquisitionMode))) {
+                           duration = otherFlightModel.getBeginningOfFlightForDisplay(groundAcquisitionMode);
+                           break;
+                        }
+                     }
+                  }
+                  if (duration != null) {
+                     Threshold thresholdToMark;
+                     thresholdToMark = thresholdMarkerDurations.getOrDefault(duration, flightThreshold);
+                     if (request.isCreateMarker()) {
+                        // initialization of the marker
+                        double x = convertToCoordinate(duration);
+                        ChartMarker<Double> marker = new ChartMarker<>();
+                        marker.setxCoordinateValue(x);
+                        marker.setMarkerText(ConvertUtils.formatDateTime(effectiveDateTime) + " " + request.getDescription());
+                        if (!thresholdMarkers.containsValue(marker)) {
+                           thresholdMarkers.put(thresholdToMark, marker);
+                        }
+                        thresholdMarkerDurations.put(duration, flightThreshold);
+                     }
+                  }
+               }
+            }
+         }
+      }
+
+      /**
+       * Initialize the threshold values.
+       */
+      for (Threshold threshold : allThresholds) {
+         // get the threshold values
+         final Map<Flight, ThresholdConfiguration> flightThresholdConfigurations;
+         flightThresholdConfigurations = allThresholdConfigurations.getOrDefault(threshold, Collections.emptyMap());
+
+         // This collection contains all existing threshold configurations (not only the displayed ones)
+         // This is used to get additional markers, corresponding to configurations not displayed (because there is no applicable flight)
+         Set<ThresholdConfiguration> thresholdConfigurations = new HashSet<>(healthBusiness.getThresholdConfigurations(threshold.getId()));
+         thresholdConfigurations.removeAll(displayedThresholdConfigurations);
+         for (ThresholdConfiguration thresholdConfiguration : thresholdConfigurations) {
+            if (!(thresholdConfiguration instanceof LearnedThresholdConfiguration learnedThresholdConfiguration)) {
+               continue;
+            }
+            for (RelearnThresholdRequest request : learnedThresholdConfiguration.getRelearnRequests()) {
+               if (!request.isCreateMarker()) {
+                  continue;
+               }
+               Date effectiveDateTime = request.getStartFlightDate();
+               Duration duration = null;
+               if (effectiveDateTime.after(lastFlightDisplayed.getDisplayEndDate(groundAcquisitionMode))) {
+                  duration = lastFlightDisplayed.getEndOfFlightForDisplay(groundAcquisitionMode);
+               } else if (effectiveDateTime.before(firstFlightDisplayed.getDisplayStartDate(groundAcquisitionMode))) {
+                  // Learning to old to be displayed
+                  duration = null;
+               } else {
+                  for (FlightModel flightModel : flightModels) {
+                     if (effectiveDateTime.before(flightModel.getDisplayEndDate(groundAcquisitionMode))) {
+                        duration = flightModel.getBeginningOfFlightForDisplay(groundAcquisitionMode);
+                        break;
+                     }
+                  }
+               }
+               if (duration == null) {
+                  continue;
+               }
+               double x = convertToCoordinate(duration);
+               ChartMarker<Double> marker = new ChartMarker<>();
+               marker.setxCoordinateValue(x);
+               marker.setMarkerText(ConvertUtils.formatDateTime(effectiveDateTime) + " " + request.getDescription());
+               if (!thresholdMarkers.containsValue(marker)) {
+                  thresholdMarkers.put(threshold, marker);
+               }
+               thresholdMarkerDurations.put(duration, threshold);
             }
          }
 
-         if (!nameLaws.contains(filteringLawAttribute)) {
-            throw new DelegateException("HealthMonitoring: Invalid name of Law '" + filteringLawAttribute + "' for the indicator '" + indicatorXMLBean.getName()
-                  + "' of '" + mechanicalComponent.getName()
-                  + "' mechanical component. If you want to use a filtering law on this indicator, the name should be one of the following : "
-                  + listOfFilteringLawName + " .");
+         final List<ThresholdValue> values = retrieveThresholdValues(flightThresholdConfigurations, flightModels, indicator);
+
+         // We need a non-null value to display the curve
+         // otherwise JFreeChart complains
+         boolean nonNullValueFound = false;
+         if (!values.isEmpty()) {
+            for (ThresholdValue thresholdValue : values) {
+               double startX = convertToCoordinate(thresholdValue.getBeginningDuration());
+               double endX = convertToCoordinate(thresholdValue.getEndDuration());
+               if (thresholdValue.isDefined()) {
+                  // add the threshold points
+                  addValueToMultiMap(xyThresholds, threshold, new SingletonMap(startX, thresholdValue.getValue()));
+                  addValueToMultiMap(xyThresholds, threshold, new SingletonMap(endX, thresholdValue.getValue()));
+                  nonNullValueFound = true;
+               } else {
+                  // No value for that period of time
+                  addValueToMultiMap(xyThresholds, threshold, new SingletonMap(startX, null));
+                  addValueToMultiMap(xyThresholds, threshold, new SingletonMap(endX, null));
+               }
+            }
+         }
+         if (!nonNullValueFound) {
+            // Remove all null values that have been put inside the map
+            xyThresholds.remove(threshold);
          }
       }
    }
 
-   void createIndicator(Avionic avionic, HealthMechanicalComponent healthComponent, HealthMechanicalComponentXMLBean mechanicalComponentXMLBean, IndicatorXMLBean indicatorBean,
-         Map<String, Map<String, Unit>> unitsByPhysicalQuantity) throws DelegateException {
-      // Create indicator
-      Indicator indicator = new Indicator(UUID.randomUUID().toString());
-      indicator.setFunctionalId(indicatorBean.getFunctionalId());
-      indicator.setName(indicatorBean.getName());
-      indicator.setActive(true);
-
-      healthComponent.getIndicators().put(indicator.getFunctionalId(), indicator);
-
-      // Create a default display for this indicator
-      IndicatorDisplay display = new IndicatorDisplay();
-      display.setColor(indicatorBean.getColor());
-      display.setStyle(indicatorBean.getStyle() != null ? Style.valueOf(indicatorBean.getStyle().name()) : null);
-      display.setTrendColor(indicatorBean.getTrendColor());
-      display.setTrendStyle(indicatorBean.getTrendStyle() != null ? Style.valueOf(indicatorBean.getTrendStyle().name()) : null);
-      display.setSuccessRateColor(indicatorBean.getSuccessRateColor());
-      display.setSuccessRateStyle(indicatorBean.getSuccessRateStyle() != null ? Style.valueOf(indicatorBean.getSuccessRateStyle().name()) : null);
-      if (avionic == Avionic.MARMS && indicatorBean.getAlgorithm() == HealthAlgorithm.Read) {
-         indicator.setUnitSymbolOverride(StringUtils.trimToEmpty(indicatorBean.getUnit()));
-         display.setUnitName("no_unit");
-      } else {
-         display.setUnitName(getUnitName(indicatorBean, mechanicalComponentXMLBean, unitsByPhysicalQuantity));
-      }
-      indicator.setDisplay(display);
-
-      // Create thresholds
-      for (ThresholdXMLBean thresholdBean : indicatorBean.getThresholds()) {
-         THRESHOLD_DELEGATE.createThreshold(indicator, thresholdBean);
-      }
+   private void addValueToMultiMap(MultiMap xyThresholds, Threshold thresholdKey, SingletonMap singletonMapValue) {
+      xyThresholds.put(thresholdKey, singletonMapValue);
    }
 
-   void updateIndicator(Avionic avionic, Indicator indicator, HealthMechanicalComponentXMLBean mechanicalComponentXMLBean, IndicatorXMLBean indicatorBean,
-         Map<String, Map<String, Unit>> units)
-         throws DelegateException {
-      indicator.setName(indicatorBean.getName());
-      indicator.setActive(true);
+   private List<ChartMarker<Double>> readFlightMarkers(List<FlightModel> flightModels, IndicatorHmcModel indicatorModel) {
+      List<ChartMarker<Double>> markers = new ArrayList<>();
+      final Indicator indicator = indicatorModel.getIndicator();
 
-      IndicatorDisplay display = indicator.getDisplay();
-      display.setColor(indicatorBean.getColor());
-      display.setStyle(indicatorBean.getStyle() != null ? Style.valueOf(indicatorBean.getStyle().name()) : null);
-      display.setTrendColor(indicatorBean.getTrendColor());
-      display.setTrendStyle(indicatorBean.getTrendStyle() != null ? Style.valueOf(indicatorBean.getTrendStyle().name()) : null);
-      display.setSuccessRateColor(indicatorBean.getSuccessRateColor());
-      display.setSuccessRateStyle(indicatorBean.getSuccessRateStyle() != null ? Style.valueOf(indicatorBean.getSuccessRateStyle().name()) : null);
-      if (avionic == Avionic.MARMS && indicatorBean.getAlgorithm() == HealthAlgorithm.Read) {
-         indicator.setUnitSymbolOverride(StringUtils.trimToEmpty(indicatorBean.getUnit()));
-         display.setUnitName("no_unit");
+      Map<Flight, FlightModel> flightModelMap = new HashMap<>();
+      for (FlightModel flightModel : flightModels) {
+         flightModelMap.put(flightModel.getFlight(), flightModel);
+      }
+      markers.addAll(getMarkersForAlarms(healthBusiness.getHealthAlarmsByIndicator(indicator.getId(), true), flightModelMap, groundAcquisitionMode));
+
+      Map<? extends Alarm, Flight> greyAlarms = healthBusiness.getAcknowledgedGreyHealthAlarmsAndVpuAnomaliesByHmc(indicatorModel.getParentComponent().getId());
+      markers.addAll(getMarkersForAlarms(greyAlarms, flightModelMap, groundAcquisitionMode));
+      return markers;
+   }
+
+   private List<ThresholdValue> retrieveThresholdValues(Map<Flight, ThresholdConfiguration> thresholdConfigurations, List<FlightModel> flightModels, Indicator indicator) {
+      List<ThresholdValue> values = new ArrayList<>();
+      Map<Flight, Map<Severity, ThresholdValue>> thresholdDataByFlight = thresholdDataByFlightAndIndicator.get(indicator);
+
+      for (FlightModel flightModel : flightModels) {
+         final Flight flight = flightModel.getFlight();
+         ThresholdConfiguration thresholdConfiguration = thresholdConfigurations.get(flight);
+
+         if (!thresholdDataByFlight.containsKey(flight)) {
+            thresholdDataByFlight.put(flight, new HashMap<>());
+         }
+
+         final Duration beginningOfFlight = flightModel.getBeginningOfFlightForDisplay(groundAcquisitionMode);
+         final Duration endOfFlight = flightModel.getEndOfFlightForDisplay(groundAcquisitionMode);
+         /*
+          * String unitLabel = getUnitLabel(indicator); if (thresholdConfiguration instanceof FixedThresholdConfiguration) { // Fixed threshold => constant value between beginning and end of
+          * configuration final Double fixedValue = ((FixedThresholdConfiguration) thresholdConfiguration).getValue(); double convertedValue = convertThresholdValue(indicator, fixedValue); final
+          * ThresholdValue thresholdValue = new ThresholdValue(beginningOfFlight, endOfFlight, convertedValue, unitLabel);
+          * thresholdDataByFlight.get(flight).put(thresholdConfiguration.getThreshold().getSeverity(), thresholdValue); values.add(thresholdValue); } else if (thresholdConfiguration instanceof
+          * LearnedThresholdConfiguration learnedThresholdConfiguration) {
+          * 
+          * RelearnThresholdRequest request = getApplicableRelearnRequest(flight, learnedThresholdConfiguration); if (request != null) { // Request has ended before the flight download double value =
+          * request.getLearnedValue(); double convertedValue = convertThresholdValue(indicator, value); final ThresholdValue thresholdValue = new ThresholdValue(beginningOfFlight, endOfFlight,
+          * convertedValue, learnedThresholdConfiguration.getMinimumThreshold(), learnedThresholdConfiguration.getMaximumThreshold(), unitLabel);
+          * thresholdDataByFlight.get(flight).put(thresholdConfiguration.getThreshold().getSeverity(), thresholdValue); values.add(thresholdValue); } else { // No started request before the flight //
+          * Check threshold default value if (learnedThresholdConfiguration.getValue() != null) { // Take the default value double value = learnedThresholdConfiguration.getValue(); double
+          * convertedValue = convertThresholdValue(indicator, value); final ThresholdValue thresholdValue = new ThresholdValue(beginningOfFlight, endOfFlight, convertedValue,
+          * learnedThresholdConfiguration.getMinimumThreshold(), learnedThresholdConfiguration.getMaximumThreshold(), unitLabel);
+          * thresholdDataByFlight.get(flight).put(thresholdConfiguration.getThreshold().getSeverity(), thresholdValue); values.add(thresholdValue); } else { // No default value => do not show the
+          * threshold at all final ThresholdValue thresholdValue = new ThresholdValue(beginningOfFlight, endOfFlight, learnedThresholdConfiguration.getMinimumThreshold(),
+          * learnedThresholdConfiguration.getMaximumThreshold(), unitLabel); thresholdDataByFlight.get(flight).put(thresholdConfiguration.getThreshold().getSeverity(), thresholdValue);
+          * values.add(thresholdValue); } } }
+          */
+
+         String unitLabel = getUnitLabel(indicator);
+         if (thresholdConfiguration == null) {
+            // No configuration applicable to this flight - nothing to draw, same as before
+            continue;
+         }
+         // BCR-6605 the deviation applicable to this indicator, severity and flight
+         final Severity severity = thresholdConfiguration.getThreshold().getSeverity();
+         final IndicatorDeviationDto deviation = getApplicableDeviation(indicator, severity, flight);
+         final Double deviatedValue = deviation != null ? deviation.getThresholdValue() : null;
+         final Double deviatedMin = deviation != null ? deviation.getMinValue() : null;
+         final Double deviatedMax = deviation != null ? deviation.getMaxValue() : null;
+         if (thresholdConfiguration instanceof FixedThresholdConfiguration) {
+            // Fixed threshold => constant value between beginning and end of configuration
+            Double fixedValue = ((FixedThresholdConfiguration) thresholdConfiguration).getValue();
+            if (deviatedValue != null) {
+               // BCR-6605 the deviation replaces the configured value
+               fixedValue = deviatedValue;
+            }
+            double convertedValue = convertThresholdValue(indicator, fixedValue);
+            final ThresholdValue thresholdValue = new ThresholdValue(beginningOfFlight, endOfFlight, convertedValue, unitLabel);
+            thresholdDataByFlight.get(flight).put(severity, thresholdValue);
+            values.add(thresholdValue);
+         } else if (thresholdConfiguration instanceof LearnedThresholdConfiguration learnedThresholdConfiguration) {
+            // BCR-6605 the bounds to display: the deviation's when it set them
+            final Double min = deviatedMin != null ? deviatedMin : learnedThresholdConfiguration.getMinimumThreshold();
+            final double max = deviatedMax != null ? deviatedMax : learnedThresholdConfiguration.getMaximumThreshold();
+            RelearnThresholdRequest request = getApplicableRelearnRequest(flight, learnedThresholdConfiguration);
+            Double value;
+            if (deviatedValue != null) {
+               // BCR-6605 a deviated value pins the threshold: it wins over anything learned
+               value = deviatedValue;
+            } else if (request != null) {
+               // Request has ended before the flight download
+               value = request.getLearnedValue();
+            } else {
+               // No started request before the flight - take the threshold default value, if any
+               value = learnedThresholdConfiguration.getValue();
+            }
+            if (value != null) {
+               // BCR-6605 clamp only against bounds the DEVIATION supplied, so a chart with no
+               // deviation is drawn exactly as before
+               if (deviatedMin != null && value < deviatedMin) {
+                  value = deviatedMin;
+               }
+               if (deviatedMax != null && value > deviatedMax) {
+                  value = deviatedMax;
+               }
+               double convertedValue = convertThresholdValue(indicator, value);
+               final ThresholdValue thresholdValue = new ThresholdValue(beginningOfFlight, endOfFlight, convertedValue,
+                     min, max, unitLabel);
+               thresholdDataByFlight.get(flight).put(severity, thresholdValue);
+               values.add(thresholdValue);
+            } else {
+               // No value at all => do not show the threshold for this flight
+               final ThresholdValue thresholdValue = new ThresholdValue(beginningOfFlight, endOfFlight, min, max, unitLabel);
+               thresholdDataByFlight.get(flight).put(severity, thresholdValue);
+               values.add(thresholdValue);
+            }
+         }
+
+      }
+
+      values.sort(THRESHOLD_VALUES_COMPARATOR);
+      return values;
+   }
+
+   private RelearnThresholdRequest getApplicableRelearnRequest(final Flight currentFlight, final ThresholdConfiguration thresholdConfiguration) {
+      SortedSet<RelearnThresholdRequest> sortedRequests = new TreeSet<>(Collections.reverseOrder(new RelearnThresholdRequestComparator()));
+      sortedRequests.addAll(((LearnedThresholdConfiguration) thresholdConfiguration).getRelearnRequests());
+
+      for (RelearnThresholdRequest request : sortedRequests) {
+         boolean flightDownloadedAfterRequest = request.getStartDate().before(currentFlight.getLastDownloadDate());
+         boolean requestLaunchedBeforeFlight = request.getStartFlightDate().before(currentFlight.getUsageStartDate());
+         if (flightDownloadedAfterRequest && requestLaunchedBeforeFlight) {
+            // That's an appropriate request, but we have to check if the request is completed
+            // If so, the applicable flight date must be before the current flight
+            boolean requestCompleted = request.isHandled() && request.getLearnedValue() != null;
+            if (requestCompleted && currentFlight.getUsageStartDate().after(request.getApplicableFlightDate())) {
+               return request;
+            } else {
+               break;
+            }
+         }
+         // Otherwise, explore other relearn requests
+      }
+      return null;
+   }
+
+   /**
+    * Builds the list of markers for given alarms and flights.
+    * 
+    * @param alarms
+    *           the list of alarms
+    * @param flights
+    *           the list of flights
+    * @return the list of corresponding markers
+    */
+   private Collection<ChartMarker<Double>> getMarkersForAlarms(final Map<? extends Alarm, Flight> alarms, final Map<Flight, FlightModel> flightModelMap, final boolean groundAcquisitionMode) {
+      List<ChartMarker<Double>> markers = new ArrayList<>();
+      for (Map.Entry<? extends Alarm, Flight> alarmEntry : alarms.entrySet()) {
+         Alarm healthAlarm = alarmEntry.getKey();
+         Flight flight = alarmEntry.getValue();
+         if (healthAlarm.isCreateMarker()) {
+            FlightModel flightModel = flightModelMap.get(flight);
+            // Not unloaded flights are not displayed (they have no health data)
+            if (flightModel != null && flightModel.getFlight().isUnloaded()) {
+               // Only display markers if flight is displayed
+               Duration flightBeginning = flightModel.getBeginningOfFlightForDisplay(groundAcquisitionMode);
+               Duration flightEnd = flightModel.getEndOfFlightForDisplay(groundAcquisitionMode);
+               if (flightBeginning == null || flightEnd == null || flightBeginning.equals(flightEnd)) {
+                  continue;
+               }
+               final long hours;
+               if (healthAlarm.getCumulatedFlightTime() != null && !groundAcquisitionMode) {
+                  hours = flightModel.clampFlightRelativeDateForDisplay(healthAlarm.getCumulatedFlightTime());
+               } else {
+                  Date alarmDate = healthAlarm.getDate();
+                  hours = flightModel.computeRelativeDateForDisplay(alarmDate, groundAcquisitionMode, true);
+               }
+               ChartMarker<Double> marker = new ChartMarker<>();
+               // 'hours' can be (slightly) negative when we display a grey alarm marker before the first flight
+               double x = Math.max(0, hours / 3600000d);
+               marker.setMarkerText(healthAlarm.getAcknowledgement().getDescription());
+               marker.setxCoordinateValue(x);
+               markers.add(marker);
+            }
+         }
+      }
+      return markers;
+   }
+
+   /**
+    * Convert to coordinate.
+    * 
+    * @param duration
+    *           the duration
+    * @return the coordinate
+    */
+   private double convertToCoordinate(Duration duration) {
+      return duration.getMillis() / 3600000d;
+   }
+
+   /**
+    * Gets the indicator chart models, indexed by indicator.
+    * 
+    * @return the list of indicator chart models.
+    */
+   public Map<Indicator, List<ChartElementModel<Double>>> getChartElementModels() {
+      return chartElementModels;
+   }
+
+   /**
+    * Gets the list of success rate chart models, indexed by indicator.
+    * 
+    * @return the list of indicator success rate chart models.
+    */
+   public Map<Indicator, ChartElementModel<Double>> getSuccessRateModels() {
+      return successRateModels;
+   }
+
+   public List<FlightModel> getFlightModels() {
+      return flightModels;
+   }
+
+   /**
+    * Return the unit label to display.
+    * 
+    * @param unitName
+    *           unit name
+    * @return unit label
+    */
+   private String getUnitLabel(Indicator indicator) {
+      IndicatorDisplay display = indicatorDisplayMap.get(indicator);
+      final BundleContext unitBundleContext = FrameworkUtil.getBundle(IUnitBusiness.class).getBundleContext();
+      final IUnitBusiness unitBusiness = unitBundleContext.getService(unitBundleContext.getServiceReference(IUnitBusiness.class));
+
+      final String unitSymbol;
+      if (indicator.getUnitSymbolOverride() != null) {
+         unitSymbol = indicator.getUnitSymbolOverride();
       } else {
-         display.setUnitName(getUnitName(indicatorBean, mechanicalComponentXMLBean, units));
-      }
-
-      // Index thresholds by their functional id
-      Map<String, Threshold> thresholds = new HashMap<>();
-      for (Threshold threshold : indicator.getThresholds()) {
-         thresholds.put(threshold.getFunctionalId(), threshold);
-      }
-
-      // Create or update thresholds
-      Set<String> activeThresholds = new HashSet<>();
-      for (ThresholdXMLBean thresholdXMLBean : indicatorBean.getThresholds()) {
-         Threshold threshold = thresholds.get(thresholdXMLBean.getName());
-         if (threshold == null) {
-            THRESHOLD_DELEGATE.createThreshold(indicator, thresholdXMLBean);
+         final String unitName;
+         if (display != null) {
+            unitName = display.getUnitName();
          } else {
-            THRESHOLD_DELEGATE.updateThreshold(threshold, thresholdXMLBean);
+            unitName = indicator.getDisplay().getUnitName();
          }
-         activeThresholds.add(thresholdXMLBean.getName());
+         unitSymbol = unitBusiness.getUnitSymbol(unitName);
       }
-
-      // Disable thresholds absent from the new configuration
-      for (Threshold threshold : indicator.getThresholds()) {
-         threshold.setActive(activeThresholds.contains(threshold.getFunctionalId()));
-      }
+      return unitSymbol;
    }
 
-   void createIndicatorConfiguration(Avionic avionic, HealthMechanicalComponentConfiguration healthComponentConfiguration, IndicatorXMLBean indicatorBean, Map<String, Indicator> indicators,
-         Map<String, Accelerometer> accelerometers, HealthConfigurationXMLBean healthConfigurationBean, Map<Threshold, Set<RelearnThresholdRequest>> relearnRequests)
-         throws DelegateException {
-      Indicator indicator = indicators.get(indicatorBean.getFunctionalId());
+   private double convertThresholdValue(Indicator indicator, double value) {
+      final BundleContext unitBundleContext = FrameworkUtil.getBundle(IUnitBusiness.class).getBundleContext();
+      final IUnitBusiness unitBusiness = unitBundleContext.getService(unitBundleContext.getServiceReference(IUnitBusiness.class));
 
-      // Create indicator configuration
-      IndicatorConfiguration indicatorConfiguration = new IndicatorConfiguration(UUID.randomUUID().toString());
-      indicatorConfiguration.setIndicator(indicator);
-      if (indicatorBean.getAlgorithm() == HealthAlgorithm.Read && indicatorBean.getReference() == null) {
-         throw new DelegateException("The indicator '" + indicatorBean.getFunctionalId() + "' shall have a reference because the algorithm is Read.");
-      }
-      String pattern = "([HRE]-[0-9]+-[0-9]+-)?[0-9]+-[0-9]+";
-      if (indicatorBean.getAlgorithm() == HealthAlgorithm.Read && !indicatorBean.getReference().matches(pattern)) {
-         throw new DelegateException("Issue with health configuration concerning reference for indicator "
-               + indicatorBean.getFunctionalId() + " (" + indicatorBean.getAlgorithm() + "): Value '" + indicatorBean.getReference() + "' is not valid with respect to pattern '" + pattern + "'.");
-      }
-      indicatorConfiguration.setReference(indicatorBean.getReference());
-      if (indicatorBean.getAlgorithm() == HealthAlgorithm.ACQUISITION_RATE == (indicatorBean.getReferenceIndicator() == null)) {
-         throw new DelegateException("The indicator '" + indicatorBean.getFunctionalId() + "' shall have a reference indicator if and only if the algorithm is ACQUISITION_RATE.");
-      }
-      indicatorConfiguration.setSlidingMedian(indicatorBean.getSlidingMedian());
-      indicatorConfiguration.setReferenceIndicator(indicatorBean.getReferenceIndicator());
-      indicatorConfiguration.setHealthAlgorithm(indicatorBean.getAlgorithm());
-      indicatorConfiguration.setParameters(indicatorBean.getParameters());
-      indicatorConfiguration.setFilteringLaw(indicatorBean.getFilteringLaw());
-      indicatorConfiguration.setMaxPointsPerHour(indicatorBean.getMaxPointsPerHour());
-      if (indicatorBean.getMinSensor() != null && indicatorBean.getMaxSensor() != null && indicatorBean.getMaxSensor() <= indicatorBean.getMinSensor()) {
-         throw new DelegateException("The indicator '" + indicatorBean.getFunctionalId() + "' defines invalid 'min' and 'max' attribute.");
-      }
-      if (indicatorBean.getMinSensor() != null && healthConfigurationBean.getSensorAnomaly() == null) {
-         throw new DelegateException("The indicator '" + indicatorBean.getFunctionalId() + "' defines a 'min' attribute but sensor anomaly configuration is missing.");
-      }
-      indicatorConfiguration.setMinSensor(indicatorBean.getMinSensor());
-      if (indicatorBean.getMaxSensor() != null && healthConfigurationBean.getSensorAnomaly() == null) {
-         throw new DelegateException("The indicator '" + indicatorBean.getFunctionalId() + "' defines a 'max' attribute but sensor anomaly configuration is missing.");
-      }
-      indicatorConfiguration.setMaxSensor(indicatorBean.getMaxSensor());
-      if (healthConfigurationBean.getSensorAnomaly() != null) {
-         indicatorConfiguration.setSensorAnomalyWorkcard(healthConfigurationBean.getSensorAnomaly().getWorkcard());
-         indicatorConfiguration.setSensorAnomalySuccessivePoints(healthConfigurationBean.getSensorAnomaly().getNbSuccessivePoints());
+      IndicatorDisplay userIndicatorDisplay = indicatorDisplayMap.get(indicator);
+      String defaultIndicatorUnit = indicator.getDisplay().getUnitName();
+      final double convertedValue;
+      if (indicator.getUnitSymbolOverride() != null || userIndicatorDisplay == null) {
+         convertedValue = value;
       } else {
-         indicatorConfiguration.setSensorAnomalyWorkcard(null);
-         indicatorConfiguration.setSensorAnomalySuccessivePoints(null);
-      }
-      if (healthConfigurationBean.getIndicatorInvalidities() != null && indicatorBean.getInvalidityThreshold() != null) {
-         if (indicatorBean.getInvalidityThreshold() < 0) {
-            throw new DelegateException("The invalidity threshold has to be between 0 and 1 on '" + indicatorBean.getFunctionalId() + "'.");
-         }
-         indicatorConfiguration.setInvalidityWorkcard(healthConfigurationBean.getIndicatorInvalidities().getWorkcard());
-         indicatorConfiguration.setInvalidityThreshold(indicatorBean.getInvalidityThreshold());
-      } else if (indicatorBean.getInvalidityThreshold() != null) {
-         // Invalidity threshold defined, but no global indicator invalidity configuration: that's an error
-         throw new DelegateException("The indicator '" + indicatorBean.getFunctionalId() + "' defines a 'invalidityThreshold' attribute but <indicatorInvalidities /> tag is missing.");
-      } else {
-         indicatorConfiguration.setInvalidityWorkcard(null);
-         indicatorConfiguration.setInvalidityThreshold(null);
-      }
-      if (indicatorBean.getLsb() != null && (indicatorBean.getAlgorithm() != HealthAlgorithm.Read || avionic != Avionic.MARMS)) {
-         throw new DelegateException("The indicator '" + indicatorBean.getFunctionalId() + "' shall not have an attribute LSB");
-      } else if (indicatorBean.getLsb() == null && indicatorBean.getAlgorithm() == HealthAlgorithm.Read && avionic == Avionic.MARMS) {
-         throw new DelegateException("The indicator '" + indicatorBean.getFunctionalId() + "' must have an attribute LSB");
-      }
-      indicatorConfiguration.setMultiplier(indicatorBean.getLsb());
-
-      AccelerometerXMLBean accelerometer = indicatorBean.getAccelerometer();
-      if (accelerometer != null) {
-         indicatorConfiguration.setAccelerometer(accelerometers.get(Accelerometer.normalize(accelerometer.getFunctionalId())));
-      }
-      healthComponentConfiguration.getIndicatorConfigurations().put(indicator, indicatorConfiguration);
-
-      // Index indicators by their name
-      Map<String, Threshold> thresholds = new HashMap<>(indicator.getThresholds().size());
-      for (Threshold threshold : indicator.getThresholds()) {
-         thresholds.put(threshold.getFunctionalId(), threshold);
+         convertedValue = unitBusiness.convert(value, defaultIndicatorUnit, userIndicatorDisplay.getUnitName());
       }
 
-      for (ThresholdXMLBean thresholdBean : indicatorBean.getThresholds()) {
-         THRESHOLD_DELEGATE.createThresholdConfiguration(indicatorConfiguration, thresholdBean, thresholds, relearnRequests);
-      }
+      return convertedValue;
    }
 
-   void validateIndicatorUnicity(List<IndicatorXMLBean> indicators, HealthMechanicalComponent hmc) throws DelegateException {
-      Set<String> names = new HashSet<>();
-      Set<String> functionalIds = new HashSet<>();
-      for (IndicatorXMLBean indicator : indicators) {
-         if (names.contains(indicator.getName())) {
-            throw new DelegateException("Duplicate indicator '" + indicator.getName() + "' in '" + hmc.getName() + "'");
-         }
-         names.add(indicator.getName());
-         if (functionalIds.contains(indicator.getFunctionalId())) {
-            throw new DelegateException("Duplicate indicator '" + indicator.getFunctionalId() + "' in '" + hmc.getName() + "'");
-         }
-         functionalIds.add(indicator.getFunctionalId());
-      }
-   }
-
-   void validateMinMaxSensor(IndicatorXMLBean indicatorXMLBean, String hmcFuncId) throws DelegateException {
-      final Double minSensor = indicatorXMLBean.getMinSensor();
-      final Double maxSensor = indicatorXMLBean.getMaxSensor();
-
-      if (minSensor != null && maxSensor != null && minSensor > maxSensor) {
-         throw new DelegateException("Issue with health configuration concerning " + hmcFuncId + " > "
-               + indicatorXMLBean.getFunctionalId() + " thresholds Sensor values: check minSensor and maxSensor values.");
-      }
-   }
-
-   private String getUnitName(IndicatorXMLBean indicatorBean, HealthMechanicalComponentXMLBean mechanicalComponentXMLBean, Map<String, Map<String, Unit>> unitsByPhysicalQuantity)
-         throws DelegateException {
-      if (indicatorBean.getUnit() == null || indicatorBean.getUnit().isEmpty() || unitsByPhysicalQuantity.isEmpty()) {
-         return "no_unit";
-      } else {
-         final String physicalQuantity = mechanicalComponentXMLBean.getPhysicalQuantity();
-         final Map<String, Unit> physicalQuantityUnits = unitsByPhysicalQuantity.get(physicalQuantity);
-         if (!physicalQuantityUnits.containsKey(indicatorBean.getUnit())) {
-            throw new DelegateException("Unit symbol '" + indicatorBean.getUnit() + "' is unknown (on indicator '" + indicatorBean.getName() + "'). Check the physical quantity (" + physicalQuantity
-                  + " expected)");
-         }
-         return physicalQuantityUnits.get(indicatorBean.getUnit()).getName();
-      }
-   }
 }
-
-=======================================================================
-
-
