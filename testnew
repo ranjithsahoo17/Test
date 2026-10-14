@@ -1,367 +1,1362 @@
-[2026-10-13T14:27:57.748648+05:30] [] [INFO] [NCLS-GFLAUNCHER-00005] [jakarta.enterprise.launcher] [tid: _ThreadID=1 _ThreadName=main] [levelValue: 800] [[
-  JVM invocation command line:
-C:\Program Files\Eclipse Adoptium\jdk-21.0.6+7\bin\java.exe
--cp
-C:/glassfish7/glassfish/modules/glassfish.jar
--agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:9009
--DWALL_CLOCK_START=2026-10-13T08:57:57.022961200Z
--XX:+UnlockDiagnosticVMOptions
--XX:NewRatio=2
--Xmx512m
---add-opens=java.base/java.io=ALL-UNNAMED
---add-opens=java.base/java.lang=ALL-UNNAMED
---add-opens=java.base/java.util=ALL-UNNAMED
---add-opens=java.base/sun.net.www.protocol.jrt=ALL-UNNAMED
---add-opens=java.naming/javax.naming.spi=ALL-UNNAMED
---add-opens=java.rmi/sun.rmi.transport=ALL-UNNAMED
---add-opens=jdk.management/com.sun.management.internal=ALL-UNNAMED
---add-exports=java.naming/com.sun.jndi.ldap=ALL-UNNAMED
---add-exports=java.base/jdk.internal.vm.annotation=ALL-UNNAMED
---add-opens=java.base/jdk.internal.vm.annotation=ALL-UNNAMED
--javaagent:C:/glassfish7/glassfish/lib/monitor/flashlight-agent.jar
--Djava.awt.headless=true
--Djdk.corba.allowOutputStreamSubclass=true
--Djdk.tls.rejectClientInitiatedRenegotiation=true
--Djavax.xml.accessExternalSchema=all
--Djava.security.policy=C:\glassfish7\glassfish\domains\mgs/config/server.policy
--Djava.security.auth.login.config=C:\glassfish7\glassfish\domains\mgs/config/login.conf
--Dcom.sun.enterprise.security.httpsOutboundKeyAlias=s1as
--Djavax.net.ssl.keyStore=C:\glassfish7\glassfish\domains\mgs/config/keystore.jks
--Djavax.net.ssl.trustStore=C:\glassfish7\glassfish\domains\mgs/config/cacerts.jks
--Djdbc.drivers=org.apache.derby.jdbc.ClientDriver
--DANTLR_USE_DIRECT_CLASS_LOADING=true
--Dcom.sun.enterprise.config.config_environment_factory_class=com.sun.enterprise.config.serverbeans.AppserverConfigEnvironmentFactory
--Dorg.glassfish.additionalOSGiBundlesToStart=org.apache.felix.shell,org.apache.felix.gogo.runtime,org.apache.felix.gogo.shell,org.apache.felix.gogo.command,org.apache.felix.shell.remote,org.apache.felix.fileinstall
--Dosgi.shell.telnet.port=6666
--Dosgi.shell.telnet.maxconn=1
--Dosgi.shell.telnet.ip=127.0.0.1
--Dgosh.args=--nointeractive
--Dfelix.fileinstall.dir=C:\glassfish7\glassfish/modules/autostart/
--Dfelix.fileinstall.poll=5000
--Dfelix.fileinstall.log.level=2
--Dfelix.fileinstall.bundles.new.start=true
--Dfelix.fileinstall.bundles.startTransient=true
--Dfelix.fileinstall.disableConfigSave=false
--Dorg.glassfish.gmbal.no.multipleUpperBoundsException=true
--Dcom.ctc.wstx.returnNullForDefaultNamespace=true
--Djdk.attach.allowAttachSelf=true
--Dcom.sun.aas.instanceRoot=C:\glassfish7\glassfish\domains\mgs
--Dcom.sun.aas.installRoot=C:\glassfish7\glassfish
--Djava.library.path=C:/glassfish7/glassfish/lib;C:/Program Files/Eclipse Adoptium/jdk-21.0.6+7/bin;C:/Windows/Sun/Java/bin;C:/Windows/System32;C:/Windows;C:/Windows/System32/wbem;C:/Windows/System32/WindowsPowerShell/v1.0;C:/Windows/System32/OpenSSH;C:/apache-maven-3.9.9/bin;C:/glassfish7/glassfish/bin;C:/Program Files/TortoiseGit/bin;C:/Program Files/ServiceNow/agent-client-collector/bin;C:/Program Files/ServiceNow/agent-client-collector/embedded/bin;C:/Program Files/Git/cmd;C:/Program Files/nodejs;C:/Users/ranjitsa/AppData/Local/Microsoft/WindowsApps;C:/Users/ranjitsa/AppData/Roaming/npm;C:/sources-V2/mgs/maintenance-ground-station/mgs-ear
-com.sun.enterprise.glassfish.bootstrap.ASMain
--upgrade
-false
--domaindir
-C:/glassfish7/glassfish/domains/mgs
--read-stdin
-true
--asadmin-args
---host,,,localhost,,,--port,,,4848,,,--user,,,admin,,,--passwordfile,,,C:/glassfish7/glassfish/password.txt,,,--secure=false,,,--terse=true,,,--echo=false,,,--interactive=false,,,start-domain,,,--verbose=false,,,--watchdog=false,,,--debug=true,,,--domaindir,,,C:\glassfish7\glassfish\domains,,,mgs
--domainname
-mgs
--instancename
-server
--type
-DAS
--verbose
-false
--asadmin-classpath
-C:/glassfish7/glassfish/lib/client/appserver-cli.jar
--debug
-true
--asadmin-classname
-com.sun.enterprise.admin.cli.AdminMain]]
 
-[2026-10-13T14:28:06.382478+05:30] [GF 7.0.3] [INFO] [] [com.sun.enterprise.server.logging.LogManagerService] [tid: _ThreadID=1 _ThreadName=main] [levelValue: 800] [[
-  Using property file: C:\glassfish7\glassfish\domains\mgs\config\logging.properties]]
+package com.eurocopter.mgs.presentation.configuration.preferences.healthalarms;
 
-[2026-10-13T14:28:06.542700+05:30] [GF 7.0.3] [INFO] [NCLS-LOGGING-00009] [com.sun.enterprise.server.logging.LogManagerService] [tid: _ThreadID=1 _ThreadName=main] [levelValue: 800] [[
-  Running GlassFish Version: Eclipse GlassFish 7.0.3 (branch: master, commit: 8e1807085bf84d182c5344675a3fb243a5134037, timestamp: 2023-03-29T19:58:00Z)]]
+public enum WCModelDisplayProperty {
+   // BCR-6605 check box remove.
+   COMPONENT("MonitoredComponents", 200), SEVERITY("Severity", 60), LEVEL("ThresholdLevel", 60), TYPE("Type", 80), VALUE("ThresholdValue", 50), MIN_VALUE("LearningThresholdMinValue",
+         50), MAX_VALUE("LearningThresholdMaxValue", 50), LEARN_TIME("healthAlarmPageColumn8", 50), WORKCARD_REF("WorkCardRef", 100), MIN_DEV("LearningThresholdMinDev", 50), MEAN_MULT_FACTOR(
+               "LearningThresholdMeanMultFactor", 50), DEV_COEF("LearningThresholdDevCoef",
+                     50), NB_POINTS("NbSuccessivePtForAlarmRaising", 50), MAX_TIME_WO_ACQ("MaxTimeWithoutAcquisition", 60), FILTERING_LAW("FilteringLaw", 100), TE("TeReference", 120);
 
-[2026-10-13T14:28:07.029871+05:30] [GF 7.0.3] [INFO] [NCLS-SECURITY-01115] [jakarta.enterprise.system.core.security] [tid: _ThreadID=1 _ThreadName=main] [levelValue: 800] [[
-  Realm [admin-realm] of classtype [com.sun.enterprise.security.auth.realm.file.FileRealm] successfully created.]]
+   private final String key;
 
-[2026-10-13T14:28:07.030885+05:30] [GF 7.0.3] [INFO] [NCLS-SECURITY-01115] [jakarta.enterprise.system.core.security] [tid: _ThreadID=1 _ThreadName=main] [levelValue: 800] [[
-  Realm [file] of classtype [com.sun.enterprise.security.auth.realm.file.FileRealm] successfully created.]]
+   private final int columnSize;
 
-[2026-10-13T14:28:07.048619+05:30] [GF 7.0.3] [INFO] [NCLS-SECURITY-01115] [jakarta.enterprise.system.core.security] [tid: _ThreadID=1 _ThreadName=main] [levelValue: 800] [[
-  Realm [certificate] of classtype [com.sun.enterprise.security.auth.realm.certificate.CertificateRealm] successfully created.]]
+   WCModelDisplayProperty(String key, int columnSize) {
+      this.key = key;
+      this.columnSize = columnSize;
+   }
 
-[2026-10-13T14:28:08.145625+05:30] [GF 7.0.3] [INFO] [NCLS-CORE-00087] [jakarta.enterprise.system.core] [tid: _ThreadID=1 _ThreadName=main] [levelValue: 800] [[
-  Grizzly Framework 4.0.0 started in: 244ms - bound to [/0.0.0.0:8080]]]
+   public String getKey() {
+      return key;
+   }
 
-[2026-10-13T14:28:08.216938+05:30] [GF 7.0.3] [INFO] [NCLS-CORE-00087] [jakarta.enterprise.system.core] [tid: _ThreadID=1 _ThreadName=main] [levelValue: 800] [[
-  Grizzly Framework 4.0.0 started in: 14ms - bound to [/0.0.0.0:8443]]]
+   public int getColumnSize() {
+      return columnSize;
+   }
 
-[2026-10-13T14:28:08.241048+05:30] [GF 7.0.3] [INFO] [NCLS-CORE-00087] [jakarta.enterprise.system.core] [tid: _ThreadID=1 _ThreadName=main] [levelValue: 800] [[
-  Grizzly Framework 4.0.0 started in: 11ms - bound to [/0.0.0.0:4848]]]
+   public static WCModelDisplayProperty fromKey(String property) {
+      for (WCModelDisplayProperty prop : values()) {
+         if (prop.getKey().equals(property)) {
+            return prop;
+         }
+      }
+      return null;
+   }
+}
+================================================================
 
-[2026-10-13T14:28:08.457647+05:30] [GF 7.0.3] [INFO] [SEC-SVCS-00100] [jakarta.enterprise.security.services] [tid: _ThreadID=1 _ThreadName=main] [levelValue: 800] [[
-  Authorization Service has successfully initialized.]]
 
-[2026-10-13T14:28:08.652293+05:30] [GF 7.0.3] [INFO] [] [org.glassfish.ha.store.spi.BackingStoreFactoryRegistry] [tid: _ThreadID=1 _ThreadName=main] [levelValue: 800] [[
-  Registered org.glassfish.ha.store.adapter.cache.ShoalBackingStoreProxy for persistence-type = replicated in BackingStoreFactoryRegistry]]
+/***************************************/
+/** Copyright Airbus Helicopters 2019 **/
+/***************************************/
+package com.eurocopter.mgs.download.analysis.health.algo;
 
-[2026-10-13T14:28:09.766059+05:30] [GF 7.0.3] [INFO] [NCLS-CORE-00087] [jakarta.enterprise.system.core] [tid: _ThreadID=1 _ThreadName=main] [levelValue: 800] [[
-  Grizzly Framework 4.0.0 started in: 13ms - bound to [/0.0.0.0:3700]]]
+import java.util.ArrayList;
+import java.util.List;
 
-[2026-10-13T14:28:09.940673+05:30] [GF 7.0.3] [INFO] [NCLS-CORE-00017] [jakarta.enterprise.system.core] [tid: _ThreadID=1 _ThreadName=main] [levelValue: 800] [[
-  Eclipse GlassFish 7.0.3 (branch: master, commit: 8e1807085bf84d182c5344675a3fb243a5134037, timestamp: 2023-03-29T19:58:00Z) startup time: Embedded (7,671 ms), startup services (3,722 ms), total (11,393 ms)]]
+import com.eurocopter.mgs.download.analysis.health.impl.HealthIndicatorValueAdapter;
 
-[2026-10-13T14:28:09.940673+05:30] [GF 7.0.3] [INFO] [NCLS-CORE-00018] [jakarta.enterprise.system.core] [tid: _ThreadID=1 _ThreadName=main] [levelValue: 800] [[
-  Total startup time including CLI: 12,917 ms]]
+public final class FilteringAlgorithm {
 
-[2026-10-13T14:28:10.482631+05:30] [GF 7.0.3] [INFO] [NCLS-CORE-00087] [jakarta.enterprise.system.core] [tid: _ThreadID=1 _ThreadName=main] [levelValue: 800] [[
-  Grizzly Framework 4.0.0 started in: 5ms - bound to [/0.0.0.0:7676]]]
+   /**
+    * Default constructor. Builds a FilteringAlgorithm.
+    */
+   private FilteringAlgorithm() {
+      // Nothing to do
+   }
 
-[2026-10-13T14:28:11.005774+05:30] [GF 7.0.3] [INFO] [NCLS-JMX-00005] [jakarta.enterprise.system.jmx] [tid: _ThreadID=92 _ThreadName=Thread-9] [levelValue: 800] [[
-  JMXStartupService has started JMXConnector on JMXService URL service:jmx:rmi://LIN-PG02V9NE.corp.capgemini.com:8686/jndi/rmi://LIN-PG02V9NE.corp.capgemini.com:8686/jmxrmi]]
+   public static List<HealthIndicatorValueAdapter> filterHealthIndicatorValues(List<HealthIndicatorValueAdapter> values, int maxPointsPerHour) {
+      final List<HealthIndicatorValueAdapter> res = new ArrayList<>();
 
-[2026-10-13T14:28:13.560390+05:30] [GF 7.0.3] [INFO] [NCLS-REST-00001] [jakarta.enterprise.admin.rest] [tid: _ThreadID=65 _ThreadName=admin-listener(2)] [levelValue: 800] [[
-  Listening to REST requests at context: /command/domain.]]
+      if (values.size() <= maxPointsPerHour) {
+         return values;
+      }
 
-[2026-10-13T14:28:15.857105+05:30] [GF 7.0.3] [INFO] [] [com.sun.enterprise.server.logging.LogManagerService] [tid: _ThreadID=124 _ThreadName=pool-18-thread-1] [levelValue: 800] [[
-  Detected change of file: C:\glassfish7\glassfish\domains\mgs\config\logging.properties]]
+      if (maxPointsPerHour == 1) {
+         res.add(values.get(values.size() - 1));
+         return res;
+      }
 
-[2026-10-13T14:28:15.858617+05:30] [GF 7.0.3] [INFO] [] [com.sun.enterprise.server.logging.LogManagerService] [tid: _ThreadID=124 _ThreadName=pool-18-thread-1] [levelValue: 800] [[
-  Using property file: C:\glassfish7\glassfish\domains\mgs\config\logging.properties]]
+      res.add(values.get(0));
+      for (int i = 2; i <= maxPointsPerHour; i++) {
+         final int minIndex = maxPointsPerHour + (i * (i - 1)) / 2;
+         final int maxIndex = maxPointsPerHour + (i * (i + 1)) / 2 - 1;
+         res.add(values.get(getIndex(i, minIndex, maxIndex, values.size(), i == maxPointsPerHour) - 1));
+      }
+      return res;
+   }
 
-[2026-10-13T14:28:17.359309+05:30] [GF 7.0.3] [INFO] [] [com.sun.enterprise.server.logging.LogManagerService] [tid: _ThreadID=124 _ThreadName=pool-18-thread-1] [levelValue: 800] [[
-  Detected change of file: C:\glassfish7\glassfish\domains\mgs\config\logging.properties]]
+   private static int getIndex(int i, int min, int max, int valueCount, boolean lastIndex) {
+      if (valueCount < min) {
+         return i;
+      }
+      if (lastIndex) {
+         return valueCount;
+      }
+      return Math.min(max, valueCount);
+   }
 
-[2026-10-13T14:28:17.360313+05:30] [GF 7.0.3] [INFO] [] [com.sun.enterprise.server.logging.LogManagerService] [tid: _ThreadID=124 _ThreadName=pool-18-thread-1] [levelValue: 800] [[
-  Using property file: C:\glassfish7\glassfish\domains\mgs\config\logging.properties]]
+}
 
-[2026-10-13T14:28:18.864736+05:30] [GF 7.0.3] [INFO] [] [com.sun.enterprise.server.logging.LogManagerService] [tid: _ThreadID=124 _ThreadName=pool-18-thread-1] [levelValue: 800] [[
-  Detected change of file: C:\glassfish7\glassfish\domains\mgs\config\logging.properties]]
 
-[2026-10-13T14:28:18.865738+05:30] [GF 7.0.3] [INFO] [] [com.sun.enterprise.server.logging.LogManagerService] [tid: _ThreadID=124 _ThreadName=pool-18-thread-1] [levelValue: 800] [[
-  Using property file: C:\glassfish7\glassfish\domains\mgs\config\logging.properties]]
+=================================================================================
 
-[2026-10-13T14:28:20.370473+05:30] [GF 7.0.3] [INFO] [] [com.sun.enterprise.server.logging.LogManagerService] [tid: _ThreadID=124 _ThreadName=pool-18-thread-1] [levelValue: 800] [[
-  Detected change of file: C:\glassfish7\glassfish\domains\mgs\config\logging.properties]]
 
-[2026-10-13T14:28:20.370473+05:30] [GF 7.0.3] [INFO] [] [com.sun.enterprise.server.logging.LogManagerService] [tid: _ThreadID=124 _ThreadName=pool-18-thread-1] [levelValue: 800] [[
-  Using property file: C:\glassfish7\glassfish\domains\mgs\config\logging.properties]]
+package com.eurocopter.mgs.download.analysis.health.impl.filtering;
 
-[2026-10-13T14:28:21.873801+05:30] [GF 7.0.3] [INFO] [] [com.sun.enterprise.server.logging.LogManagerService] [tid: _ThreadID=124 _ThreadName=pool-18-thread-1] [levelValue: 800] [[
-  Detected change of file: C:\glassfish7\glassfish\domains\mgs\config\logging.properties]]
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
 
-[2026-10-13T14:28:21.874798+05:30] [GF 7.0.3] [INFO] [] [com.sun.enterprise.server.logging.LogManagerService] [tid: _ThreadID=124 _ThreadName=pool-18-thread-1] [levelValue: 800] [[
-  Using property file: C:\glassfish7\glassfish\domains\mgs\config\logging.properties]]
+import com.eurocopter.mgs.datamodel.health.monitoring.FilteringLaw;
+import com.eurocopter.mgs.datamodel.health.monitoring.HealthMonitoringConfiguration;
+import com.eurocopter.mgs.datamodel.health.monitoring.Indicator;
+import com.eurocopter.mgs.datamodel.health.monitoring.IndicatorConfiguration;
+import com.eurocopter.mgs.download.analysis.health.algo.FilteringAlgorithm;
+import com.eurocopter.mgs.download.analysis.health.data.IHealthIndicatorValueAcquisition;
+import com.eurocopter.mgs.download.analysis.health.impl.HealthIndicatorValueAdapter;
 
-[2026-10-13T14:28:48.657436+05:30] [] [INFO] [NCLS-GFLAUNCHER-00005] [jakarta.enterprise.launcher] [tid: _ThreadID=1 _ThreadName=main] [levelValue: 800] [[
-  JVM invocation command line:
-C:\Program Files\Eclipse Adoptium\jdk-21.0.6+7\bin\java.exe
--cp
-C:/glassfish7/glassfish/modules/glassfish.jar
--agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:9009
--DWALL_CLOCK_START=2026-10-13T08:58:47.994946200Z
--XX:+UnlockDiagnosticVMOptions
--XX:NewRatio=2
--Xmx512m
---add-opens=java.base/java.io=ALL-UNNAMED
---add-opens=java.base/java.lang=ALL-UNNAMED
---add-opens=java.base/java.util=ALL-UNNAMED
---add-opens=java.base/sun.net.www.protocol.jrt=ALL-UNNAMED
---add-opens=java.naming/javax.naming.spi=ALL-UNNAMED
---add-opens=java.rmi/sun.rmi.transport=ALL-UNNAMED
---add-opens=jdk.management/com.sun.management.internal=ALL-UNNAMED
---add-exports=java.naming/com.sun.jndi.ldap=ALL-UNNAMED
---add-exports=java.base/jdk.internal.vm.annotation=ALL-UNNAMED
---add-opens=java.base/jdk.internal.vm.annotation=ALL-UNNAMED
--javaagent:C:/glassfish7/glassfish/lib/monitor/flashlight-agent.jar
--Djava.awt.headless=true
--Djdk.corba.allowOutputStreamSubclass=true
--Djdk.tls.rejectClientInitiatedRenegotiation=true
--Djavax.xml.accessExternalSchema=all
--Djava.security.policy=C:\glassfish7\glassfish\domains\mgs/config/server.policy
--Djava.security.auth.login.config=C:\glassfish7\glassfish\domains\mgs/config/login.conf
--Dcom.sun.enterprise.security.httpsOutboundKeyAlias=s1as
--Djavax.net.ssl.keyStore=C:\glassfish7\glassfish\domains\mgs/config/keystore.jks
--Djavax.net.ssl.trustStore=C:\glassfish7\glassfish\domains\mgs/config/cacerts.jks
--Djdbc.drivers=org.apache.derby.jdbc.ClientDriver
--DANTLR_USE_DIRECT_CLASS_LOADING=true
--Dcom.sun.enterprise.config.config_environment_factory_class=com.sun.enterprise.config.serverbeans.AppserverConfigEnvironmentFactory
--Dorg.glassfish.additionalOSGiBundlesToStart=org.apache.felix.shell,org.apache.felix.gogo.runtime,org.apache.felix.gogo.shell,org.apache.felix.gogo.command,org.apache.felix.shell.remote,org.apache.felix.fileinstall
--Dosgi.shell.telnet.port=6666
--Dosgi.shell.telnet.maxconn=1
--Dosgi.shell.telnet.ip=127.0.0.1
--Dgosh.args=--nointeractive
--Dfelix.fileinstall.dir=C:\glassfish7\glassfish/modules/autostart/
--Dfelix.fileinstall.poll=5000
--Dfelix.fileinstall.log.level=2
--Dfelix.fileinstall.bundles.new.start=true
--Dfelix.fileinstall.bundles.startTransient=true
--Dfelix.fileinstall.disableConfigSave=false
--Dorg.glassfish.gmbal.no.multipleUpperBoundsException=true
--Dcom.ctc.wstx.returnNullForDefaultNamespace=true
--Djdk.attach.allowAttachSelf=true
--Dcom.sun.aas.instanceRoot=C:\glassfish7\glassfish\domains\mgs
--Dcom.sun.aas.installRoot=C:\glassfish7\glassfish
--Djava.library.path=C:/glassfish7/glassfish/lib;C:/Program Files/Eclipse Adoptium/jdk-21.0.6+7/bin;C:/Windows/Sun/Java/bin;C:/Windows/System32;C:/Windows;C:/Windows/System32/wbem;C:/Windows/System32/WindowsPowerShell/v1.0;C:/Windows/System32/OpenSSH;C:/apache-maven-3.9.9/bin;C:/glassfish7/glassfish/bin;C:/Program Files/TortoiseGit/bin;C:/Program Files/ServiceNow/agent-client-collector/bin;C:/Program Files/ServiceNow/agent-client-collector/embedded/bin;C:/Program Files/Git/cmd;C:/Program Files/nodejs;C:/Users/ranjitsa/AppData/Local/Microsoft/WindowsApps;C:/Users/ranjitsa/AppData/Roaming/npm;C:/sources-V2/mgs/maintenance-ground-station/mgs-ear
-com.sun.enterprise.glassfish.bootstrap.ASMain
--upgrade
-false
--domaindir
-C:/glassfish7/glassfish/domains/mgs
--read-stdin
-true
--asadmin-args
---host,,,localhost,,,--port,,,4848,,,--user,,,admin,,,--passwordfile,,,C:/glassfish7/glassfish/password.txt,,,--secure=false,,,--terse=true,,,--echo=false,,,--interactive=false,,,start-domain,,,--verbose=false,,,--watchdog=false,,,--debug=true,,,--domaindir,,,C:\glassfish7\glassfish\domains,,,mgs
--domainname
-mgs
--instancename
-server
--type
-DAS
--verbose
-false
--asadmin-classpath
-C:/glassfish7/glassfish/lib/client/appserver-cli.jar
--debug
-true
--asadmin-classname
-com.sun.enterprise.admin.cli.AdminMain]]
+public abstract class AbstractFilteringRuleAlgorithm<K> implements IFilteringRuleAlgorithm {
 
-[2026-10-13T14:28:54.552211+05:30] [GF 7.0.3] [INFO] [] [com.sun.enterprise.server.logging.LogManagerService] [tid: _ThreadID=1 _ThreadName=main] [levelValue: 800] [[
-  Using property file: C:\glassfish7\glassfish\domains\mgs\config\logging.properties]]
+   private static final Comparator<HealthIndicatorValueAdapter> INDICATOR_VALUE_COMPARATOR = Comparator.comparing(HealthIndicatorValueAdapter::getAcquisitionDate);
+   private final Map<K, Map<IndicatorConfiguration, List<HealthIndicatorValueAdapter>>> healthIndicatorValueAdapterByFileIdAndIndConf;
 
-[2026-10-13T14:28:54.662992+05:30] [GF 7.0.3] [INFO] [NCLS-LOGGING-00009] [com.sun.enterprise.server.logging.LogManagerService] [tid: _ThreadID=1 _ThreadName=main] [levelValue: 800] [[
-  Running GlassFish Version: Eclipse GlassFish 7.0.3 (branch: master, commit: 8e1807085bf84d182c5344675a3fb243a5134037, timestamp: 2023-03-29T19:58:00Z)]]
+   public AbstractFilteringRuleAlgorithm() {
+      this.healthIndicatorValueAdapterByFileIdAndIndConf = new HashMap<>();
+   }
 
-[2026-10-13T14:29:32.466309+05:30] [GF 7.0.3] [WARNING] [] [] [tid: _ThreadID=116 _ThreadName=pool-13-thread-1] [levelValue: 900] [[
-  Unprocessed event : UnprocessedChangeEvent{PropertyName=jvm-options, OldValue = [-Djava.awt.headless=true, -Djdk.corba.allowOutputStreamSubclass=true, -Djdk.tls.rejectClientInitiatedRenegotiation=true, -Djavax.xml.accessExternalSchema=all, -Djavax.management.builder.initial=com.sun.enterprise.v3.admin.AppServerMBeanServerBuilder, -XX:+UnlockDiagnosticVMOptions, -Djava.security.policy=${com.sun.aas.instanceRoot}/config/server.policy, -Djava.security.auth.login.config=${com.sun.aas.instanceRoot}/config/login.conf, -Dcom.sun.enterprise.security.httpsOutboundKeyAlias=s1as, -Xmx512m, -Djavax.net.ssl.keyStore=${com.sun.aas.instanceRoot}/config/keystore.jks, -Djavax.net.ssl.trustStore=${com.sun.aas.instanceRoot}/config/cacerts.jks, -Djdbc.drivers=org.apache.derby.jdbc.ClientDriver, -DANTLR_USE_DIRECT_CLASS_LOADING=true, -Dcom.sun.enterprise.config.config_environment_factory_class=com.sun.enterprise.config.serverbeans.AppserverConfigEnvironmentFactory, -Dorg.glassfish.additionalOSGiBundlesToStart=org.apache.felix.shell,org.apache.felix.gogo.runtime,org.apache.felix.gogo.shell,org.apache.felix.gogo.command,org.apache.felix.shell.remote,org.apache.felix.fileinstall, -Dosgi.shell.telnet.port=6666, -Dosgi.shell.telnet.maxconn=1, -Dosgi.shell.telnet.ip=127.0.0.1, -Dgosh.args=--nointeractive, -Dfelix.fileinstall.dir=${com.sun.aas.installRoot}/modules/autostart/, -Dfelix.fileinstall.poll=5000, -Dfelix.fileinstall.log.level=2, -Dfelix.fileinstall.bundles.new.start=true, -Dfelix.fileinstall.bundles.startTransient=true, -Dfelix.fileinstall.disableConfigSave=false, -Dorg.glassfish.gmbal.no.multipleUpperBoundsException=true, -Dcom.ctc.wstx.returnNullForDefaultNamespace=true, -XX:NewRatio=2, --add-opens=java.base/java.io=ALL-UNNAMED, --add-opens=java.base/java.lang=ALL-UNNAMED, --add-opens=java.base/java.util=ALL-UNNAMED, --add-opens=java.base/sun.net.www.protocol.jrt=ALL-UNNAMED, --add-opens=java.naming/javax.naming.spi=ALL-UNNAMED, --add-opens=java.rmi/sun.rmi.transport=ALL-UNNAMED, --add-opens=jdk.management/com.sun.management.internal=ALL-UNNAMED, --add-exports=java.naming/com.sun.jndi.ldap=ALL-UNNAMED, --add-exports=java.base/jdk.internal.vm.annotation=ALL-UNNAMED, --add-opens=java.base/jdk.internal.vm.annotation=ALL-UNNAMED, -Djdk.attach.allowAttachSelf=true], NewValue = [-Djava.awt.headless=true, -Djdk.corba.allowOutputStreamSubclass=true, -Djdk.tls.rejectClientInitiatedRenegotiation=true, -Djavax.xml.accessExternalSchema=all, -Djavax.management.builder.initial=com.sun.enterprise.v3.admin.AppServerMBeanServerBuilder, -XX:+UnlockDiagnosticVMOptions, -Djava.security.policy=${com.sun.aas.instanceRoot}/config/server.policy, -Djava.security.auth.login.config=${com.sun.aas.instanceRoot}/config/login.conf, -Dcom.sun.enterprise.security.httpsOutboundKeyAlias=s1as, -Djavax.net.ssl.keyStore=${com.sun.aas.instanceRoot}/config/keystore.jks, -Djavax.net.ssl.trustStore=${com.sun.aas.instanceRoot}/config/cacerts.jks, -Djdbc.drivers=org.apache.derby.jdbc.ClientDriver, -DANTLR_USE_DIRECT_CLASS_LOADING=true, -Dcom.sun.enterprise.config.config_environment_factory_class=com.sun.enterprise.config.serverbeans.AppserverConfigEnvironmentFactory, -Dorg.glassfish.additionalOSGiBundlesToStart=org.apache.felix.shell,org.apache.felix.gogo.runtime,org.apache.felix.gogo.shell,org.apache.felix.gogo.command,org.apache.felix.shell.remote,org.apache.felix.fileinstall, -Dosgi.shell.telnet.port=6666, -Dosgi.shell.telnet.maxconn=1, -Dosgi.shell.telnet.ip=127.0.0.1, -Dgosh.args=--nointeractive, -Dfelix.fileinstall.dir=${com.sun.aas.installRoot}/modules/autostart/, -Dfelix.fileinstall.poll=5000, -Dfelix.fileinstall.log.level=2, -Dfelix.fileinstall.bundles.new.start=true, -Dfelix.fileinstall.bundles.startTransient=true, -Dfelix.fileinstall.disableConfigSave=false, -Dorg.glassfish.gmbal.no.multipleUpperBoundsException=true, -Dcom.ctc.wstx.returnNullForDefaultNamespace=true, -XX:NewRatio=2, --add-opens=java.base/java.io=ALL-UNNAMED, --add-opens=java.base/java.lang=ALL-UNNAMED, --add-opens=java.base/java.util=ALL-UNNAMED, --add-opens=java.base/sun.net.www.protocol.jrt=ALL-UNNAMED, --add-opens=java.naming/javax.naming.spi=ALL-UNNAMED, --add-opens=java.rmi/sun.rmi.transport=ALL-UNNAMED, --add-opens=jdk.management/com.sun.management.internal=ALL-UNNAMED, --add-exports=java.naming/com.sun.jndi.ldap=ALL-UNNAMED, --add-exports=java.base/jdk.internal.vm.annotation=ALL-UNNAMED, --add-opens=java.base/jdk.internal.vm.annotation=ALL-UNNAMED, -Djdk.attach.allowAttachSelf=true], Source = GlassFishConfigBean.com.sun.enterprise.config.serverbeans.JavaConfig}, reason = Removal of: -Xmx512m cannot take effect without server restart, when = 1791881972461]]
+   protected abstract boolean isFilteringLawApplicable(List<HealthIndicatorValueAdapter> indicatorValueAdapters);
 
-[2026-10-13T14:29:33.978580+05:30] [GF 7.0.3] [WARNING] [] [] [tid: _ThreadID=133 _ThreadName=pool-20-thread-1] [levelValue: 900] [[
-  Unprocessed event : UnprocessedChangeEvent{PropertyName=jvm-options, OldValue = [-Djava.awt.headless=true, -Djdk.corba.allowOutputStreamSubclass=true, -Djdk.tls.rejectClientInitiatedRenegotiation=true, -Djavax.xml.accessExternalSchema=all, -Djavax.management.builder.initial=com.sun.enterprise.v3.admin.AppServerMBeanServerBuilder, -XX:+UnlockDiagnosticVMOptions, -Djava.security.policy=${com.sun.aas.instanceRoot}/config/server.policy, -Djava.security.auth.login.config=${com.sun.aas.instanceRoot}/config/login.conf, -Dcom.sun.enterprise.security.httpsOutboundKeyAlias=s1as, -Djavax.net.ssl.keyStore=${com.sun.aas.instanceRoot}/config/keystore.jks, -Djavax.net.ssl.trustStore=${com.sun.aas.instanceRoot}/config/cacerts.jks, -Djdbc.drivers=org.apache.derby.jdbc.ClientDriver, -DANTLR_USE_DIRECT_CLASS_LOADING=true, -Dcom.sun.enterprise.config.config_environment_factory_class=com.sun.enterprise.config.serverbeans.AppserverConfigEnvironmentFactory, -Dorg.glassfish.additionalOSGiBundlesToStart=org.apache.felix.shell,org.apache.felix.gogo.runtime,org.apache.felix.gogo.shell,org.apache.felix.gogo.command,org.apache.felix.shell.remote,org.apache.felix.fileinstall, -Dosgi.shell.telnet.port=6666, -Dosgi.shell.telnet.maxconn=1, -Dosgi.shell.telnet.ip=127.0.0.1, -Dgosh.args=--nointeractive, -Dfelix.fileinstall.dir=${com.sun.aas.installRoot}/modules/autostart/, -Dfelix.fileinstall.poll=5000, -Dfelix.fileinstall.log.level=2, -Dfelix.fileinstall.bundles.new.start=true, -Dfelix.fileinstall.bundles.startTransient=true, -Dfelix.fileinstall.disableConfigSave=false, -Dorg.glassfish.gmbal.no.multipleUpperBoundsException=true, -Dcom.ctc.wstx.returnNullForDefaultNamespace=true, -XX:NewRatio=2, --add-opens=java.base/java.io=ALL-UNNAMED, --add-opens=java.base/java.lang=ALL-UNNAMED, --add-opens=java.base/java.util=ALL-UNNAMED, --add-opens=java.base/sun.net.www.protocol.jrt=ALL-UNNAMED, --add-opens=java.naming/javax.naming.spi=ALL-UNNAMED, --add-opens=java.rmi/sun.rmi.transport=ALL-UNNAMED, --add-opens=jdk.management/com.sun.management.internal=ALL-UNNAMED, --add-exports=java.naming/com.sun.jndi.ldap=ALL-UNNAMED, --add-exports=java.base/jdk.internal.vm.annotation=ALL-UNNAMED, --add-opens=java.base/jdk.internal.vm.annotation=ALL-UNNAMED, -Djdk.attach.allowAttachSelf=true], NewValue = [-Djava.awt.headless=true, -Djdk.corba.allowOutputStreamSubclass=true, -Djdk.tls.rejectClientInitiatedRenegotiation=true, -Djavax.xml.accessExternalSchema=all, -Djavax.management.builder.initial=com.sun.enterprise.v3.admin.AppServerMBeanServerBuilder, -XX:+UnlockDiagnosticVMOptions, -Djava.security.policy=${com.sun.aas.instanceRoot}/config/server.policy, -Djava.security.auth.login.config=${com.sun.aas.instanceRoot}/config/login.conf, -Dcom.sun.enterprise.security.httpsOutboundKeyAlias=s1as, -Djavax.net.ssl.keyStore=${com.sun.aas.instanceRoot}/config/keystore.jks, -Djavax.net.ssl.trustStore=${com.sun.aas.instanceRoot}/config/cacerts.jks, -Djdbc.drivers=org.apache.derby.jdbc.ClientDriver, -DANTLR_USE_DIRECT_CLASS_LOADING=true, -Dcom.sun.enterprise.config.config_environment_factory_class=com.sun.enterprise.config.serverbeans.AppserverConfigEnvironmentFactory, -Dorg.glassfish.additionalOSGiBundlesToStart=org.apache.felix.shell,org.apache.felix.gogo.runtime,org.apache.felix.gogo.shell,org.apache.felix.gogo.command,org.apache.felix.shell.remote,org.apache.felix.fileinstall, -Dosgi.shell.telnet.port=6666, -Dosgi.shell.telnet.maxconn=1, -Dosgi.shell.telnet.ip=127.0.0.1, -Dgosh.args=--nointeractive, -Dfelix.fileinstall.dir=${com.sun.aas.installRoot}/modules/autostart/, -Dfelix.fileinstall.poll=5000, -Dfelix.fileinstall.log.level=2, -Dfelix.fileinstall.bundles.new.start=true, -Dfelix.fileinstall.bundles.startTransient=true, -Dfelix.fileinstall.disableConfigSave=false, -Dorg.glassfish.gmbal.no.multipleUpperBoundsException=true, -Dcom.ctc.wstx.returnNullForDefaultNamespace=true, -XX:NewRatio=2, --add-opens=java.base/java.io=ALL-UNNAMED, --add-opens=java.base/java.lang=ALL-UNNAMED, --add-opens=java.base/java.util=ALL-UNNAMED, --add-opens=java.base/sun.net.www.protocol.jrt=ALL-UNNAMED, --add-opens=java.naming/javax.naming.spi=ALL-UNNAMED, --add-opens=java.rmi/sun.rmi.transport=ALL-UNNAMED, --add-opens=jdk.management/com.sun.management.internal=ALL-UNNAMED, --add-exports=java.naming/com.sun.jndi.ldap=ALL-UNNAMED, --add-exports=java.base/jdk.internal.vm.annotation=ALL-UNNAMED, --add-opens=java.base/jdk.internal.vm.annotation=ALL-UNNAMED, -Djdk.attach.allowAttachSelf=true, -Xmx1g], Source = GlassFishConfigBean.com.sun.enterprise.config.serverbeans.JavaConfig}, reason = Addition of: '-Xmx1g' cannot take effect without server restart, when = 1791881973978]]
+   protected abstract K getKey(IHealthIndicatorValueAcquisition acquisition);
 
-[2026-10-13T14:29:52.735768+05:30] [] [INFO] [NCLS-GFLAUNCHER-00005] [jakarta.enterprise.launcher] [tid: _ThreadID=1 _ThreadName=main] [levelValue: 800] [[
-  JVM invocation command line:
-C:\Program Files\Eclipse Adoptium\jdk-21.0.6+7\bin\java.exe
--cp
-C:/glassfish7/glassfish/modules/glassfish.jar
--agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:9009
--DWALL_CLOCK_START=2026-10-13T08:59:52.068165800Z
--XX:+UnlockDiagnosticVMOptions
--XX:NewRatio=2
--Xmx1g
---add-opens=java.base/java.io=ALL-UNNAMED
---add-opens=java.base/java.lang=ALL-UNNAMED
---add-opens=java.base/java.util=ALL-UNNAMED
---add-opens=java.base/sun.net.www.protocol.jrt=ALL-UNNAMED
---add-opens=java.naming/javax.naming.spi=ALL-UNNAMED
---add-opens=java.rmi/sun.rmi.transport=ALL-UNNAMED
---add-opens=jdk.management/com.sun.management.internal=ALL-UNNAMED
---add-exports=java.naming/com.sun.jndi.ldap=ALL-UNNAMED
---add-exports=java.base/jdk.internal.vm.annotation=ALL-UNNAMED
---add-opens=java.base/jdk.internal.vm.annotation=ALL-UNNAMED
--javaagent:C:/glassfish7/glassfish/lib/monitor/flashlight-agent.jar
--Djava.awt.headless=true
--Djdk.corba.allowOutputStreamSubclass=true
--Djdk.tls.rejectClientInitiatedRenegotiation=true
--Djavax.xml.accessExternalSchema=all
--Djava.security.policy=C:\glassfish7\glassfish\domains\mgs/config/server.policy
--Djava.security.auth.login.config=C:\glassfish7\glassfish\domains\mgs/config/login.conf
--Dcom.sun.enterprise.security.httpsOutboundKeyAlias=s1as
--Djavax.net.ssl.keyStore=C:\glassfish7\glassfish\domains\mgs/config/keystore.jks
--Djavax.net.ssl.trustStore=C:\glassfish7\glassfish\domains\mgs/config/cacerts.jks
--Djdbc.drivers=org.apache.derby.jdbc.ClientDriver
--DANTLR_USE_DIRECT_CLASS_LOADING=true
--Dcom.sun.enterprise.config.config_environment_factory_class=com.sun.enterprise.config.serverbeans.AppserverConfigEnvironmentFactory
--Dorg.glassfish.additionalOSGiBundlesToStart=org.apache.felix.shell,org.apache.felix.gogo.runtime,org.apache.felix.gogo.shell,org.apache.felix.gogo.command,org.apache.felix.shell.remote,org.apache.felix.fileinstall
--Dosgi.shell.telnet.port=6666
--Dosgi.shell.telnet.maxconn=1
--Dosgi.shell.telnet.ip=127.0.0.1
--Dgosh.args=--nointeractive
--Dfelix.fileinstall.dir=C:\glassfish7\glassfish/modules/autostart/
--Dfelix.fileinstall.poll=5000
--Dfelix.fileinstall.log.level=2
--Dfelix.fileinstall.bundles.new.start=true
--Dfelix.fileinstall.bundles.startTransient=true
--Dfelix.fileinstall.disableConfigSave=false
--Dorg.glassfish.gmbal.no.multipleUpperBoundsException=true
--Dcom.ctc.wstx.returnNullForDefaultNamespace=true
--Djdk.attach.allowAttachSelf=true
--Duser.timezone=GMT
--Dlog4j2.debug=true
--Dcom.sun.aas.instanceRoot=C:\glassfish7\glassfish\domains\mgs
--Dcom.sun.aas.installRoot=C:\glassfish7\glassfish
--Djava.library.path=C:/glassfish7/glassfish/lib;C:/Program Files/Eclipse Adoptium/jdk-21.0.6+7/bin;C:/Windows/Sun/Java/bin;C:/Windows/System32;C:/Windows;C:/Windows/System32/wbem;C:/Windows/System32/WindowsPowerShell/v1.0;C:/Windows/System32/OpenSSH;C:/apache-maven-3.9.9/bin;C:/glassfish7/glassfish/bin;C:/Program Files/TortoiseGit/bin;C:/Program Files/ServiceNow/agent-client-collector/bin;C:/Program Files/ServiceNow/agent-client-collector/embedded/bin;C:/Program Files/Git/cmd;C:/Program Files/nodejs;C:/Users/ranjitsa/AppData/Local/Microsoft/WindowsApps;C:/Users/ranjitsa/AppData/Roaming/npm;C:/sources-V2/mgs/maintenance-ground-station/mgs-ear
-com.sun.enterprise.glassfish.bootstrap.ASMain
--upgrade
-false
--domaindir
-C:/glassfish7/glassfish/domains/mgs
--read-stdin
-true
--asadmin-args
---host,,,localhost,,,--port,,,4848,,,--user,,,admin,,,--passwordfile,,,C:/glassfish7/glassfish/password.txt,,,--secure=false,,,--terse=false,,,--echo=false,,,--interactive=false,,,start-domain,,,--verbose=false,,,--watchdog=false,,,--debug=true,,,--domaindir,,,C:\glassfish7\glassfish\domains,,,mgs
--domainname
-mgs
--instancename
-server
--type
-DAS
--verbose
-false
--asadmin-classpath
-C:/glassfish7/glassfish/lib/client/appserver-cli.jar
--debug
-true
--asadmin-classname
-com.sun.enterprise.admin.cli.AdminMain]]
+   protected abstract int getMaxPointsAtKey(K key, int configuredMaxPointsPerHour);
 
-[2026-10-13T09:00:00.981284Z] [GF 7.0.3] [INFO] [] [com.sun.enterprise.server.logging.LogManagerService] [tid: _ThreadID=1 _ThreadName=main] [levelValue: 800] [[
-  Using property file: C:\glassfish7\glassfish\domains\mgs\config\logging.properties]]
+   protected abstract void applyFilteringLawAlgorithm(List<HealthIndicatorValueAdapter> values, Set<FilteringLaw> filteringLaws, String indicatorFilteringLaw);
 
-[2026-10-13T09:00:01.204757Z] [GF 7.0.3] [INFO] [NCLS-LOGGING-00009] [com.sun.enterprise.server.logging.LogManagerService] [tid: _ThreadID=1 _ThreadName=main] [levelValue: 800] [[
-  Running GlassFish Version: Eclipse GlassFish 7.0.3 (branch: master, commit: 8e1807085bf84d182c5344675a3fb243a5134037, timestamp: 2023-03-29T19:58:00Z)]]
+   @Override
+   public void recordAcquisition(IHealthIndicatorValueAcquisition acquisition, String indicatorId, Indicator indicator, IndicatorConfiguration indicatorConfiguration) {
+      K key = getKey(acquisition);
+      final Map<IndicatorConfiguration, List<HealthIndicatorValueAdapter>> indicatorsInFile = healthIndicatorValueAdapterByFileIdAndIndConf.computeIfAbsent(key, k -> new HashMap<>());
+      final List<HealthIndicatorValueAdapter> indicatorValues = indicatorsInFile.computeIfAbsent(indicatorConfiguration, k -> new ArrayList<>());
+      indicatorValues.add(new HealthIndicatorValueAdapter(acquisition, indicatorConfiguration, indicatorId, indicator));
+   }
 
-[2026-10-13T09:00:24.536750Z] [GF 7.0.3] [SEVERE] [] [jakarta.enterprise.system.tools.deployment.common] [tid: _ThreadID=101 _ThreadName=deployment-jar-scanner] [levelValue: 1000] [[
-  Exception while visiting META-INF/versions/22/com/fasterxml/jackson/core/internal/shaded/fdp/v2_18_1/FastDoubleSwar.class of size 8346
-java.lang.IllegalArgumentException: Unsupported class file major version 66
-	at org.objectweb.asm.ClassReader.<init>(ClassReader.java:199)
-	at org.objectweb.asm.ClassReader.<init>(ClassReader.java:180)
-	at org.objectweb.asm.ClassReader.<init>(ClassReader.java:166)
-	at org.objectweb.asm.ClassReader.<init>(ClassReader.java:287)
-	at org.glassfish.hk2.classmodel.reflect.Parser$5.on(Parser.java:347)
-	at com.sun.enterprise.v3.server.ReadableArchiveScannerAdapter.handleEntry(ReadableArchiveScannerAdapter.java:137)
-	at com.sun.enterprise.v3.server.ReadableArchiveScannerAdapter.onSelectedEntries(ReadableArchiveScannerAdapter.java:100)
-	at org.glassfish.hk2.classmodel.reflect.Parser.doJob(Parser.java:333)
-	at org.glassfish.hk2.classmodel.reflect.Parser$3.call(Parser.java:292)
-	at org.glassfish.hk2.classmodel.reflect.Parser$3.call(Parser.java:281)
-	at java.base/java.util.concurrent.FutureTask.run(FutureTask.java:317)
-	at java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1144)
-	at java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:642)
-	at java.base/java.lang.Thread.run(Thread.java:1583)
-]]
+   @Override
+   public List<HealthIndicatorValueAdapter> getFilteredValues(HealthMonitoringConfiguration healthConfiguration) {
+      for (Map<IndicatorConfiguration, List<HealthIndicatorValueAdapter>> indicators : healthIndicatorValueAdapterByFileIdAndIndConf.values()) {
+         for (Entry<IndicatorConfiguration, List<HealthIndicatorValueAdapter>> entry2 : indicators.entrySet()) {
+            final IndicatorConfiguration indicatorConfiguration = entry2.getKey();
+            final Set<FilteringLaw> filteringLaws = healthConfiguration.getFilteringLaws();
+            List<HealthIndicatorValueAdapter> indicatorValueAdapters = entry2.getValue();
+            if (indicatorConfiguration.getFilteringLaw() != null && isFilteringLawApplicable(indicatorValueAdapters)) {
+               applyFilteringLawAlgorithm(indicatorValueAdapters, filteringLaws, indicatorConfiguration.getFilteringLaw());
+            }
+         }
+      }
 
-[2026-10-13T09:00:24.541755Z] [GF 7.0.3] [SEVERE] [] [jakarta.enterprise.system.tools.deployment.common] [tid: _ThreadID=101 _ThreadName=deployment-jar-scanner] [levelValue: 1000] [[
-  Exception while visiting META-INF/versions/22/com/fasterxml/jackson/core/internal/shaded/fdp/v2_18_1/FastIntegerMath.class of size 5130
-java.lang.IllegalArgumentException: Unsupported class file major version 66
-	at org.objectweb.asm.ClassReader.<init>(ClassReader.java:199)
-	at org.objectweb.asm.ClassReader.<init>(ClassReader.java:180)
-	at org.objectweb.asm.ClassReader.<init>(ClassReader.java:166)
-	at org.objectweb.asm.ClassReader.<init>(ClassReader.java:287)
-	at org.glassfish.hk2.classmodel.reflect.Parser$5.on(Parser.java:347)
-	at com.sun.enterprise.v3.server.ReadableArchiveScannerAdapter.handleEntry(ReadableArchiveScannerAdapter.java:137)
-	at com.sun.enterprise.v3.server.ReadableArchiveScannerAdapter.onSelectedEntries(ReadableArchiveScannerAdapter.java:100)
-	at org.glassfish.hk2.classmodel.reflect.Parser.doJob(Parser.java:333)
-	at org.glassfish.hk2.classmodel.reflect.Parser$3.call(Parser.java:292)
-	at org.glassfish.hk2.classmodel.reflect.Parser$3.call(Parser.java:281)
-	at java.base/java.util.concurrent.FutureTask.run(FutureTask.java:317)
-	at java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1144)
-	at java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:642)
-	at java.base/java.lang.Thread.run(Thread.java:1583)
-]]
+      final List<HealthIndicatorValueAdapter> valuesToSave = new ArrayList<>();
+      for (Map.Entry<K, Map<IndicatorConfiguration, List<HealthIndicatorValueAdapter>>> indicatorsEntry : healthIndicatorValueAdapterByFileIdAndIndConf.entrySet()) {
+         K key = indicatorsEntry.getKey();
+         Map<IndicatorConfiguration, List<HealthIndicatorValueAdapter>> indicators = indicatorsEntry.getValue();
+         for (Entry<IndicatorConfiguration, List<HealthIndicatorValueAdapter>> indicatorEntry : indicators.entrySet()) {
+            final IndicatorConfiguration conf = indicatorEntry.getKey();
+            final List<HealthIndicatorValueAdapter> healthIndicatorValueAdapterValues = indicatorEntry.getValue();
+            if (conf.getMaxPointsPerHour() == null) {
+               valuesToSave.addAll(healthIndicatorValueAdapterValues);
+            } else {
+               healthIndicatorValueAdapterValues.sort(INDICATOR_VALUE_COMPARATOR);
+               int maxPointsPerHour = getMaxPointsAtKey(key, conf.getMaxPointsPerHour());
+               if (maxPointsPerHour > 0) {
+                  valuesToSave.addAll(FilteringAlgorithm.filterHealthIndicatorValues(healthIndicatorValueAdapterValues, maxPointsPerHour));
+               }
+            }
+         }
+      }
+      return valuesToSave;
+   }
 
-[2026-10-13T09:01:18.218150Z] [GF 7.0.3] [INFO] [] [org.eclipse.persistence.session./file:/C:/glassfish7/glassfish/domains/mgs/applications/ejb-timer-service-app/WEB-INF/classes/___EJB__Timer__App] [tid: _ThreadID=54 _ThreadName=admin-listener(5)] [levelValue: 800] [[
-  EclipseLink, version: Eclipse Persistence Services - 4.0.1.v202302241130]]
+}
 
-[2026-10-13T09:03:04.691605Z] [GF 7.0.3] [INFO] [] [org.glassfish.admingui] [tid: _ThreadID=54 _ThreadName=admin-listener(5)] [levelValue: 800] [[
-  Redirecting to &#x2f;index.jsf]]
+========================================================
 
-[2026-10-13T09:03:04.999659Z] [GF 7.0.3] [INFO] [] [org.glassfish.admingui] [tid: _ThreadID=52 _ThreadName=admin-listener(3)] [levelValue: 800] [[
-  Admin Console: Initializing Session Attributes...]]
+package com.eurocopter.mgs.download.analysis.health.impl.filtering;
+
+import java.util.List;
+import java.util.ListIterator;
+import java.util.Set;
+
+import com.eurocopter.mgs.datamodel.health.monitoring.ContextualParameter;
+import com.eurocopter.mgs.datamodel.health.monitoring.FilteringLaw;
+import com.eurocopter.mgs.download.analysis.health.data.IHealthIndicatorValueAcquisition;
+import com.eurocopter.mgs.download.analysis.health.impl.HealthIndicatorValueAdapter;
+
+public class HelionixFilteringPerFileAlgorithm extends AbstractFilteringRuleAlgorithm<String> {
+
+   @Override
+   protected boolean isFilteringLawApplicable(List<HealthIndicatorValueAdapter> indicatorValueAdapters) {
+      return true;
+   }
+
+   @Override
+   protected String getKey(IHealthIndicatorValueAcquisition acquisition) {
+      return acquisition.getFileId();
+   }
+
+   @Override
+   protected int getMaxPointsAtKey(String key, int configuredMaxPointsPerHour) {
+      // Per file, the number of point is the configured one
+      return configuredMaxPointsPerHour;
+   }
+
+   @Override
+   protected void applyFilteringLawAlgorithm(List<HealthIndicatorValueAdapter> values, Set<FilteringLaw> filteringLaws, String indicatorFilteringLaw) {
+      for (FilteringLaw filteringLaw : filteringLaws) {
+         if (!filteringLaw.getName().equals(indicatorFilteringLaw)) {
+            continue;
+         }
+         final Set<ContextualParameter> contextualParameters = filteringLaw.getContextualParameters();
+         for (ContextualParameter contextualParameter : contextualParameters) {
+            String name = contextualParameter.getName();
+            double min = contextualParameter.getMinValue();
+            double max = contextualParameter.getMaxValue();
+            double s = contextualParameter.getThresholdOfVariabilityValue();
+
+            ListIterator<HealthIndicatorValueAdapter> iter = values.listIterator();
+
+            while (iter.hasNext()) {
+               HealthIndicatorValueAdapter healthIndicatorValue = iter.next();
+               if (healthIndicatorValue.getMinContextualValues().get(name) != null) {
+                  double minValueContextualParameter = healthIndicatorValue.getMinContextualValues().get(name).getValue();
+                  double maxValueContextualParameter = healthIndicatorValue.getMaxContextualValues().get(name).getValue();
+                  double meanValueContextualParameter = healthIndicatorValue.getMeanContextualValues().get(name).getValue();
+
+                  // Use the Filtering rules
+                  if (!(min <= meanValueContextualParameter) || !(meanValueContextualParameter <= max)) {
+                     iter.remove();
+                  } else {
+                     if (!((maxValueContextualParameter - minValueContextualParameter) <= s)) {
+                        iter.remove();
+                     }
+                  }
+               } else {
+                  // The contextual parameter is not present for this indicator value
+                  // We have to remove this indicator value as well
+                  iter.remove();
+               }
+            }
+         }
+      }
+   }
+}
+
+=========================================================
+
+package com.eurocopter.mgs.download.analysis.health.impl.filtering;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.ListIterator;
+import java.util.Map;
+import java.util.Set;
+
+import com.eurocopter.mgs.datamodel.health.monitoring.ContextualParameter;
+import com.eurocopter.mgs.datamodel.health.monitoring.FilteringLaw;
+import com.eurocopter.mgs.download.analysis.health.data.IHealthIndicatorValueAcquisition;
+import com.eurocopter.mgs.download.analysis.health.impl.HealthIndicatorValueAdapter;
+
+public class MarmsFilteringPerFlightHoursAlgorithm extends AbstractFilteringRuleAlgorithm<Long> {
+
+   private static final Map<String, com.eurocopter.mgs.datamodel.health.common.ContextualParameter> MAPPING_CONTEXTUAL_PARAMETERS = new HashMap<>();
+   static {
+      MAPPING_CONTEXTUAL_PARAMETERS.put("NR", com.eurocopter.mgs.datamodel.health.common.ContextualParameter.MARMS_MEAN_NR);
+      MAPPING_CONTEXTUAL_PARAMETERS.put("TRQ1_TRQ2", com.eurocopter.mgs.datamodel.health.common.ContextualParameter.MARMS_MEAN_TRQ1_TRQ2);
+      MAPPING_CONTEXTUAL_PARAMETERS.put("IAS", com.eurocopter.mgs.datamodel.health.common.ContextualParameter.MARMS_MEAN_IAS);
+      MAPPING_CONTEXTUAL_PARAMETERS.put("ZB", com.eurocopter.mgs.datamodel.health.common.ContextualParameter.MARMS_MEAN_ZB);
+      MAPPING_CONTEXTUAL_PARAMETERS.put("COLL_PITCH", com.eurocopter.mgs.datamodel.health.common.ContextualParameter.MARMS_MEAN_COLL_PITCH);
+      MAPPING_CONTEXTUAL_PARAMETERS.put("LONG_PITCH", com.eurocopter.mgs.datamodel.health.common.ContextualParameter.MARMS_MEAN_LONG_PITCH);
+      MAPPING_CONTEXTUAL_PARAMETERS.put("LATT_PITCH", com.eurocopter.mgs.datamodel.health.common.ContextualParameter.MARMS_MEAN_LATT_PITCH);
+      MAPPING_CONTEXTUAL_PARAMETERS.put("PITCH_ATT", com.eurocopter.mgs.datamodel.health.common.ContextualParameter.MARMS_MEAN_PITCH_ATT);
+      MAPPING_CONTEXTUAL_PARAMETERS.put("ROLL_ATT", com.eurocopter.mgs.datamodel.health.common.ContextualParameter.MARMS_MEAN_ROLL_ATT);
+   }
+
+   private final long flightDuration;
+
+   public MarmsFilteringPerFlightHoursAlgorithm(long flightDuration) {
+      this.flightDuration = flightDuration;
+   }
+
+   @Override
+   protected boolean isFilteringLawApplicable(List<HealthIndicatorValueAdapter> indicatorValueAdapters) {
+      if (indicatorValueAdapters.isEmpty()) {
+         // Shall not happen
+         return true;
+      }
+      HealthIndicatorValueAdapter firstIndicatorValueAdapter = indicatorValueAdapters.get(0);
+      // Apply filtering law only on EHMS indicator (i.e. those with contextual values)
+      return !firstIndicatorValueAdapter.getContextualValues().isEmpty();
+   }
+
+   @Override
+   protected Long getKey(IHealthIndicatorValueAcquisition acquisition) {
+      return Math.round(Math.floor((double) acquisition.getCumulatedFlightTime() / (double) 3600));
+   }
+
+   @Override
+   protected int getMaxPointsAtKey(Long hour, int configuredMaxPointsPerHour) {
+      long lastHourId = Math.round(Math.floor((double) flightDuration / (double) (3600 * 1000)));
+      if (hour == lastHourId) {
+         long lastFlightHourDuration = flightDuration % (3600 * 1000);
+         double durationRatio = (double) lastFlightHourDuration / (double) (3600 * 1000);
+         return (int) Math.round(Math.ceil(durationRatio * configuredMaxPointsPerHour));
+      }
+      if (hour > lastHourId) {
+         // A weird edge case, where some points are after the last flight hour
+         return 0;
+      }
+      // Full flight hour
+      return configuredMaxPointsPerHour;
+   }
+
+   @Override
+   protected void applyFilteringLawAlgorithm(List<HealthIndicatorValueAdapter> values, Set<FilteringLaw> filteringLaws, String indicatorFilteringLaw) {
+      for (FilteringLaw filteringLaw : filteringLaws) {
+         if (!filteringLaw.getName().equals(indicatorFilteringLaw)) {
+            continue;
+         }
+         final Set<ContextualParameter> contextualParameters = filteringLaw.getContextualParameters();
+         for (ContextualParameter contextualParameter : contextualParameters) {
+            String configuredName = contextualParameter.getName();
+            if (!MAPPING_CONTEXTUAL_PARAMETERS.containsKey(configuredName)) {
+               // Ignoring unknown contextual parameter
+               continue;
+            }
+            String actualName = MAPPING_CONTEXTUAL_PARAMETERS.get(configuredName).name();
+            double min = contextualParameter.getMinValue();
+            double max = contextualParameter.getMaxValue();
+
+            ListIterator<HealthIndicatorValueAdapter> iter = values.listIterator();
+            while (iter.hasNext()) {
+               HealthIndicatorValueAdapter healthIndicatorValue = iter.next();
+               if (healthIndicatorValue.getContextualValues().get(actualName) != null) {
+                  double meanValueContextualParameter = healthIndicatorValue.getContextualValues().get(actualName).getValue();
+
+                  if (!(min <= meanValueContextualParameter) || !(meanValueContextualParameter <= max)) {
+                     iter.remove();
+                  }
+               } else {
+                  // The contextual parameter is not present for this indicator value
+                  // We have to remove this indicator value as well
+                  iter.remove();
+               }
+            }
+         }
+      }
+   }
+}
+
+========================================================
+
+
+package com.eurocopter.mgs.datamodel.health.monitoring;
+
+import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+
+import com.eurocopter.mgs.datamodel.health.common.Accelerometer;
+import com.eurocopter.mgs.datamodel.health.common.HealthAlgorithm;
+
+public class IndicatorConfiguration implements Serializable {
+
+   private static final long serialVersionUID = 1L;
+
+   private String id;
+
+   private Indicator indicator;
+
+   private String reference;
+
+   private String referenceIndicator;
+
+   private Integer slidingMedian;
+
+   private String healthAlgorithm;
+
+   /**
+    * Algorithm parameters.
+    */
+   private List<Double> parameters = new ArrayList<>();
+
+   private Set<ThresholdConfiguration> thresholdConfigurations = new HashSet<>();
+
+   /**
+    * Accelerometer that monitors the component.
+    */
+   private Accelerometer accelerometer;
+
+   /**
+    * Filtering Law
+    */
+   private String filteringLaw;
+
+   /**
+    * Max points per hour
+    */
+   private Integer maxPointsPerHour;
+
+   /**
+    * Min Sensor anomaly
+    */
+   private Double minSensor;
+
+   /**
+    * Max Sensor Anomaly
+    */
+   private Double maxSensor;
+
+   private String sensorAnomalyWorkcard;
+
+   private Integer sensorAnomalySuccessivePoints;
+
+   private String invalidityWorkcard;
+
+   private Double invalidityThreshold;
+
+   private Double multiplier;
+
+   IndicatorConfiguration() {
+   }
+
+   public IndicatorConfiguration(String id) {
+      this.id = id;
+   }
+
+   public final String getId() {
+      return id;
+   }
+
+   public final Indicator getIndicator() {
+      return indicator;
+   }
+
+   public String getReference() {
+      return reference;
+   }
+
+   public void setReference(String reference) {
+      this.reference = reference;
+   }
+
+   public String getReferenceIndicator() {
+      return referenceIndicator;
+   }
+
+   public void setReferenceIndicator(String referenceIndicator) {
+      this.referenceIndicator = referenceIndicator;
+   }
+
+   public Integer getSlidingMedian() {
+      return slidingMedian;
+   }
+
+   public void setSlidingMedian(Integer slidingMedian) {
+      this.slidingMedian = slidingMedian;
+   }
+
+   public final void setIndicator(Indicator indicator) {
+      this.indicator = indicator;
+   }
+
+   public final HealthAlgorithm getHealthAlgorithm() {
+      return healthAlgorithm != null ? HealthAlgorithm.valueOf(healthAlgorithm) : null;
+   }
+
+   public final void setHealthAlgorithm(HealthAlgorithm healthAlgorithm) {
+      this.healthAlgorithm = healthAlgorithm != null ? healthAlgorithm.name() : null;
+   }
+
+   public List<Double> getParameters() {
+      return parameters;
+   }
+
+   public void setParameters(List<Double> parameters) {
+      this.parameters = parameters;
+   }
+
+   public Set<ThresholdConfiguration> getThresholdConfigurations() {
+      return thresholdConfigurations;
+   }
+
+   public void setThresholdConfigurations(Set<ThresholdConfiguration> thresholdConfigurations) {
+      this.thresholdConfigurations = thresholdConfigurations;
+   }
+
+   public Accelerometer getAccelerometer() {
+      return accelerometer;
+   }
+
+   public void setAccelerometer(Accelerometer accelerometer) {
+      this.accelerometer = accelerometer;
+   }
+
+   public String getFilteringLaw() {
+      return filteringLaw;
+   }
+
+   public void setFilteringLaw(String filteringLaw) {
+      this.filteringLaw = filteringLaw;
+   }
+
+   public Integer getMaxPointsPerHour() {
+      return maxPointsPerHour;
+   }
+
+   public void setMaxPointsPerHour(Integer maxPointsPerHour) {
+      this.maxPointsPerHour = maxPointsPerHour;
+   }
+
+   public Double getMinSensor() {
+      return minSensor;
+   }
+
+   public void setMinSensor(Double minSensor) {
+      this.minSensor = minSensor;
+   }
+
+   public Double getMaxSensor() {
+      return maxSensor;
+   }
+
+   public void setMaxSensor(Double maxSensor) {
+      this.maxSensor = maxSensor;
+   }
+
+   public String getSensorAnomalyWorkcard() {
+      return sensorAnomalyWorkcard;
+   }
+
+   public void setSensorAnomalyWorkcard(String sensorAnomalyWorkcard) {
+      this.sensorAnomalyWorkcard = sensorAnomalyWorkcard;
+   }
+
+   public Integer getSensorAnomalySuccessivePoints() {
+      return sensorAnomalySuccessivePoints;
+   }
+
+   public void setSensorAnomalySuccessivePoints(Integer sensorAnomalySuccessivePoints) {
+      this.sensorAnomalySuccessivePoints = sensorAnomalySuccessivePoints;
+   }
+
+   public Double getInvalidityThreshold() {
+      return invalidityThreshold;
+   }
+
+   public void setInvalidityThreshold(Double invalidityThreshold) {
+      this.invalidityThreshold = invalidityThreshold;
+   }
+
+   public String getInvalidityWorkcard() {
+      return invalidityWorkcard;
+   }
+
+   public void setInvalidityWorkcard(String invalidityWorkcard) {
+      this.invalidityWorkcard = invalidityWorkcard;
+   }
+
+   public Double getMultiplier() {
+      return multiplier;
+   }
+
+   public void setMultiplier(Double multiplier) {
+      this.multiplier = multiplier;
+   }
+}
+
+
+=============================================
+
+/***************************************/
+/** Copyright Airbus Helicopters 2019 **/
+/***************************************/
+package com.eurocopter.mgs.xml.aircraftconfiguration.health.common;
+
+import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
+
+import com.eurocopter.mgs.datamodel.health.common.HealthAlgorithm;
+
+import jakarta.xml.bind.annotation.XmlAccessType;
+import jakarta.xml.bind.annotation.XmlAccessorType;
+import jakarta.xml.bind.annotation.XmlAttribute;
+import jakarta.xml.bind.annotation.XmlElement;
+import jakarta.xml.bind.annotation.XmlElementWrapper;
+import jakarta.xml.bind.annotation.XmlID;
+import jakarta.xml.bind.annotation.XmlIDREF;
+import jakarta.xml.bind.annotation.XmlSchemaType;
+
+/**
+ * This class represents a health indicator.
+ * <P>
+ * This class is intended to be used to map the related XML element in aircraft health configuration xml file.
+ */
+@XmlAccessorType(XmlAccessType.FIELD)
+public class IndicatorXMLBean implements Serializable {
+
+   private static final long serialVersionUID = 1L;
+
+   /**
+    * The name of the indicator.
+    */
+   @XmlAttribute(required = true)
+   @XmlSchemaType(name = "nonEmptyString", namespace = "http://www.eurocopter.com/mgs/types")
+   private String name;
+
+   /**
+    * The ID of the indicator.
+    */
+   @XmlAttribute(required = true)
+   @XmlID
+   private String id;
+
+   /**
+    * Color of the indicator. Use HTML code color.
+    */
+   @XmlAttribute
+   private String color;
+
+   /**
+    * style
+    */
+   @XmlAttribute
+   private String style;
+
+   /**
+    * trendColor
+    */
+   @XmlAttribute
+   private String trendColor;
+
+   /**
+    * trendStyle
+    */
+   @XmlAttribute
+   private String trendStyle;
+
+   /**
+    * successrateColor
+    */
+   @XmlAttribute
+   private String successrateColor;
+
+   /**
+    * successRateStyle
+    */
+   @XmlAttribute
+   private String successRateStyle;
+
+   /**
+    * List of the thresholds associated to the indicator.
+    */
+   @XmlElement(name = "threshold")
+   @XmlElementWrapper(name = "thresholds")
+   private List<ThresholdXMLBean> thresholds = new ArrayList<>();
+
+   /** Algorithm to apply to compute the indicator. */
+   @XmlAttribute(required = true)
+   private String algorithm;
+
+   /** The indicator parameters for the indicator algorithm */
+   @XmlAttribute
+   private List<Double> parameters = new ArrayList<>();
+
+   /**
+    * Accelerometer name that monitors the component.
+    */
+   @XmlAttribute(required = true)
+   @XmlIDREF
+   private AccelerometerXMLBean accelerometer;
+
+   /** The indicator unit */
+   @XmlAttribute(required = true)
+   private String unit;
+
+   @XmlAttribute
+   private String referenceIndicator;
+
+   @XmlAttribute()
+   private Integer slidingMedian;
+
+   @XmlAttribute
+   private String reference;
+
+   @XmlAttribute()
+   private String filteringLaw;
+
+   @XmlAttribute()
+   private Integer maxPointsPerHour;
+
+   @XmlAttribute(name = "min")
+   private Double minSensor;
+
+   @XmlAttribute(name = "max")
+   private Double maxSensor;
+
+   @XmlAttribute(name = "invalidityThreshold")
+   private Double invalidityThreshold;
+
+   @XmlAttribute(name = "lsb")
+   private Double lsb;
+
+   /**
+    * Default constructor. Builds a IndicatorXMLBean.
+    */
+   public IndicatorXMLBean() {
+      // Nothing to do
+   }
+
+   /**
+    * Gets the name.
+    *
+    * @return the name.
+    */
+   public String getName() {
+      return name;
+   }
+
+   /**
+    * Sets the name.
+    *
+    * @param name
+    *           the name to set
+    */
+   public void setName(String name) {
+      this.name = name;
+   }
+
+   public String getId() {
+      return id;
+   }
+
+   public void setId(String id) {
+      this.id = id;
+   }
+
+   public String getFunctionalId() {
+      return getId() != null ? getId() : getName();
+   }
+
+   /**
+    * Gets the thresholds.
+    *
+    * @return the thresholds.
+    */
+   public List<ThresholdXMLBean> getThresholds() {
+      return thresholds;
+   }
+
+   /**
+    * Sets the thresholds.
+    *
+    * @param thresholds
+    *           the thresholds to set
+    */
+   public void setThresholds(List<ThresholdXMLBean> thresholds) {
+      this.thresholds = thresholds;
+   }
+
+   /**
+    * Gets the color.
+    *
+    * @return the color.
+    */
+   public String getColor() {
+      return color;
+   }
+
+   /**
+    * Sets the color.
+    *
+    * @param color
+    *           the color to set
+    */
+   public void setColor(String color) {
+      this.color = color;
+   }
+
+   /**
+    * Gets the algorithm.
+    *
+    * @return the algorithm.
+    */
+   public HealthAlgorithm getAlgorithm() {
+      return algorithm != null ? HealthAlgorithm.valueOf(algorithm) : null;
+   }
+
+   /**
+    * Sets the algorithm.
+    *
+    * @param algorithm
+    *           the algorithm to set
+    */
+   public void setAlgorithm(HealthAlgorithm algorithm) {
+      this.algorithm = algorithm != null ? algorithm.name() : null;
+   }
+
+   /**
+    * Gets the parameters.
+    *
+    * @return the parameters.
+    */
+   public List<Double> getParameters() {
+      return parameters;
+   }
+
+   /**
+    * Sets the parameters.
+    *
+    * @param parameters
+    *           the parameters to set
+    */
+   public void setParameters(List<Double> parameters) {
+      this.parameters = parameters;
+   }
+
+   /**
+    * Gets the accelerometer.
+    *
+    * @return the accelerometer.
+    */
+   public AccelerometerXMLBean getAccelerometer() {
+      return accelerometer;
+   }
+
+   /**
+    * Sets the accelerometer.
+    *
+    * @param accelerometer
+    *           the accelerometer to set
+    */
+   public void setAccelerometer(AccelerometerXMLBean accelerometer) {
+      this.accelerometer = accelerometer;
+   }
+
+   /**
+    * Gets the unit.
+    *
+    * @return the unit.
+    */
+   public String getUnit() {
+      return unit;
+   }
+
+   /**
+    * Sets the unit.
+    *
+    * @param unit
+    *           the unit to set
+    */
+   public void setUnit(String unit) {
+      this.unit = unit;
+   }
+
+   @Override
+   public boolean equals(Object obj) {
+      if (obj == null || obj.getClass() != this.getClass()) {
+         return false;
+      }
+      IndicatorXMLBean other = (IndicatorXMLBean) obj;
+      return this == obj || name != null && name.equalsIgnoreCase(other.getName());
+   }
+
+   @Override
+   public int hashCode() {
+      int result = 0;
+      if (this.name != null) {
+         result = this.name.toLowerCase(Locale.ENGLISH).hashCode();
+      }
+      return result;
+   }
+
+   @Override
+   public String toString() {
+      return name;
+   }
+
+   /**
+    * Gets the style.
+    *
+    * @return the style.
+    */
+   public StyleXMLBean getStyle() {
+      return style != null ? StyleXMLBean.valueOf(style) : null;
+   }
+
+   /**
+    * Sets the style.
+    *
+    * @param style
+    *           the style to set
+    */
+   public void setStyle(StyleXMLBean style) {
+      this.style = style != null ? style.name() : null;
+   }
+
+   /**
+    * Gets the trendColor.
+    *
+    * @return the trendColor.
+    */
+   public String getTrendColor() {
+      return trendColor;
+   }
+
+   /**
+    * Sets the trendColor.
+    *
+    * @param trendColor
+    *           the trendColor to set
+    */
+   public void setTrendColor(String trendColor) {
+      this.trendColor = trendColor;
+   }
+
+   /**
+    * Gets the trendStyle.
+    *
+    * @return the trendStyle.
+    */
+   public StyleXMLBean getTrendStyle() {
+      return trendStyle != null ? StyleXMLBean.valueOf(trendStyle) : null;
+   }
+
+   /**
+    * Sets the trendStyle.
+    *
+    * @param trendStyle
+    *           the trendStyle to set
+    */
+   public void setTrendStyle(StyleXMLBean trendStyle) {
+      this.trendStyle = trendStyle != null ? trendStyle.name() : null;
+   }
+
+   /**
+    * Gets the successrateColor.
+    *
+    * @return the successrateColor.
+    */
+   public String getSuccessRateColor() {
+      return successrateColor;
+   }
+
+   /**
+    * Sets the successrateColor.
+    *
+    * @param successrateColor
+    *           the successrateColor to set
+    */
+   public void setSuccessRateColor(String successrateColor) {
+      this.successrateColor = successrateColor;
+   }
+
+   /**
+    * Gets the successRateStyle.
+    *
+    * @return the successRateStyle.
+    */
+   public StyleXMLBean getSuccessRateStyle() {
+      return successRateStyle != null ? StyleXMLBean.valueOf(successRateStyle) : null;
+   }
+
+   /**
+    * Sets the successRateStyle.
+    *
+    * @param successRateStyle
+    *           the successRateStyle to set
+    */
+   public void setSuccessRateStyle(StyleXMLBean successRateStyle) {
+      this.successRateStyle = successRateStyle != null ? successRateStyle.name() : null;
+   }
+
+   public String getReferenceIndicator() {
+      return referenceIndicator;
+   }
+
+   public void setReferenceIndicator(String referenceIndicator) {
+      this.referenceIndicator = referenceIndicator;
+   }
+
+   /**
+    * Get the slidingMedian
+    */
+   public Integer getSlidingMedian() {
+      return slidingMedian;
+   }
+
+   /**
+    * Set the slidingMedian
+    * 
+    * @param slidingMedian
+    *           The slidingMedian to set
+    */
+   public void setSlidingMedian(Integer slidingMedian) {
+      this.slidingMedian = slidingMedian;
+   }
+
+   public String getReference() {
+      return reference;
+   }
+
+   public void setReference(String reference) {
+      this.reference = reference;
+   }
+
+   public String getFilteringLaw() {
+      return filteringLaw;
+   }
+
+   public void setFilteringLaw(String filteringLaw) {
+      this.filteringLaw = filteringLaw;
+   }
+
+   public Integer getMaxPointsPerHour() {
+      return maxPointsPerHour;
+   }
+
+   public void setMaxPointsPerHour(Integer maxPointsPerHour) {
+      this.maxPointsPerHour = maxPointsPerHour;
+   }
+
+   public Double getMinSensor() {
+      return minSensor;
+   }
+
+   public void setMinSensor(Double minSensor) {
+      this.minSensor = minSensor;
+   }
+
+   public Double getMaxSensor() {
+      return maxSensor;
+   }
+
+   public void setMaxSensor(Double maxSensor) {
+      this.maxSensor = maxSensor;
+   }
+
+   public Double getInvalidityThreshold() {
+      return invalidityThreshold;
+   }
+
+   public void setInvalidityThreshold(Double invalidityThreshold) {
+      this.invalidityThreshold = invalidityThreshold;
+   }
+
+   public Double getLsb() {
+      return lsb;
+   }
+
+   public void setLsb(Double lsb) {
+      this.lsb = lsb;
+   }
+}
+=========================================================
+
+/***************************************/
+/** Copyright Airbus Helicopters 2019 **/
+/***************************************/
+package com.eurocopter.mgs.delegate.health;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
+
+import org.apache.commons.lang.StringUtils;
+
+import com.eurocopter.mgs.datamodel.aircraft.Avionic;
+import com.eurocopter.mgs.datamodel.health.common.Accelerometer;
+import com.eurocopter.mgs.datamodel.health.common.HealthAlgorithm;
+import com.eurocopter.mgs.datamodel.health.common.Style;
+import com.eurocopter.mgs.datamodel.health.monitoring.HealthMechanicalComponent;
+import com.eurocopter.mgs.datamodel.health.monitoring.HealthMechanicalComponentConfiguration;
+import com.eurocopter.mgs.datamodel.health.monitoring.Indicator;
+import com.eurocopter.mgs.datamodel.health.monitoring.IndicatorConfiguration;
+import com.eurocopter.mgs.datamodel.health.monitoring.IndicatorDisplay;
+import com.eurocopter.mgs.datamodel.health.monitoring.RelearnThresholdRequest;
+import com.eurocopter.mgs.datamodel.health.monitoring.Threshold;
+import com.eurocopter.mgs.delegate.exception.DelegateException;
+import com.eurocopter.mgs.xml.aircraftconfiguration.health.common.AccelerometerXMLBean;
+import com.eurocopter.mgs.xml.aircraftconfiguration.health.common.FilteringLawXMLBean;
+import com.eurocopter.mgs.xml.aircraftconfiguration.health.common.HealthConfigurationXMLBean;
+import com.eurocopter.mgs.xml.aircraftconfiguration.health.common.HealthMechanicalComponentXMLBean;
+import com.eurocopter.mgs.xml.aircraftconfiguration.health.common.IndicatorXMLBean;
+import com.eurocopter.mgs.xml.aircraftconfiguration.health.common.ThresholdXMLBean;
+import com.eurocopter.mgs.xml.configuration.unit.Unit;
+
+class HealthIndicatorDelegate {
+
+   private static final HealthThresholdDelegate THRESHOLD_DELEGATE = new HealthThresholdDelegate();
+
+   void validateIndicator(Avionic avionic, IndicatorXMLBean indicatorXMLBean, HealthMechanicalComponentXMLBean mechanicalComponent, HealthConfigurationXMLBean healthConfigurationBean)
+         throws DelegateException {
+      // Check the number of parameters
+      HealthAlgorithm algorithm = indicatorXMLBean.getAlgorithm();
+      List<Double> parameters = indicatorXMLBean.getParameters();
+      String filteringLawAttribute = indicatorXMLBean.getFilteringLaw();
+      final int minParamCount;
+      switch (avionic) {
+         case CIGALHE -> {
+            if (indicatorXMLBean.getAlgorithm() != HealthAlgorithm.Read && indicatorXMLBean.getAlgorithm() != HealthAlgorithm.ACQUISITION_RATE && indicatorXMLBean.getAccelerometer() == null) {
+               throw new DelegateException("HealthMonitoring: Missing accelerometer for indicator '" + indicatorXMLBean.getName() + "' in " + mechanicalComponent.getName());
+            }
+            minParamCount = algorithm.getCigalheMinParameters();
+         }
+         case MARMS -> minParamCount = algorithm.getMarmsMinParameters();
+         default -> throw new IllegalStateException("Unsupported avionic: " + avionic);
+      }
+
+      if (parameters.size() < minParamCount) {
+         throw new DelegateException("HealthMonitoring: Invalid number of parameters for the indicator '" + indicatorXMLBean.getName()
+               + "' of '" + mechanicalComponent.getName()
+               + "' mechanical component : algorithm '" + algorithm + "' must have at least "
+               + minParamCount + " parameters.");
+      }
+
+      // Check the alpha parameter value of the Acquisition rate algorithm
+      if (HealthAlgorithm.ACQUISITION_RATE == indicatorXMLBean.getAlgorithm()) {
+         Double alpha = parameters.get(0);
+         if (alpha < 0 || alpha > 1) {
+            throw new DelegateException("HealthMonitoring: Invalid parameter for the indicator '" + indicatorXMLBean.getName()
+                  + "' of '" + mechanicalComponent.getName()
+                  + "' mechanical component : the parameter value of the algorithm '" + algorithm + "' must be between 0 and 1 included");
+         }
+      }
+
+      // Check thresholds
+      THRESHOLD_DELEGATE.checkThresholdValues(indicatorXMLBean, mechanicalComponent.getFunctionalId());
+
+      // Check the filtering law
+      if (filteringLawAttribute != null) {
+         Set<FilteringLawXMLBean> filteringLaws = healthConfigurationBean.getFilteringLaws();
+         List<String> nameLaws = new ArrayList<>();
+         StringBuilder listOfFilteringLawName = new StringBuilder();
+         for (FilteringLawXMLBean filteringLaw : filteringLaws) {
+            nameLaws.add(filteringLaw.getName());
+            if (listOfFilteringLawName.isEmpty()) {
+               listOfFilteringLawName = new StringBuilder(filteringLaw.getName());
+            } else {
+               listOfFilteringLawName.append(" | ").append(filteringLaw.getName());
+            }
+         }
+
+         if (!nameLaws.contains(filteringLawAttribute)) {
+            throw new DelegateException("HealthMonitoring: Invalid name of Law '" + filteringLawAttribute + "' for the indicator '" + indicatorXMLBean.getName()
+                  + "' of '" + mechanicalComponent.getName()
+                  + "' mechanical component. If you want to use a filtering law on this indicator, the name should be one of the following : "
+                  + listOfFilteringLawName + " .");
+         }
+      }
+   }
+
+   void createIndicator(Avionic avionic, HealthMechanicalComponent healthComponent, HealthMechanicalComponentXMLBean mechanicalComponentXMLBean, IndicatorXMLBean indicatorBean,
+         Map<String, Map<String, Unit>> unitsByPhysicalQuantity) throws DelegateException {
+      // Create indicator
+      Indicator indicator = new Indicator(UUID.randomUUID().toString());
+      indicator.setFunctionalId(indicatorBean.getFunctionalId());
+      indicator.setName(indicatorBean.getName());
+      indicator.setActive(true);
+
+      healthComponent.getIndicators().put(indicator.getFunctionalId(), indicator);
+
+      // Create a default display for this indicator
+      IndicatorDisplay display = new IndicatorDisplay();
+      display.setColor(indicatorBean.getColor());
+      display.setStyle(indicatorBean.getStyle() != null ? Style.valueOf(indicatorBean.getStyle().name()) : null);
+      display.setTrendColor(indicatorBean.getTrendColor());
+      display.setTrendStyle(indicatorBean.getTrendStyle() != null ? Style.valueOf(indicatorBean.getTrendStyle().name()) : null);
+      display.setSuccessRateColor(indicatorBean.getSuccessRateColor());
+      display.setSuccessRateStyle(indicatorBean.getSuccessRateStyle() != null ? Style.valueOf(indicatorBean.getSuccessRateStyle().name()) : null);
+      if (avionic == Avionic.MARMS && indicatorBean.getAlgorithm() == HealthAlgorithm.Read) {
+         indicator.setUnitSymbolOverride(StringUtils.trimToEmpty(indicatorBean.getUnit()));
+         display.setUnitName("no_unit");
+      } else {
+         display.setUnitName(getUnitName(indicatorBean, mechanicalComponentXMLBean, unitsByPhysicalQuantity));
+      }
+      indicator.setDisplay(display);
+
+      // Create thresholds
+      for (ThresholdXMLBean thresholdBean : indicatorBean.getThresholds()) {
+         THRESHOLD_DELEGATE.createThreshold(indicator, thresholdBean);
+      }
+   }
+
+   void updateIndicator(Avionic avionic, Indicator indicator, HealthMechanicalComponentXMLBean mechanicalComponentXMLBean, IndicatorXMLBean indicatorBean,
+         Map<String, Map<String, Unit>> units)
+         throws DelegateException {
+      indicator.setName(indicatorBean.getName());
+      indicator.setActive(true);
+
+      IndicatorDisplay display = indicator.getDisplay();
+      display.setColor(indicatorBean.getColor());
+      display.setStyle(indicatorBean.getStyle() != null ? Style.valueOf(indicatorBean.getStyle().name()) : null);
+      display.setTrendColor(indicatorBean.getTrendColor());
+      display.setTrendStyle(indicatorBean.getTrendStyle() != null ? Style.valueOf(indicatorBean.getTrendStyle().name()) : null);
+      display.setSuccessRateColor(indicatorBean.getSuccessRateColor());
+      display.setSuccessRateStyle(indicatorBean.getSuccessRateStyle() != null ? Style.valueOf(indicatorBean.getSuccessRateStyle().name()) : null);
+      if (avionic == Avionic.MARMS && indicatorBean.getAlgorithm() == HealthAlgorithm.Read) {
+         indicator.setUnitSymbolOverride(StringUtils.trimToEmpty(indicatorBean.getUnit()));
+         display.setUnitName("no_unit");
+      } else {
+         display.setUnitName(getUnitName(indicatorBean, mechanicalComponentXMLBean, units));
+      }
+
+      // Index thresholds by their functional id
+      Map<String, Threshold> thresholds = new HashMap<>();
+      for (Threshold threshold : indicator.getThresholds()) {
+         thresholds.put(threshold.getFunctionalId(), threshold);
+      }
+
+      // Create or update thresholds
+      Set<String> activeThresholds = new HashSet<>();
+      for (ThresholdXMLBean thresholdXMLBean : indicatorBean.getThresholds()) {
+         Threshold threshold = thresholds.get(thresholdXMLBean.getName());
+         if (threshold == null) {
+            THRESHOLD_DELEGATE.createThreshold(indicator, thresholdXMLBean);
+         } else {
+            THRESHOLD_DELEGATE.updateThreshold(threshold, thresholdXMLBean);
+         }
+         activeThresholds.add(thresholdXMLBean.getName());
+      }
+
+      // Disable thresholds absent from the new configuration
+      for (Threshold threshold : indicator.getThresholds()) {
+         threshold.setActive(activeThresholds.contains(threshold.getFunctionalId()));
+      }
+   }
+
+   void createIndicatorConfiguration(Avionic avionic, HealthMechanicalComponentConfiguration healthComponentConfiguration, IndicatorXMLBean indicatorBean, Map<String, Indicator> indicators,
+         Map<String, Accelerometer> accelerometers, HealthConfigurationXMLBean healthConfigurationBean, Map<Threshold, Set<RelearnThresholdRequest>> relearnRequests)
+         throws DelegateException {
+      Indicator indicator = indicators.get(indicatorBean.getFunctionalId());
+
+      // Create indicator configuration
+      IndicatorConfiguration indicatorConfiguration = new IndicatorConfiguration(UUID.randomUUID().toString());
+      indicatorConfiguration.setIndicator(indicator);
+      if (indicatorBean.getAlgorithm() == HealthAlgorithm.Read && indicatorBean.getReference() == null) {
+         throw new DelegateException("The indicator '" + indicatorBean.getFunctionalId() + "' shall have a reference because the algorithm is Read.");
+      }
+      String pattern = "([HRE]-[0-9]+-[0-9]+-)?[0-9]+-[0-9]+";
+      if (indicatorBean.getAlgorithm() == HealthAlgorithm.Read && !indicatorBean.getReference().matches(pattern)) {
+         throw new DelegateException("Issue with health configuration concerning reference for indicator "
+               + indicatorBean.getFunctionalId() + " (" + indicatorBean.getAlgorithm() + "): Value '" + indicatorBean.getReference() + "' is not valid with respect to pattern '" + pattern + "'.");
+      }
+      indicatorConfiguration.setReference(indicatorBean.getReference());
+      if (indicatorBean.getAlgorithm() == HealthAlgorithm.ACQUISITION_RATE == (indicatorBean.getReferenceIndicator() == null)) {
+         throw new DelegateException("The indicator '" + indicatorBean.getFunctionalId() + "' shall have a reference indicator if and only if the algorithm is ACQUISITION_RATE.");
+      }
+      indicatorConfiguration.setSlidingMedian(indicatorBean.getSlidingMedian());
+      indicatorConfiguration.setReferenceIndicator(indicatorBean.getReferenceIndicator());
+      indicatorConfiguration.setHealthAlgorithm(indicatorBean.getAlgorithm());
+      indicatorConfiguration.setParameters(indicatorBean.getParameters());
+      indicatorConfiguration.setFilteringLaw(indicatorBean.getFilteringLaw());
+      indicatorConfiguration.setMaxPointsPerHour(indicatorBean.getMaxPointsPerHour());
+      if (indicatorBean.getMinSensor() != null && indicatorBean.getMaxSensor() != null && indicatorBean.getMaxSensor() <= indicatorBean.getMinSensor()) {
+         throw new DelegateException("The indicator '" + indicatorBean.getFunctionalId() + "' defines invalid 'min' and 'max' attribute.");
+      }
+      if (indicatorBean.getMinSensor() != null && healthConfigurationBean.getSensorAnomaly() == null) {
+         throw new DelegateException("The indicator '" + indicatorBean.getFunctionalId() + "' defines a 'min' attribute but sensor anomaly configuration is missing.");
+      }
+      indicatorConfiguration.setMinSensor(indicatorBean.getMinSensor());
+      if (indicatorBean.getMaxSensor() != null && healthConfigurationBean.getSensorAnomaly() == null) {
+         throw new DelegateException("The indicator '" + indicatorBean.getFunctionalId() + "' defines a 'max' attribute but sensor anomaly configuration is missing.");
+      }
+      indicatorConfiguration.setMaxSensor(indicatorBean.getMaxSensor());
+      if (healthConfigurationBean.getSensorAnomaly() != null) {
+         indicatorConfiguration.setSensorAnomalyWorkcard(healthConfigurationBean.getSensorAnomaly().getWorkcard());
+         indicatorConfiguration.setSensorAnomalySuccessivePoints(healthConfigurationBean.getSensorAnomaly().getNbSuccessivePoints());
+      } else {
+         indicatorConfiguration.setSensorAnomalyWorkcard(null);
+         indicatorConfiguration.setSensorAnomalySuccessivePoints(null);
+      }
+      if (healthConfigurationBean.getIndicatorInvalidities() != null && indicatorBean.getInvalidityThreshold() != null) {
+         if (indicatorBean.getInvalidityThreshold() < 0) {
+            throw new DelegateException("The invalidity threshold has to be between 0 and 1 on '" + indicatorBean.getFunctionalId() + "'.");
+         }
+         indicatorConfiguration.setInvalidityWorkcard(healthConfigurationBean.getIndicatorInvalidities().getWorkcard());
+         indicatorConfiguration.setInvalidityThreshold(indicatorBean.getInvalidityThreshold());
+      } else if (indicatorBean.getInvalidityThreshold() != null) {
+         // Invalidity threshold defined, but no global indicator invalidity configuration: that's an error
+         throw new DelegateException("The indicator '" + indicatorBean.getFunctionalId() + "' defines a 'invalidityThreshold' attribute but <indicatorInvalidities /> tag is missing.");
+      } else {
+         indicatorConfiguration.setInvalidityWorkcard(null);
+         indicatorConfiguration.setInvalidityThreshold(null);
+      }
+      if (indicatorBean.getLsb() != null && (indicatorBean.getAlgorithm() != HealthAlgorithm.Read || avionic != Avionic.MARMS)) {
+         throw new DelegateException("The indicator '" + indicatorBean.getFunctionalId() + "' shall not have an attribute LSB");
+      } else if (indicatorBean.getLsb() == null && indicatorBean.getAlgorithm() == HealthAlgorithm.Read && avionic == Avionic.MARMS) {
+         throw new DelegateException("The indicator '" + indicatorBean.getFunctionalId() + "' must have an attribute LSB");
+      }
+      indicatorConfiguration.setMultiplier(indicatorBean.getLsb());
+
+      AccelerometerXMLBean accelerometer = indicatorBean.getAccelerometer();
+      if (accelerometer != null) {
+         indicatorConfiguration.setAccelerometer(accelerometers.get(Accelerometer.normalize(accelerometer.getFunctionalId())));
+      }
+      healthComponentConfiguration.getIndicatorConfigurations().put(indicator, indicatorConfiguration);
+
+      // Index indicators by their name
+      Map<String, Threshold> thresholds = new HashMap<>(indicator.getThresholds().size());
+      for (Threshold threshold : indicator.getThresholds()) {
+         thresholds.put(threshold.getFunctionalId(), threshold);
+      }
+
+      for (ThresholdXMLBean thresholdBean : indicatorBean.getThresholds()) {
+         THRESHOLD_DELEGATE.createThresholdConfiguration(indicatorConfiguration, thresholdBean, thresholds, relearnRequests);
+      }
+   }
+
+   void validateIndicatorUnicity(List<IndicatorXMLBean> indicators, HealthMechanicalComponent hmc) throws DelegateException {
+      Set<String> names = new HashSet<>();
+      Set<String> functionalIds = new HashSet<>();
+      for (IndicatorXMLBean indicator : indicators) {
+         if (names.contains(indicator.getName())) {
+            throw new DelegateException("Duplicate indicator '" + indicator.getName() + "' in '" + hmc.getName() + "'");
+         }
+         names.add(indicator.getName());
+         if (functionalIds.contains(indicator.getFunctionalId())) {
+            throw new DelegateException("Duplicate indicator '" + indicator.getFunctionalId() + "' in '" + hmc.getName() + "'");
+         }
+         functionalIds.add(indicator.getFunctionalId());
+      }
+   }
+
+   void validateMinMaxSensor(IndicatorXMLBean indicatorXMLBean, String hmcFuncId) throws DelegateException {
+      final Double minSensor = indicatorXMLBean.getMinSensor();
+      final Double maxSensor = indicatorXMLBean.getMaxSensor();
+
+      if (minSensor != null && maxSensor != null && minSensor > maxSensor) {
+         throw new DelegateException("Issue with health configuration concerning " + hmcFuncId + " > "
+               + indicatorXMLBean.getFunctionalId() + " thresholds Sensor values: check minSensor and maxSensor values.");
+      }
+   }
+
+   private String getUnitName(IndicatorXMLBean indicatorBean, HealthMechanicalComponentXMLBean mechanicalComponentXMLBean, Map<String, Map<String, Unit>> unitsByPhysicalQuantity)
+         throws DelegateException {
+      if (indicatorBean.getUnit() == null || indicatorBean.getUnit().isEmpty() || unitsByPhysicalQuantity.isEmpty()) {
+         return "no_unit";
+      } else {
+         final String physicalQuantity = mechanicalComponentXMLBean.getPhysicalQuantity();
+         final Map<String, Unit> physicalQuantityUnits = unitsByPhysicalQuantity.get(physicalQuantity);
+         if (!physicalQuantityUnits.containsKey(indicatorBean.getUnit())) {
+            throw new DelegateException("Unit symbol '" + indicatorBean.getUnit() + "' is unknown (on indicator '" + indicatorBean.getName() + "'). Check the physical quantity (" + physicalQuantity
+                  + " expected)");
+         }
+         return physicalQuantityUnits.get(indicatorBean.getUnit()).getName();
+      }
+   }
+}
+
+=======================================================================
+
 
