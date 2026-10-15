@@ -1,25 +1,12 @@
-Hello Ranjith
-Here is what we are going to do : 
-If user edits the deviations fields :
-Level (High / Low)
-Type (Fixed / Learned)
-Minimum = LT Min (maximumThreshold)
-Maximum = LT Max (minimumThreshold)
-Points = this field is missing and should be added, it corresponds to the field "maxPointsPerHour" in A/C Health configuration
-Filtering Law
-TE
--> A deviation is created, a popup displays "Deviation created on indicator xxx" and the user can't select an applicable flight
-If user edits any of the other fields :
-Value
-Learning Time
-LT Minimum Deviation
-LT Mean Multiplying
-LT Deviation Coef
-Successive point for Alarm
-Maximum time without acquisition
--> The indicator is updated (current MGS behaviour) and the user can select an applicable flight
+HealthAlarmsComposite.java
+HealthAlarmsPreferenceStore.java
+IndicatorDeviation.java
+IndicatorDeviationDto.java
+HealthCommonBusiness.java
 
-If the user edits both fields, we'll have both behaviours : creation of a deviation (with popup "Deviation created on indicator xxx") + indicator update (with also applicable flight selection popup)
-This may be confusing but it's the simpliest way to implement it
 
- 
+
+run this 
+
+SELECT column_name FROM information_schema.columns
+WHERE table_name = 'indicator_deviation';
