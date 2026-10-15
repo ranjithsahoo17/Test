@@ -1,4 +1,3 @@
-
 package com.eurocopter.mgs.presentation.configuration.preferences.healthalarms.viewer;
 
 import java.util.ArrayList;
@@ -139,6 +138,9 @@ public class WCModelTreeViewer extends TreeViewer {
       editors[WCModelDisplayProperty.FILTERING_LAW.ordinal()] = filteringLawEditor;
 
       editors[WCModelDisplayProperty.TE.ordinal()] = getCellEditor(tree, true);
+
+      // BCR-6605 Points = maxPointsPerHour, same editor as NB_POINTS
+      editors[WCModelDisplayProperty.POINTS.ordinal()] = getCellEditor(tree, true);
 
       super.setCellEditors(editors);
    }
