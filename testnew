@@ -1,105 +1,192 @@
-package com.eurocopter.mgs.download.analysis.health.impl.filtering;
+/***************************************/
+/** Copyright Airbus Helicopters 2019 **/
+/***************************************/
+package com.eurocopter.mgs.presentation.configuration.preferences.healthalarms.viewer;
 
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Set;
 
-import com.eurocopter.mgs.datamodel.alarm.Severity;
-import com.eurocopter.mgs.datamodel.health.monitoring.FilteringLaw;
-import com.eurocopter.mgs.datamodel.health.monitoring.HealthMonitoringConfiguration;
-import com.eurocopter.mgs.datamodel.health.monitoring.Indicator;
-import com.eurocopter.mgs.datamodel.health.monitoring.IndicatorConfiguration;
-import com.eurocopter.mgs.datamodel.health.monitoring.IndicatorDeviation;
-import com.eurocopter.mgs.download.analysis.health.algo.FilteringAlgorithm;
-import com.eurocopter.mgs.download.analysis.health.data.IHealthIndicatorValueAcquisition;
-import com.eurocopter.mgs.download.analysis.health.impl.HealthIndicatorValueAdapter;
+import org.eclipse.jface.viewers.ArrayContentProvider;
+import org.eclipse.jface.viewers.CellEditor;
+import org.eclipse.jface.viewers.CheckboxCellEditor;
+import org.eclipse.jface.viewers.ComboBoxViewerCellEditor;
+import org.eclipse.jface.viewers.ICellEditorListener;
+import org.eclipse.jface.viewers.LabelProvider;
+import org.eclipse.jface.viewers.TextCellEditor;
+import org.eclipse.jface.viewers.TreeViewer;
+import org.eclipse.swt.SWT;
+import org.eclipse.swt.widgets.Text;
+import org.eclipse.swt.widgets.Tree;
+import org.eclipse.swt.widgets.TreeColumn;
 
-public abstract class AbstractFilteringRuleAlgorithm<K> implements IFilteringRuleAlgorithm {
+import com.eurocopter.mgs.core.presentation.i18n.Messages;
+import com.eurocopter.mgs.datamodel.aircraft.Aircraft;
+import com.eurocopter.mgs.datamodel.health.monitoring.ThresholdLevel;
+import com.eurocopter.mgs.datamodel.health.monitoring.ThresholdType;
+import com.eurocopter.mgs.presentation.configuration.preferences.healthalarms.WCMechanicalComponentModel;
+import com.eurocopter.mgs.presentation.configuration.preferences.healthalarms.WCModelDisplayProperty;
+import com.eurocopter.mgs.presentation.configuration.preferences.healthalarms.store.HealthAlarmsPreferenceStore;
 
-   private static final Comparator<HealthIndicatorValueAdapter> INDICATOR_VALUE_COMPARATOR = Comparator.comparing(HealthIndicatorValueAdapter::getAcquisitionDate);
-   private final Map<K, Map<IndicatorConfiguration, List<HealthIndicatorValueAdapter>>> healthIndicatorValueAdapterByFileIdAndIndConf;
-   private Map<String, IndicatorDeviation> deviations = Collections.emptyMap();
+public class WCModelTreeViewer extends TreeViewer {
 
-   public AbstractFilteringRuleAlgorithm() {
-      this.healthIndicatorValueAdapterByFileIdAndIndConf = new HashMap<>();
+   protected Map<Aircraft, WCMechanicalComponentModel> healthWcModelMap;
+   protected HealthAlarmsPreferenceStore healthAlarmsPreferenceStore;
+
+   private Aircraft selectedAircraft = null;
+   private ComboBoxViewerCellEditor filteringLawEditor;
+
+   public WCModelTreeViewer(Tree tree, Map<Aircraft, WCMechanicalComponentModel> healthWcModelMap, HealthAlarmsPreferenceStore healthAlarmsPreferenceStore) {
+      super(tree);
+      this.healthWcModelMap = healthWcModelMap;
+      this.healthAlarmsPreferenceStore = healthAlarmsPreferenceStore;
+      createColumns(tree);
+
+      String[] properties = new String[WCModelDisplayProperty.values().length];
+      int i = 0;
+      for (WCModelDisplayProperty prop : WCModelDisplayProperty.values()) {
+         properties[i++] = prop.getKey();
+      }
+      setColumnProperties(properties);
    }
 
-   protected abstract boolean isFilteringLawApplicable(List<HealthIndicatorValueAdapter> indicatorValueAdapters);
+   /**
+    * Create columns of the tree.
+    * 
+    * @param tree
+    *           the tree for which columns have to be created
+    * @return the list of columns name
+    */
+   private void createColumns(Tree tree) {
 
-   protected abstract K getKey(IHealthIndicatorValueAcquisition acquisition);
+      final WCModelDisplayProperty[] properties = WCModelDisplayProperty.values();
 
-   protected abstract int getMaxPointsAtKey(K key, int configuredMaxPointsPerHour);
+      for (WCModelDisplayProperty property : properties) {
+         final TreeColumn column = new TreeColumn(tree, SWT.CENTER);
+         column.setText(property.getKey().isEmpty() ? "" : Messages.CORE.getMnemonicEscapedString(property.getKey()));
+         column.setWidth(property.getColumnSize());
+      }
 
-   protected abstract void applyFilteringLawAlgorithm(List<HealthIndicatorValueAdapter> values, Set<FilteringLaw> filteringLaws, String indicatorFilteringLaw);
-
-   @Override
-   public void recordAcquisition(IHealthIndicatorValueAcquisition acquisition, String indicatorId, Indicator indicator, IndicatorConfiguration indicatorConfiguration) {
-      K key = getKey(acquisition);
-      final Map<IndicatorConfiguration, List<HealthIndicatorValueAdapter>> indicatorsInFile = healthIndicatorValueAdapterByFileIdAndIndConf.computeIfAbsent(key, k -> new HashMap<>());
-      final List<HealthIndicatorValueAdapter> indicatorValues = indicatorsInFile.computeIfAbsent(indicatorConfiguration, k -> new ArrayList<>());
-      indicatorValues.add(new HealthIndicatorValueAdapter(acquisition, indicatorConfiguration, indicatorId, indicator));
+      createCellEditors(tree, properties);
    }
 
-   @Override
-   public List<HealthIndicatorValueAdapter> getFilteredValues(HealthMonitoringConfiguration healthConfiguration) {
-      for (Map<IndicatorConfiguration, List<HealthIndicatorValueAdapter>> indicators : healthIndicatorValueAdapterByFileIdAndIndConf.values()) {
-         for (Entry<IndicatorConfiguration, List<HealthIndicatorValueAdapter>> entry2 : indicators.entrySet()) {
-            final IndicatorConfiguration indicatorConfiguration = entry2.getKey();
-            final Set<FilteringLaw> filteringLaws = healthConfiguration.getFilteringLaws();
-            List<HealthIndicatorValueAdapter> indicatorValueAdapters = entry2.getValue();
-            if (indicatorConfiguration.getFilteringLaw() != null && isFilteringLawApplicable(indicatorValueAdapters)) {
-               applyFilteringLawAlgorithm(indicatorValueAdapters, filteringLaws, indicatorConfiguration.getFilteringLaw());
+   private void createCellEditors(Tree tree, final WCModelDisplayProperty[] propertyNames) {
+      CellEditor[] editors = new CellEditor[propertyNames.length];
+      /* editors[WCModelDisplayProperty.CHECKBOX.ordinal()] = getCellEditor(tree, false); */ // BCR-6605 Check Box Remove from cell editor.
+      ComboBoxViewerCellEditor cellEditor = new ComboBoxViewerCellEditor(tree, SWT.READ_ONLY);
+      cellEditor.setLabelProvider(new LabelProvider() {
+         @Override
+         public String getText(Object element) {
+            if (element instanceof ThresholdLevel level) {
+               return Messages.CORE.getString("ThresholdLevel_" + level.name());
+            }
+            return null;
+         }
+      });
+      cellEditor.addListener(createWCColumnListener());
+      cellEditor.setContentProvider(new ArrayContentProvider());
+      List<ThresholdLevel> levels = new ArrayList<>();
+      levels.add(ThresholdLevel.LOW);
+      levels.add(ThresholdLevel.HIGH);
+      cellEditor.setInput(levels);
+      editors[WCModelDisplayProperty.LEVEL.ordinal()] = cellEditor;
+
+      cellEditor = new ComboBoxViewerCellEditor(tree, SWT.READ_ONLY);
+      cellEditor.setLabelProvider(new LabelProvider() {
+         @Override
+         public String getText(Object element) {
+            if (element instanceof ThresholdType type) {
+               return Messages.CORE.getString("ThresholdType_" + type.name());
+            }
+            return null;
+         }
+      });
+      cellEditor.addListener(createWCColumnListener());
+      cellEditor.setContentProvider(new ArrayContentProvider());
+      List<ThresholdType> types = new ArrayList<>();
+      types.add(ThresholdType.FIXED);
+      types.add(ThresholdType.LEARNED);
+      cellEditor.setInput(types);
+
+      editors[WCModelDisplayProperty.TYPE.ordinal()] = cellEditor;
+
+      editors[WCModelDisplayProperty.VALUE.ordinal()] = getCellEditor(tree, true);
+      editors[WCModelDisplayProperty.MIN_VALUE.ordinal()] = getCellEditor(tree, true);
+      editors[WCModelDisplayProperty.MAX_VALUE.ordinal()] = getCellEditor(tree, true);
+      editors[WCModelDisplayProperty.LEARN_TIME.ordinal()] = getCellEditor(tree, true);
+
+      TextCellEditor workcardEditor = (TextCellEditor) getCellEditor(tree, true);
+      ((Text) workcardEditor.getControl()).setTextLimit(255);
+      editors[WCModelDisplayProperty.WORKCARD_REF.ordinal()] = workcardEditor;
+
+      editors[WCModelDisplayProperty.MIN_DEV.ordinal()] = getCellEditor(tree, true);
+      editors[WCModelDisplayProperty.MEAN_MULT_FACTOR.ordinal()] = getCellEditor(tree, true);
+      editors[WCModelDisplayProperty.DEV_COEF.ordinal()] = getCellEditor(tree, true);
+      editors[WCModelDisplayProperty.NB_POINTS.ordinal()] = getCellEditor(tree, true);
+
+      editors[WCModelDisplayProperty.MAX_TIME_WO_ACQ.ordinal()] = getCellEditor(tree, true);
+
+      // editors[WCModelDisplayProperty.FILTERING_LAW.ordinal()] = getCellEditor(tree, true); // added
+
+      filteringLawEditor = new ComboBoxViewerCellEditor(tree, SWT.READ_ONLY);
+      filteringLawEditor.setLabelProvider(new LabelProvider() {
+         @Override
+         public String getText(Object element) {
+            return element == null ? "" : element.toString();
+         }
+      });
+      // BCR-6605 Implementation
+      filteringLawEditor.addListener(createWCColumnListener());
+      filteringLawEditor.setContentProvider(new ArrayContentProvider());
+      editors[WCModelDisplayProperty.FILTERING_LAW.ordinal()] = filteringLawEditor;
+
+      editors[WCModelDisplayProperty.TE.ordinal()] = getCellEditor(tree, true);
+
+      super.setCellEditors(editors);
+   }
+
+   /**
+    * 
+    * @return
+    */
+   private CellEditor getCellEditor(Tree tree, boolean isTextEditor) {
+      CellEditor cellEditor = isTextEditor ? new TextCellEditor(tree) : new CheckboxCellEditor(tree);
+      cellEditor.addListener(createWCColumnListener());
+      return cellEditor;
+   }
+
+   /**
+    * @return
+    */
+   private ICellEditorListener createWCColumnListener() {
+      return new ICellEditorListener() {
+         @Override
+         public void editorValueChanged(boolean arg0, boolean arg1) {
+            // nothing to do
+         }
+
+         @Override
+         public void cancelEditor() {
+            // nothing to do
+         }
+
+         @Override
+         public void applyEditorValue() {
+            if (!healthWcModelMap.containsKey(selectedAircraft)) {
+               healthWcModelMap.put(selectedAircraft, healthAlarmsPreferenceStore.getHealthModels(selectedAircraft));
             }
          }
-      }
-
-      final List<HealthIndicatorValueAdapter> valuesToSave = new ArrayList<>();
-      for (Map.Entry<K, Map<IndicatorConfiguration, List<HealthIndicatorValueAdapter>>> indicatorsEntry : healthIndicatorValueAdapterByFileIdAndIndConf.entrySet()) {
-         K key = indicatorsEntry.getKey();
-         Map<IndicatorConfiguration, List<HealthIndicatorValueAdapter>> indicators = indicatorsEntry.getValue();
-         for (Entry<IndicatorConfiguration, List<HealthIndicatorValueAdapter>> indicatorEntry : indicators.entrySet()) {
-            final IndicatorConfiguration conf = indicatorEntry.getKey();
-            final List<HealthIndicatorValueAdapter> healthIndicatorValueAdapterValues = indicatorEntry.getValue();
-            Integer configuredPoints = conf.getMaxPointsPerHour();
-            final Integer deviatedPoints = getDeviatedPoints(conf);
-            if (deviatedPoints != null) {
-               configuredPoints = deviatedPoints;
-            }
-            if (configuredPoints == null) {
-               valuesToSave.addAll(healthIndicatorValueAdapterValues);
-            } else {
-               healthIndicatorValueAdapterValues.sort(INDICATOR_VALUE_COMPARATOR);
-               int maxPointsPerHour = getMaxPointsAtKey(key, configuredPoints);
-
-               if (maxPointsPerHour > 0) {
-                  valuesToSave.addAll(FilteringAlgorithm.filterHealthIndicatorValues(healthIndicatorValueAdapterValues, maxPointsPerHour));
-               }
-            }
-         }
-      }
-      return valuesToSave;
+      };
    }
 
-   public void setDeviations(final Map<String, IndicatorDeviation> applicableDeviations) {
-      this.deviations = applicableDeviations != null ? applicableDeviations : Collections.emptyMap();
-   }
-
-   private Integer getDeviatedPoints(final IndicatorConfiguration conf) {
-      if (deviations.isEmpty() || conf.getIndicator() == null) {
-         return null;
+   /**
+    * @param selectedAircraft
+    *           the selectedAircraft to set
+    */
+   public void setSelectedAircraft(Aircraft selectedAircraft) {
+      this.selectedAircraft = selectedAircraft;
+      if (filteringLawEditor != null && selectedAircraft != null) {
+         filteringLawEditor.setInput(healthAlarmsPreferenceStore.getFilteringLawNames(selectedAircraft));
       }
-      for (Severity severity : Severity.values()) {
-         IndicatorDeviation deviation = deviations.get(conf.getIndicator().getId() + "|" + severity.name());
-         if (deviation != null && deviation.getMaxPointsPerHour() != null) {
-            return deviation.getMaxPointsPerHour();
-         }
-      }
-      return null;
    }
-
 }
