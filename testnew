@@ -3,7 +3,7 @@
     <aircraftType>EC175</aircraftType>
     <aircraftImg>images/cinematique.png</aircraftImg>
     <accelerometers>
-        <accelerometer name="XCAB"/>
+        <accelerometer name="XCAB"/> 
         <accelerometer name="YCAB"/>
         <accelerometer name="ZCAB"/>
         <accelerometer name="MGBR"/>
