@@ -1,192 +1,768 @@
-package com.eurocopter.mgs.presentation.configuration.preferences.healthalarms.viewer;
+/***************************************/
+/** Copyright Airbus Helicopters 2019 **/
+/***************************************/
+package com.eurocopter.mgs.download.analysis.health.impl;
 
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
+import java.util.NoSuchElementException;
+import java.util.Set;
+import java.util.UUID;
 
-import org.eclipse.jface.viewers.ArrayContentProvider;
-import org.eclipse.jface.viewers.CellEditor;
-import org.eclipse.jface.viewers.CheckboxCellEditor;
-import org.eclipse.jface.viewers.ComboBoxViewerCellEditor;
-import org.eclipse.jface.viewers.ICellEditorListener;
-import org.eclipse.jface.viewers.LabelProvider;
-import org.eclipse.jface.viewers.TextCellEditor;
-import org.eclipse.jface.viewers.TreeViewer;
-import org.eclipse.swt.SWT;
-import org.eclipse.swt.widgets.Text;
-import org.eclipse.swt.widgets.Tree;
-import org.eclipse.swt.widgets.TreeColumn;
+import org.apache.commons.collections4.MultiValuedMap;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
-import com.eurocopter.mgs.core.presentation.i18n.Messages;
 import com.eurocopter.mgs.datamodel.aircraft.Aircraft;
-import com.eurocopter.mgs.datamodel.health.monitoring.ThresholdLevel;
-import com.eurocopter.mgs.datamodel.health.monitoring.ThresholdType;
-import com.eurocopter.mgs.presentation.configuration.preferences.healthalarms.WCMechanicalComponentModel;
-import com.eurocopter.mgs.presentation.configuration.preferences.healthalarms.WCModelDisplayProperty;
-import com.eurocopter.mgs.presentation.configuration.preferences.healthalarms.store.HealthAlarmsPreferenceStore;
+import com.eurocopter.mgs.datamodel.aircraft.Avionic;
+import com.eurocopter.mgs.datamodel.flight.Flight;
+import com.eurocopter.mgs.datamodel.flight.FlightIndicatorValue;
+import com.eurocopter.mgs.datamodel.flight.FlightRawIndicatorValue;
+import com.eurocopter.mgs.datamodel.health.common.Accelerometer;
+import com.eurocopter.mgs.datamodel.health.common.ComponentAcquisition;
+import com.eurocopter.mgs.datamodel.health.common.ContextualAcquisition;
+import com.eurocopter.mgs.datamodel.health.common.HealthAlgorithm;
+import com.eurocopter.mgs.datamodel.health.common.MarmsMechanicalComponentAcquisition;
+import com.eurocopter.mgs.datamodel.health.common.SensorAcquisition;
+import com.eurocopter.mgs.datamodel.health.common.Signal;
+import com.eurocopter.mgs.datamodel.health.monitoring.HealthMechanicalComponent;
+import com.eurocopter.mgs.datamodel.health.monitoring.HealthMechanicalComponentConfiguration;
+import com.eurocopter.mgs.datamodel.health.monitoring.HealthMonitoringConfiguration;
+import com.eurocopter.mgs.datamodel.health.monitoring.Indicator;
+import com.eurocopter.mgs.datamodel.health.monitoring.IndicatorConfiguration;
+import com.eurocopter.mgs.datamodel.health.monitoring.TakeoffLandingDateTime;
+import com.eurocopter.mgs.datamodel.util.PhysicalValue;
+import com.eurocopter.mgs.download.analysis.exception.AnalysisException;
+import com.eurocopter.mgs.download.analysis.health.data.IHealthAcquisition;
+import com.eurocopter.mgs.download.analysis.health.data.IHealthIndicatorValueAcquisition;
+import com.eurocopter.mgs.download.analysis.health.data.IHealthSession;
+import com.eurocopter.mgs.download.analysis.health.dmau.util.HealthAcquisitionConstants;
+import com.eurocopter.mgs.download.analysis.health.impl.filtering.HelionixFilteringPerFileAlgorithm;
+import com.eurocopter.mgs.download.analysis.health.impl.filtering.IFilteringRuleAlgorithm;
+import com.eurocopter.mgs.download.analysis.health.impl.filtering.MarmsFilteringPerFlightHoursAlgorithm;
+import com.eurocopter.mgs.download.analysis.health.util.HealthMonitoringAnalysisUtils;
+import com.eurocopter.mgs.download.analysis.health.util.SignalEnvelopeCache;
+import com.google.common.collect.ArrayListMultimap;
+import com.google.common.collect.Multimap;
 
-public class WCModelTreeViewer extends TreeViewer {
+import corp.airbus.helicopters.algorithm.health.AverageSignalResult;
+import corp.airbus.helicopters.algorithm.health.AverageSynchronousAlgorithm;
+import corp.airbus.helicopters.algorithm.health.HealthAlgorithms;
+import corp.airbus.helicopters.algorithm.health.IAverageSynchronousAlgorithm;
+import corp.airbus.helicopters.algorithm.health.IHealthAlgorithms;
+import corp.airbus.helicopters.algorithm.health.RejectedSignalException;
+import corp.airbus.helicopters.algorithm.health.bearing.BearingAlgorithms;
+import corp.airbus.helicopters.algorithm.health.bearing.BearingData;
+import corp.airbus.helicopters.algorithm.health.bearing.BearingIndicator;
+import corp.airbus.helicopters.algorithm.health.bearing.FnCommonProcessingResult;
+import corp.airbus.helicopters.algorithm.health.bearing.IBearingAlgorithms;
 
-   protected Map<Aircraft, WCMechanicalComponentModel> healthWcModelMap;
-   protected HealthAlarmsPreferenceStore healthAlarmsPreferenceStore;
+public class HealthAcquisitionAnalyzer {
 
-   private Aircraft selectedAircraft = null;
-   private ComboBoxViewerCellEditor filteringLawEditor;
+   private static final Logger LOGGER = LogManager.getLogger(HealthAcquisitionAnalyzer.class);
 
-   public WCModelTreeViewer(Tree tree, Map<Aircraft, WCMechanicalComponentModel> healthWcModelMap, HealthAlarmsPreferenceStore healthAlarmsPreferenceStore) {
-      super(tree);
-      this.healthWcModelMap = healthWcModelMap;
-      this.healthAlarmsPreferenceStore = healthAlarmsPreferenceStore;
-      createColumns(tree);
+   /** The average synchronous algorithm */
+   private static final IAverageSynchronousAlgorithm AVG_SYNC_ALGORITHM = new AverageSynchronousAlgorithm();
 
-      String[] properties = new String[WCModelDisplayProperty.values().length];
-      int i = 0;
-      for (WCModelDisplayProperty prop : WCModelDisplayProperty.values()) {
-         properties[i++] = prop.getKey();
+   /** The health algorithms */
+   private static final IHealthAlgorithms HEALTH_ALGORITHMS = new HealthAlgorithms();
+
+   /** The bearing algorithms */
+   private static final IBearingAlgorithms BEARING_ALGORITHMS = new BearingAlgorithms();
+
+   private static final String ENGINE = "ENGINE";
+
+   void analyzeHealthAcquisitions(Aircraft aircraft, Flight flight, IHealthSession session, final HealthMonitoringConfiguration healthConfiguration,
+         final Map<Indicator, FlightIndicatorValue> flightIndicatorValues, Map<Indicator, FlightRawIndicatorValue> flightIndicatorRawValues) throws AnalysisException {
+      long startTime;
+      Avionic avionic = aircraft.getAircraftType().getAvionic();
+
+      // Map between source and active health mechanical components
+      final Multimap<String, HealthMechanicalComponent> activeComponentMap = ArrayListMultimap.create();
+      final Multimap<String, HealthMechanicalComponentConfiguration> activeComponentConfigurationMap = ArrayListMultimap.create();
+      HealthMonitoringAnalysisUtils.indexComponentsBySource(avionic, healthConfiguration, activeComponentConfigurationMap, activeComponentMap);
+
+      if (avionic == Avionic.CIGALHE) {
+         // CIGALHE
+         startTime = System.currentTimeMillis();
+         analyzeSensorAcquisition(aircraft, flight, activeComponentConfigurationMap, flightIndicatorValues, flightIndicatorRawValues);
+         LOGGER.info("Sensor acquisition analysis done in {} ms.", (System.currentTimeMillis() - startTime));
+      } else {
+         // M'ARMS
+         startTime = System.currentTimeMillis();
+         analyzeMarmsHealthAcquisitions(flight, session, healthConfiguration, activeComponentMap, flightIndicatorValues);
+         LOGGER.info("MARMS health acquisition analysis done in {} ms.", (System.currentTimeMillis() - startTime));
       }
-      setColumnProperties(properties);
+      startTime = System.currentTimeMillis();
+      analyzeHealthIndicatorValueAcquisitions(avionic, flight, session, healthConfiguration, activeComponentMap, flightIndicatorValues);
+      LOGGER.info("Indicator value aquisition analysis done in {} ms.", (System.currentTimeMillis() - startTime));
    }
 
    /**
-    * Create columns of the tree.
-    * 
-    * @param tree
-    *           the tree for which columns have to be created
-    * @return the list of columns name
+    * Analyze sensor acquisition.
+    *
+    * @param aircraft
+    *           the aircraft
+    * @param flight
+    *           the flight
+    * @param componentConfigurationMap
+    * @param indicatorValues
+    *           the indicator values
+    * @throws AnalysisException
+    *            the analysis exception
+    * @throws RejectedSignalException
     */
-   private void createColumns(Tree tree) {
+   private void analyzeSensorAcquisition(final Aircraft aircraft, final Flight flight, Multimap<String, HealthMechanicalComponentConfiguration> componentConfigurationMap,
+         final Map<Indicator, FlightIndicatorValue> indicatorValues, final Map<Indicator, FlightRawIndicatorValue> flightRawIndicatorValues)
+         throws AnalysisException {
+      // Cached envelopes
+      SignalEnvelopeCache envelopeCache = new SignalEnvelopeCache();
 
-      final WCModelDisplayProperty[] properties = WCModelDisplayProperty.values();
+      Map<String, Map<Date, ContextualAcquisition>> contextualAcquisitions = HealthMonitoringAnalysisUtils.buildContextualAcquisitionsMap(flight);
+      Map<ContextualAcquisition, Map<String, PhysicalValue>> maxCache = new HashMap<>();
 
-      for (WCModelDisplayProperty property : properties) {
-         final TreeColumn column = new TreeColumn(tree, SWT.CENTER);
-         column.setText(property.getKey().isEmpty() ? "" : Messages.CORE.getMnemonicEscapedString(property.getKey()));
-         column.setWidth(property.getColumnSize());
+      // Compute the average synchronous signal of the accelerometers
+      for (final SensorAcquisition sensorAcquisition : flight.getSensorAcquisitions()) {
+         final Date startDate = sensorAcquisition.getStartDate();
+
+         String acquisitionName = sensorAcquisition.getAcquisitionName();
+         // Retrieve active health mechanical component configurations relative to the acquisition name
+         final Collection<HealthMechanicalComponentConfiguration> componentConfigurations = componentConfigurationMap.get(acquisitionName);
+
+         // Update end date for ground acquisition display if necessary
+         if (aircraft.getAircraftType().getAvionic() == Avionic.CIGALHE && (flight.getHealthEndDate() == null || flight.getHealthEndDate().before(startDate))) {
+            flight.setHealthEndDate(startDate);
+         }
+
+         if (ENGINE.equalsIgnoreCase(sensorAcquisition.getAcquisitionType())) {
+            continue;
+         }
+
+         // Index indicators by pairs <accelerometer/health mechanical component>
+         final MultiValuedMap<AccelerometerMechanicalComponent, Indicator> indicatorMap = HealthMonitoringAnalysisUtils.indexIndicatorsByAccelerometerAndHmc(componentConfigurations);
+
+         final boolean groundAcquisition = flight.getFlightHourData() == null
+               || !isAcquisitionPerformedDuringFlights(startDate, flight.getFlightHourData().getTakeoffLandingDateTimes());
+
+         if (groundAcquisition && (flight.getHealthStartDate() == null || flight.getHealthStartDate().after(startDate))) {
+            // PR 7856 : In this case, we will not be able to display the acquisition --> ignore acquisition
+            continue;
+         }
+
+         final Map<String, PhysicalValue> contextualValues = HealthMonitoringAnalysisUtils.computeMaxContextualValues(contextualAcquisitions, maxCache, startDate, acquisitionName);
+
+         for (final Map.Entry<Accelerometer, ComponentAcquisition> entry : sensorAcquisition.getAcquisitions().entrySet()) {
+            final Accelerometer accelerometer = entry.getKey();
+            final ComponentAcquisition componentAcquisition = entry.getValue();
+
+            // Compute the average synchronous signal
+            for (final HealthMechanicalComponentConfiguration componentConfiguration : componentConfigurations) {
+               final HealthMechanicalComponent component = componentConfiguration.getMechanicalComponent();
+
+               // Because component cannot be modified (no cascade in healthComponentConf --> healthComponent relation)
+               final HealthMechanicalComponent healthComponent = getHealthComponent(aircraft, component.getId());
+
+               final AccelerometerMechanicalComponent key = new AccelerometerMechanicalComponent(accelerometer, component);
+               final Collection<Indicator> indicators = indicatorMap.get(key);
+
+               if (!indicators.isEmpty()) {
+                  final double[] signal = componentAcquisition.getSignal().asDoubleArray();
+                  final int[] topRoundMarkers = sensorAcquisition.getTopRoundMarkers().get(componentConfiguration.getPhaseSensor());
+
+                  final AverageSignalResult averageSynchronousSignal;
+                  try {
+                     averageSynchronousSignal = AVG_SYNC_ALGORITHM.averageSynchronousSignal(signal, topRoundMarkers,
+                           componentConfiguration.getInterpolationSize(), componentConfiguration.getRotationRatio(),
+                           componentConfiguration.getConvergenceLimit());
+                  } catch (final RejectedSignalException e) {
+                     LOGGER.debug("Rejected signal [{}, {}]", accelerometer.getName(), component.getPath(), e);
+                     continue;
+                  } catch (final Exception e) {
+                     LOGGER.debug("Error while computing average synchronous signal [{}, {}]", accelerometer.getName(), component.getPath(), e);
+                     continue;
+                  }
+
+                  final double[] averageSignal = averageSynchronousSignal.getAverageSignal();
+                  final double successRateValue = averageSynchronousSignal.getSuccessRate();
+
+                  for (final Indicator indicator : indicators) {
+                     if (componentConfiguration.getIndicatorConfigurations().containsKey(indicator)) {
+                        IndicatorConfiguration indicatorConfiguration = componentConfiguration.getIndicatorConfigurations().get(indicator);
+                        HealthAlgorithm algorithm = indicatorConfiguration.getHealthAlgorithm();
+
+                        if (algorithm == HealthAlgorithm.Read) {
+                           // It means a signal in the flight matches acquisition name of the mechanical component
+                           // and accelerometer of the indicator but the current indicator is identified as "Read" => ignore the computation
+                           continue;
+                        }
+
+                        if (algorithm == HealthAlgorithm.ACQUISITION_RATE) {
+                           // It means a signal in the flight matches acquisition name of the mechanical component
+                           // and accelerometer of the indicator but the current indicator is identified as "ACQUISITION_RATE"
+                           // and computation must be carried out only once by flight hour => ignore the computation here
+                           continue;
+                        }
+
+                        final List<Double> parameters;
+                        if (algorithm == HealthAlgorithm.Fe || algorithm == HealthAlgorithm.Fi) {
+                           parameters = new ArrayList<>();
+                           // Compute and store "Nshaft" in parameter list
+                           parameters.add(topRoundMarkers.length * componentConfiguration.getRotationRatio());
+                           parameters.addAll(indicatorConfiguration.getParameters());
+                        } else {
+                           parameters = indicatorConfiguration.getParameters();
+                        }
+
+                        final double value;
+                        try {
+                           double samplingFrequency = sensorAcquisition.getSamplingFrequency();
+                           double[] pulseTime = new double[signal.length];
+                           for (int topRoundMarker : topRoundMarkers) {
+                              pulseTime[topRoundMarker] = 1;
+                           }
+                           value = compute(algorithm, SignalType.PEAK, Avionic.CIGALHE, pulseTime, parameters, signal, averageSignal, envelopeCache, samplingFrequency);
+                        } catch (RuntimeException | RejectedSignalException e) {
+                           throw new AnalysisException("Could not compute value for indicator " + indicator.getFunctionalId(), e);
+                        }
+
+                        if (!Double.isNaN(value) && !Double.isInfinite(value)) {
+                           if (indicatorConfiguration.getSlidingMedian() != null) {
+                              HealthMonitoringAnalysisUtils.addIndicatorRawValue(flight, flightRawIndicatorValues, indicator, value, startDate);
+                           } else {
+                              HealthMonitoringAnalysisUtils.addIndicatorValue(flight, indicatorValues, indicator, value, startDate, successRateValue, null, contextualValues);
+                           }
+                        }
+                     }
+                  }
+                  healthComponent.setGroundAcquisition(healthComponent.isGroundAcquisition() || groundAcquisition);
+               }
+            }
+         }
+      }
+   }
+
+   /**
+    * Analyze marms health acquisitions.
+    *
+    * @param flight
+    *           the flight
+    * @param session
+    *           the marms acq
+    * @param healthConfiguration
+    *           the health configuration
+    * @param activeComponentMap
+    * @param flightIndicatorValues
+    *           the flight indicator values
+    * @throws AnalysisException
+    * @throws RejectedSignalException
+    */
+   private void analyzeMarmsHealthAcquisitions(final Flight flight, final IHealthSession session, final HealthMonitoringConfiguration healthConfiguration,
+         Multimap<String, HealthMechanicalComponent> activeComponentMap, final Map<Indicator, FlightIndicatorValue> flightIndicatorValues)
+         throws AnalysisException {
+      // Cached envelopes
+      final SignalEnvelopeCache envelopeCache = new SignalEnvelopeCache();
+
+      for (final Entry<IHealthAcquisition, String> acqEntry : session.getHealthAcquisitions().entrySet()) {
+         String source = acqEntry.getValue();
+         for (final HealthMechanicalComponent component : activeComponentMap.get(source)) {
+            IHealthAcquisition acq = acqEntry.getKey();
+            addMechanicalComponentAcquisition(flight, component, source, acq);
+            final HealthMechanicalComponentConfiguration hmcc = healthConfiguration.getMechanicalComponentConfigurations().get(component);
+            for (final Entry<Indicator, IndicatorConfiguration> indicatorEntry : hmcc.getIndicatorConfigurations().entrySet()) {
+               if (indicatorEntry.getValue().getHealthAlgorithm() == HealthAlgorithm.ACQUISITION_RATE) {
+                  // The current indicator is identified as "ACQUISITION_RATE"
+                  // and computation must be carried out only once by flight hour => ignore the computation here
+                  continue;
+               }
+               computeIndicatorValues(flight, acq, indicatorEntry.getKey(), indicatorEntry.getValue(), flightIndicatorValues, envelopeCache);
+            }
+         }
+      }
+   }
+
+   private void computeIndicatorValues(final Flight flight, IHealthAcquisition acq, final Indicator indicator, final IndicatorConfiguration indicatorConf,
+         final Map<Indicator, FlightIndicatorValue> flightIndicatorValues, final SignalEnvelopeCache envelopeCache)
+         throws AnalysisException {
+      final HealthAlgorithm healthAlgorithm = indicatorConf.getHealthAlgorithm();
+      for (Entry<String, Signal> signalEntry : acq.getAccelerometerSignals().entrySet()) {
+         if (healthAlgorithm == HealthAlgorithm.Read) {
+            // Ignore read indicators
+            continue;
+         }
+         final double value;
+         final double[] signal = signalEntry.getValue().asDoubleArray();
+         String acquisitionTypeName = acq.getAcquisitionTypeName();
+         try {
+            double samplingFrequency = acq.getSamplingFrequency();
+            if (HealthAcquisitionConstants.ACQ_MARMS_AVG.equals(acquisitionTypeName)) {
+               value = compute(healthAlgorithm, SignalType.RMS, Avionic.MARMS, null, indicatorConf.getParameters(), null, signal, null, samplingFrequency);
+            } else if (HealthAcquisitionConstants.ACQ_MARMS_RAW.equals(acquisitionTypeName)) {
+               value = compute(healthAlgorithm, SignalType.RMS, Avionic.MARMS, null, indicatorConf.getParameters(), signal, null, envelopeCache, samplingFrequency);
+            } else {
+               throw new AnalysisException("Unknown M'ARMS aquisition type : " + acquisitionTypeName);
+            }
+         } catch (RuntimeException | RejectedSignalException e) {
+            throw new AnalysisException("Could not compute value for indicator " + indicator.getFunctionalId(), e);
+         }
+
+         if (!Double.isNaN(value) && !Double.isInfinite(value)) {
+            HealthMonitoringAnalysisUtils.addIndicatorValue(flight, flightIndicatorValues, indicator, value, acq.getStartDate(), null, acq.getCumulatedFlightTime(),
+                  Collections.emptyMap());
+         }
+      }
+   }
+
+   private void analyzeHealthIndicatorValueAcquisitions(Avionic avionic, final Flight flight,
+         final IHealthSession session, final HealthMonitoringConfiguration healthConfiguration,
+         Multimap<String, HealthMechanicalComponent> activeComponentMap, final Map<Indicator, FlightIndicatorValue> flightIndicatorValues) {
+
+      final IFilteringRuleAlgorithm filteringRuleAlgorithm;
+      if (avionic == Avionic.CIGALHE) {
+         filteringRuleAlgorithm = new HelionixFilteringPerFileAlgorithm();
+      } else if (avionic == Avionic.MARMS) {
+         filteringRuleAlgorithm = new MarmsFilteringPerFlightHoursAlgorithm(flight.getMaintenanceFlightTime());
+          filteringAlgorithm.setDeviations(healthHistoryProvider.getDeviations());
+      } else {
+         throw new UnsupportedOperationException("Invalid avionic: " + avionic);
       }
 
-      createCellEditors(tree, properties);
+      for (final IHealthIndicatorValueAcquisition valuesAcq : session.getHealthIndicatorValueAcquisitions()) {
+         Date acqDate = valuesAcq.getStartDate();
+         if (acqDate == null) {
+            // Ignore acquisitions with invalid date (they cannot be displayed anyway)
+            continue;
+         }
+
+         final Boolean groundAcquisition;
+         if (avionic == Avionic.CIGALHE) {
+            groundAcquisition = flight.getFlightHourData() == null || !isAcquisitionPerformedDuringFlights(acqDate, flight.getFlightHourData().getTakeoffLandingDateTimes());
+            if (groundAcquisition && (flight.getHealthStartDate() == null || flight.getHealthStartDate().after(acqDate))) {
+               // In this case, we will not be able to display the acquisition --> ignore acquisition
+               continue;
+            }
+         } else {
+            groundAcquisition = null;
+         }
+
+         final Collection<HealthMechanicalComponent> components;
+         if (valuesAcq.isSourceRelevant()) {
+            components = activeComponentMap.get(valuesAcq.getSource());
+         } else {
+            components = activeComponentMap.values();
+         }
+         for (final HealthMechanicalComponent component : components) {
+            final HealthMechanicalComponentConfiguration hmcc = healthConfiguration.getMechanicalComponentConfigurations().get(component);
+            if (hmcc.getFlightConfiguration() != null && hmcc.getFlightConfiguration().isEvm()) {
+               continue;
+            }
+
+            // Update end date for ground acquisition display if necessary
+            if (avionic == Avionic.CIGALHE && (flight.getHealthEndDate() == null || flight.getHealthEndDate().before(acqDate))) {
+               flight.setHealthEndDate(acqDate);
+            }
+
+            boolean acquisitionFound = false;
+            for (final Entry<Indicator, IndicatorConfiguration> entry : hmcc.getIndicatorConfigurations().entrySet()) {
+               final Indicator indicator = entry.getKey();
+               final IndicatorConfiguration conf = entry.getValue();
+               final String indicatorId;
+               if (conf.getHealthAlgorithm() == HealthAlgorithm.Read) {
+                  indicatorId = conf.getReference();
+               } else {
+                  if (avionic == Avionic.CIGALHE) {
+                     indicatorId = indicator.getFunctionalId();
+                  } else {
+                     final int parameter = conf.getParameters().isEmpty() ? 0 : conf.getParameters().get(0).intValue();
+                     indicatorId = conf.getHealthAlgorithm().name() + parameter + conf.getAccelerometer();
+                  }
+               }
+               if (!valuesAcq.getIndicatorValues().containsKey(indicatorId)) {
+                  continue;
+               }
+               acquisitionFound = true;
+
+               filteringRuleAlgorithm.recordAcquisition(valuesAcq, indicatorId, indicator, conf);
+            }
+
+            if (acquisitionFound && avionic == Avionic.CIGALHE) {
+               hmcc.getMechanicalComponent().setGroundAcquisition(hmcc.getMechanicalComponent().isGroundAcquisition() || groundAcquisition);
+            }
+         }
+      }
+
+      for (HealthIndicatorValueAdapter healthIndicatorValueAdapter : filteringRuleAlgorithm.getFilteredValues(healthConfiguration)) {
+         Double multiplier = healthIndicatorValueAdapter.getIndicatorConfiguration().getMultiplier();
+         final double currentValue;
+         if (multiplier != null) {
+            currentValue = healthIndicatorValueAdapter.getValue() * multiplier;
+         } else {
+            currentValue = healthIndicatorValueAdapter.getValue();
+         }
+         HealthMonitoringAnalysisUtils.addIndicatorValue(flight, flightIndicatorValues, healthIndicatorValueAdapter.getIndicator(),
+               currentValue, healthIndicatorValueAdapter.getAcquisitionDate(), healthIndicatorValueAdapter.getSuccessRate(),
+               healthIndicatorValueAdapter.getCumulatedFlightTime(), healthIndicatorValueAdapter.getContextualValues());
+      }
    }
 
-   private void createCellEditors(Tree tree, final WCModelDisplayProperty[] propertyNames) {
-      CellEditor[] editors = new CellEditor[propertyNames.length];
-      /* editors[WCModelDisplayProperty.CHECKBOX.ordinal()] = getCellEditor(tree, false); */ // BCR-6605 Check Box Remove from cell editor.
-      ComboBoxViewerCellEditor cellEditor = new ComboBoxViewerCellEditor(tree, SWT.READ_ONLY);
-      cellEditor.setLabelProvider(new LabelProvider() {
-         @Override
-         public String getText(Object element) {
-            if (element instanceof ThresholdLevel level) {
-               return Messages.CORE.getString("ThresholdLevel_" + level.name());
-            }
-            return null;
+   private HealthMechanicalComponent getHealthComponent(Aircraft aircraft, String id) {
+      for (HealthMechanicalComponent healthMechanicalComponent : aircraft.getHealthComponents()) {
+         if (healthMechanicalComponent.getId().equals(id)) {
+            return healthMechanicalComponent;
          }
-      });
-      cellEditor.addListener(createWCColumnListener());
-      cellEditor.setContentProvider(new ArrayContentProvider());
-      List<ThresholdLevel> levels = new ArrayList<>();
-      levels.add(ThresholdLevel.LOW);
-      levels.add(ThresholdLevel.HIGH);
-      cellEditor.setInput(levels);
-      editors[WCModelDisplayProperty.LEVEL.ordinal()] = cellEditor;
-
-      cellEditor = new ComboBoxViewerCellEditor(tree, SWT.READ_ONLY);
-      cellEditor.setLabelProvider(new LabelProvider() {
-         @Override
-         public String getText(Object element) {
-            if (element instanceof ThresholdType type) {
-               return Messages.CORE.getString("ThresholdType_" + type.name());
-            }
-            return null;
-         }
-      });
-      cellEditor.addListener(createWCColumnListener());
-      cellEditor.setContentProvider(new ArrayContentProvider());
-      List<ThresholdType> types = new ArrayList<>();
-      types.add(ThresholdType.FIXED);
-      types.add(ThresholdType.LEARNED);
-      cellEditor.setInput(types);
-
-      editors[WCModelDisplayProperty.TYPE.ordinal()] = cellEditor;
-
-      editors[WCModelDisplayProperty.VALUE.ordinal()] = getCellEditor(tree, true);
-      editors[WCModelDisplayProperty.MIN_VALUE.ordinal()] = getCellEditor(tree, true);
-      editors[WCModelDisplayProperty.MAX_VALUE.ordinal()] = getCellEditor(tree, true);
-      editors[WCModelDisplayProperty.LEARN_TIME.ordinal()] = getCellEditor(tree, true);
-
-      TextCellEditor workcardEditor = (TextCellEditor) getCellEditor(tree, true);
-      ((Text) workcardEditor.getControl()).setTextLimit(255);
-      editors[WCModelDisplayProperty.WORKCARD_REF.ordinal()] = workcardEditor;
-
-      editors[WCModelDisplayProperty.MIN_DEV.ordinal()] = getCellEditor(tree, true);
-      editors[WCModelDisplayProperty.MEAN_MULT_FACTOR.ordinal()] = getCellEditor(tree, true);
-      editors[WCModelDisplayProperty.DEV_COEF.ordinal()] = getCellEditor(tree, true);
-      editors[WCModelDisplayProperty.NB_POINTS.ordinal()] = getCellEditor(tree, true);
-
-      editors[WCModelDisplayProperty.MAX_TIME_WO_ACQ.ordinal()] = getCellEditor(tree, true);
-
-      // editors[WCModelDisplayProperty.FILTERING_LAW.ordinal()] = getCellEditor(tree, true); // added
-
-      filteringLawEditor = new ComboBoxViewerCellEditor(tree, SWT.READ_ONLY);
-      filteringLawEditor.setLabelProvider(new LabelProvider() {
-         @Override
-         public String getText(Object element) {
-            return element == null ? "" : element.toString();
-         }
-      });
-      // BCR-6605 Implementation
-      filteringLawEditor.addListener(createWCColumnListener());
-      filteringLawEditor.setContentProvider(new ArrayContentProvider());
-      editors[WCModelDisplayProperty.FILTERING_LAW.ordinal()] = filteringLawEditor;
-
-      editors[WCModelDisplayProperty.TE.ordinal()] = getCellEditor(tree, true);
-
-      // BCR-6605 Points = maxPointsPerHour, same editor as NB_POINTS
-      editors[WCModelDisplayProperty.POINTS.ordinal()] = getCellEditor(tree, true);
-
-      super.setCellEditors(editors);
+      }
+      throw new NoSuchElementException("Health Mechanical Component not found: id=" + id);
    }
 
    /**
-    * 
-    * @return
+    * Return if an acquisition was performed during the flight phases.
+    *
+    * @param takeoffLandingDateTimes
+    *           the list of take-off and landings
+    * @return true if the acquisition was performed during the flight phases, false otherwise
     */
-   private CellEditor getCellEditor(Tree tree, boolean isTextEditor) {
-      CellEditor cellEditor = isTextEditor ? new TextCellEditor(tree) : new CheckboxCellEditor(tree);
-      cellEditor.addListener(createWCColumnListener());
-      return cellEditor;
-   }
-
-   /**
-    * @return
-    */
-   private ICellEditorListener createWCColumnListener() {
-      return new ICellEditorListener() {
-         @Override
-         public void editorValueChanged(boolean arg0, boolean arg1) {
-            // nothing to do
-         }
-
-         @Override
-         public void cancelEditor() {
-            // nothing to do
-         }
-
-         @Override
-         public void applyEditorValue() {
-            if (!healthWcModelMap.containsKey(selectedAircraft)) {
-               healthWcModelMap.put(selectedAircraft, healthAlarmsPreferenceStore.getHealthModels(selectedAircraft));
+   private boolean isAcquisitionPerformedDuringFlights(final Date sensorAcqDateTime, final Set<TakeoffLandingDateTime> takeoffLandingDateTimes) {
+      if (takeoffLandingDateTimes != null) {
+         for (final TakeoffLandingDateTime takeoffLandingDateTime : takeoffLandingDateTimes) {
+            if (sensorAcqDateTime.after(takeoffLandingDateTime.getTakeoffDateTime())
+                  && sensorAcqDateTime.before(takeoffLandingDateTime.getLandingDateTime())) {
+               return true;
             }
          }
-      };
+      }
+      return false;
    }
 
    /**
-    * @param selectedAircraft
-    *           the selectedAircraft to set
+    * Compute.
+    *
+    * @param algorithm
+    *           the algorithm
+    * @param avionic
+    * @param parameters
+    *           the parameters
+    * @param rawSignal
+    *           the raw signal
+    * @param averageSignal
+    *           the average signal
+    * @param envelopeCache
+    *           the envelopes corresponding to the signal
+    * @return the double
+    * @throws AnalysisException
+    * @throws RejectedSignalException
     */
-   public void setSelectedAircraft(Aircraft selectedAircraft) {
-      this.selectedAircraft = selectedAircraft;
-      if (filteringLawEditor != null && selectedAircraft != null) {
-         filteringLawEditor.setInput(healthAlarmsPreferenceStore.getFilteringLawNames(selectedAircraft));
+   private double compute(final HealthAlgorithm algorithm, final SignalType signalType, Avionic avionic, double[] tops, final List<Double> parameters, final double[] rawSignal,
+         final double[] averageSignal, final SignalEnvelopeCache envelopeCache, final double samplingFrequency)
+         throws AnalysisException, RejectedSignalException {
+      final double result;
+      switch (algorithm) {
+         case OM:
+            if (averageSignal == null) {
+               throw new AnalysisException("Algorithm " + algorithm + " not applicable: no average signal");
+            }
+            result = HEALTH_ALGORITHMS.module(HEALTH_ALGORITHMS.fft(averageSignal), parameters.get(0).intValue()) / signalType.getCoefficient();
+            break;
+         case RMS:
+            if (averageSignal == null) {
+               throw new AnalysisException("Algorithm " + algorithm + " not applicable: no average signal");
+            }
+            result = HEALTH_ALGORITHMS.rms(averageSignal);
+            break;
+         case RMSB:
+            if (rawSignal == null) {
+               throw new AnalysisException("Algorithm " + algorithm + " not applicable: no raw signal");
+            }
+            result = HEALTH_ALGORITHMS.rms(rawSignal);
+            break;
+         case Mod:
+            if (averageSignal == null) {
+               throw new AnalysisException("Algorithm " + algorithm + " not applicable: no average signal");
+            }
+            result = HEALTH_ALGORITHMS.modulation(HEALTH_ALGORITHMS.fft(averageSignal), parameters.get(0).intValue()) / signalType.getCoefficient();
+            break;
+         case ModX:
+            if (averageSignal == null) {
+               throw new AnalysisException("Algorithm " + algorithm + " not applicable: no average signal");
+            }
+            result = HEALTH_ALGORITHMS.modX(HEALTH_ALGORITHMS.fft(averageSignal), parameters.get(0).intValue(), parameters.get(1).intValue()) / signalType.getCoefficient();
+            break;
+         case NormX:
+            if (averageSignal == null) {
+               throw new AnalysisException("Algorithm " + algorithm + " not applicable: no average signal");
+            }
+            result = HEALTH_ALGORITHMS.normX(HEALTH_ALGORITHMS.fft(averageSignal), parameters.get(0).intValue(), parameters.get(1).intValue());
+            break;
+         case Fi:
+            result = computeBearingIndicator(algorithm, signalType, parameters, rawSignal, envelopeCache, true);
+            break;
+         case Fe:
+            result = computeBearingIndicator(algorithm, signalType, parameters, rawSignal, envelopeCache, false);
+            break;
+         case RMSRoXXRoYY:
+            // CF definition of RMSRoXXRoYY
+            result = HEALTH_ALGORITHMS.rms(computeResidualSignal(algorithm, parameters, averageSignal));
+            break;
+         case Kr:
+            result = HEALTH_ALGORITHMS.kurtosis(computeResidualSignal(algorithm, parameters, averageSignal));
+            break;
+         case Km:
+            if (averageSignal == null) {
+               throw new AnalysisException("Algorithm " + algorithm + " not applicable: no average signal");
+            }
+            result = HEALTH_ALGORITHMS.kurtosis(averageSignal);
+            break;
+         case Kg:
+            result = HEALTH_ALGORITHMS.kg(averageSignal, computeResidualSignal(algorithm, parameters, averageSignal));
+            break;
+         case MN:
+            if (rawSignal == null) {
+               throw new AnalysisException("Algorithm " + algorithm + " not applicable: no raw signal");
+            }
+            result = HEALTH_ALGORITHMS.moment(rawSignal, parameters.get(0).intValue());
+            break;
+         case OA:
+            if (avionic == Avionic.CIGALHE) {
+               if (rawSignal == null) {
+                  throw new AnalysisException("Algorithm " + algorithm + " not applicable: no raw signal");
+               }
+               result = BEARING_ALGORITHMS.overallAcceleration(rawSignal, samplingFrequency, parameters.get(0), parameters.get(1));
+            } else {
+               if (rawSignal == null) {
+                  throw new AnalysisException("Algorithm " + algorithm + " not applicable: no raw signal");
+               }
+               result = BEARING_ALGORITHMS.overallAcceleration(rawSignal, parameters.get(2), parameters.get(0), parameters.get(1));
+            }
+            break;
+         case BPFO:
+            if (avionic == Avionic.CIGALHE) {
+               if (rawSignal == null) {
+                  throw new AnalysisException("Algorithm " + algorithm + " not applicable: no raw signal");
+               }
+               double[] pulses = HEALTH_ALGORITHMS.getPulses(tops, samplingFrequency);
+               FnCommonProcessingResult commonResult = BEARING_ALGORITHMS.computeHelionixFnCommonResult(rawSignal, pulses, samplingFrequency);
+               BearingData data = buildBearingData(parameters);
+               result = BEARING_ALGORITHMS.helionixFn(BearingIndicator.E, parameters.get(0), parameters.get(7), data, commonResult);
+            } else {
+               if (rawSignal == null) {
+                  throw new AnalysisException("Algorithm " + algorithm + " not applicable: no average signal");
+               }
+               FnCommonProcessingResult commonResult = BEARING_ALGORITHMS.computeMarmsFnCommonResult(rawSignal, parameters.get(0));
+               BearingData data = buildBearingData(parameters);
+               result = BEARING_ALGORITHMS.marmsFn(BearingIndicator.E, parameters.get(7), data, commonResult);
+            }
+            break;
+         case BPFI:
+            if (avionic == Avionic.CIGALHE) {
+               if (rawSignal == null) {
+                  throw new AnalysisException("Algorithm " + algorithm + " not applicable: no raw signal");
+               }
+               double[] pulses = HEALTH_ALGORITHMS.getPulses(tops, samplingFrequency);
+               FnCommonProcessingResult commonResult = BEARING_ALGORITHMS.computeHelionixFnCommonResult(rawSignal, pulses, samplingFrequency);
+               BearingData data = buildBearingData(parameters);
+               result = BEARING_ALGORITHMS.helionixFn(BearingIndicator.I, parameters.get(0), parameters.get(7), data, commonResult);
+            } else {
+               if (rawSignal == null) {
+                  throw new AnalysisException("Algorithm " + algorithm + " not applicable: no average signal");
+               }
+               FnCommonProcessingResult commonResult = BEARING_ALGORITHMS.computeMarmsFnCommonResult(rawSignal, parameters.get(0));
+               BearingData data = buildBearingData(parameters);
+               result = BEARING_ALGORITHMS.marmsFn(BearingIndicator.I, parameters.get(7), data, commonResult);
+            }
+            break;
+         case FTF:
+            if (avionic == Avionic.CIGALHE) {
+               if (rawSignal == null) {
+                  throw new AnalysisException("Algorithm " + algorithm + " not applicable: no raw signal");
+               }
+               double[] pulses = HEALTH_ALGORITHMS.getPulses(tops, samplingFrequency);
+               FnCommonProcessingResult commonResult = BEARING_ALGORITHMS.computeHelionixFnCommonResult(rawSignal, pulses, samplingFrequency);
+               BearingData data = buildBearingData(parameters);
+               result = BEARING_ALGORITHMS.helionixFn(BearingIndicator.C, parameters.get(0), parameters.get(7), data, commonResult);
+            } else {
+               if (rawSignal == null) {
+                  throw new AnalysisException("Algorithm " + algorithm + " not applicable: no average signal");
+               }
+               FnCommonProcessingResult commonResult = BEARING_ALGORITHMS.computeMarmsFnCommonResult(rawSignal, parameters.get(0));
+               BearingData data = buildBearingData(parameters);
+               result = BEARING_ALGORITHMS.marmsFn(BearingIndicator.C, parameters.get(7), data, commonResult);
+            }
+            break;
+         case BSF:
+            if (avionic == Avionic.CIGALHE) {
+               if (rawSignal == null) {
+                  throw new AnalysisException("Algorithm " + algorithm + " not applicable: no raw signal");
+               }
+               double[] pulses = HEALTH_ALGORITHMS.getPulses(tops, samplingFrequency);
+               FnCommonProcessingResult commonResult = BEARING_ALGORITHMS.computeHelionixFnCommonResult(rawSignal, pulses, samplingFrequency);
+               BearingData data = buildBearingData(parameters);
+               result = BEARING_ALGORITHMS.helionixFn(BearingIndicator.B, parameters.get(0), parameters.get(7), data, commonResult);
+            } else {
+               if (rawSignal == null) {
+                  throw new AnalysisException("Algorithm " + algorithm + " not applicable: no average signal");
+               }
+               FnCommonProcessingResult commonResult = BEARING_ALGORITHMS.computeMarmsFnCommonResult(rawSignal, parameters.get(0));
+               BearingData data = buildBearingData(parameters);
+               result = BEARING_ALGORITHMS.marmsFn(BearingIndicator.B, parameters.get(7), data, commonResult);
+            }
+            break;
+         case BPFO_ENV:
+            if (avionic == Avionic.CIGALHE) {
+               if (rawSignal == null) {
+                  throw new AnalysisException("Algorithm " + algorithm + " not applicable: no raw signal");
+               }
+               double[] pulses = HEALTH_ALGORITHMS.getPulses(tops, samplingFrequency);
+               FnCommonProcessingResult commonResult = BEARING_ALGORITHMS.computeHelionixFnEnvCommonResult(rawSignal, pulses, samplingFrequency, parameters.get(8), parameters.get(9));
+               BearingData data = buildBearingData(parameters);
+               result = BEARING_ALGORITHMS.helionixFnEnv(BearingIndicator.E, parameters.get(0), parameters.get(7), data, commonResult);
+            } else {
+               if (rawSignal == null) {
+                  throw new AnalysisException("Algorithm " + algorithm + " not applicable: no average signal");
+               }
+               FnCommonProcessingResult commonResult = BEARING_ALGORITHMS.computeMarmsFnEnvCommonResult(rawSignal, parameters.get(0), parameters.get(8), parameters.get(9), parameters.get(10),
+                     parameters.get(11));
+               BearingData data = buildBearingData(parameters);
+               result = BEARING_ALGORITHMS.marmsFnEnv(BearingIndicator.E, parameters.get(7), data, commonResult);
+            }
+            break;
+         case BPFI_ENV:
+            if (avionic == Avionic.CIGALHE) {
+               if (rawSignal == null) {
+                  throw new AnalysisException("Algorithm " + algorithm + " not applicable: no raw signal");
+               }
+               double[] pulses = HEALTH_ALGORITHMS.getPulses(tops, samplingFrequency);
+               FnCommonProcessingResult commonResult = BEARING_ALGORITHMS.computeHelionixFnEnvCommonResult(rawSignal, pulses, samplingFrequency, parameters.get(8), parameters.get(9));
+               BearingData data = buildBearingData(parameters);
+               result = BEARING_ALGORITHMS.helionixFnEnv(BearingIndicator.I, parameters.get(0), parameters.get(7), data, commonResult);
+            } else {
+               if (rawSignal == null) {
+                  throw new AnalysisException("Algorithm " + algorithm + " not applicable: no average signal");
+               }
+               FnCommonProcessingResult commonResult = BEARING_ALGORITHMS.computeMarmsFnEnvCommonResult(rawSignal, parameters.get(0), parameters.get(8), parameters.get(9), parameters.get(10),
+                     parameters.get(11));
+               BearingData data = buildBearingData(parameters);
+               result = BEARING_ALGORITHMS.marmsFnEnv(BearingIndicator.I, parameters.get(7), data, commonResult);
+            }
+            break;
+         case FTF_ENV:
+            if (avionic == Avionic.CIGALHE) {
+               if (rawSignal == null) {
+                  throw new AnalysisException("Algorithm " + algorithm + " not applicable: no raw signal");
+               }
+               double[] pulses = HEALTH_ALGORITHMS.getPulses(tops, samplingFrequency);
+               FnCommonProcessingResult commonResult = BEARING_ALGORITHMS.computeHelionixFnEnvCommonResult(rawSignal, pulses, samplingFrequency, parameters.get(8), parameters.get(9));
+               BearingData data = buildBearingData(parameters);
+               result = BEARING_ALGORITHMS.helionixFnEnv(BearingIndicator.C, parameters.get(0), parameters.get(7), data, commonResult);
+            } else {
+               if (rawSignal == null) {
+                  throw new AnalysisException("Algorithm " + algorithm + " not applicable: no average signal");
+               }
+               FnCommonProcessingResult commonResult = BEARING_ALGORITHMS.computeMarmsFnEnvCommonResult(rawSignal, parameters.get(0), parameters.get(8), parameters.get(9), parameters.get(10),
+                     parameters.get(11));
+               BearingData data = buildBearingData(parameters);
+               result = BEARING_ALGORITHMS.marmsFnEnv(BearingIndicator.C, parameters.get(7), data, commonResult);
+            }
+            break;
+         case BSF_ENV:
+            if (avionic == Avionic.CIGALHE) {
+               if (rawSignal == null) {
+                  throw new AnalysisException("Algorithm " + algorithm + " not applicable: no raw signal");
+               }
+               double[] pulses = HEALTH_ALGORITHMS.getPulses(tops, samplingFrequency);
+               FnCommonProcessingResult commonResult = BEARING_ALGORITHMS.computeHelionixFnEnvCommonResult(rawSignal, pulses, samplingFrequency, parameters.get(8), parameters.get(9));
+               BearingData data = buildBearingData(parameters);
+               result = BEARING_ALGORITHMS.helionixFnEnv(BearingIndicator.B, parameters.get(0), parameters.get(7), data, commonResult);
+            } else {
+               if (rawSignal == null) {
+                  throw new AnalysisException("Algorithm " + algorithm + " not applicable: no average signal");
+               }
+               FnCommonProcessingResult commonResult = BEARING_ALGORITHMS.computeMarmsFnEnvCommonResult(rawSignal, parameters.get(0), parameters.get(8), parameters.get(9), parameters.get(10),
+                     parameters.get(11));
+               BearingData data = buildBearingData(parameters);
+               result = BEARING_ALGORITHMS.marmsFnEnv(BearingIndicator.B, parameters.get(7), data, commonResult);
+            }
+            break;
+         case FMODEF:
+            if (rawSignal == null) {
+               throw new AnalysisException("Algorithm " + algorithm + " not applicable: no raw signal");
+            }
+            result = HEALTH_ALGORITHMS.fmodef(
+                  rawSignal,
+                  parameters.get(1),
+                  parameters.get(2),
+                  parameters.get(0).intValue(),
+                  samplingFrequency);
+            break;
+         default:
+            throw new AnalysisException("Invalid algorithm: " + algorithm);
+      }
+      return result;
+   }
+
+   private BearingData buildBearingData(final List<Double> parameters) {
+      final double bearingDiameter = parameters.get(1);
+      final double rollingElementDiameter = parameters.get(2);
+      final int rollingElementNumber = parameters.get(3).intValue();
+      final double contactAngle = parameters.get(4);
+      final double internalRingRotationFrequency = parameters.get(5);
+      final double externalRingRotationFrequency = parameters.get(6);
+      return new BearingData(bearingDiameter, rollingElementDiameter,
+            rollingElementNumber, contactAngle, internalRingRotationFrequency,
+            externalRingRotationFrequency);
+   }
+
+   private void addMechanicalComponentAcquisition(final Flight flight, final HealthMechanicalComponent healthMechanicalComponent, String source, final IHealthAcquisition acq) {
+      final MarmsMechanicalComponentAcquisition acquisition = new MarmsMechanicalComponentAcquisition(UUID.randomUUID().toString());
+      acquisition.setMechanicalComponent(healthMechanicalComponent);
+      acquisition.setAcquisitionName(source);
+      acquisition.setStartDate(acq.getStartDate());
+      // No accelerometer for M'ARMS acquisition (and a single signal)
+      final Signal signal = acq.getAccelerometerSignals().get(IHealthAcquisition.NULL_ACCELEROMETER);
+      signal.setFlightId(flight.getId());
+      acquisition.setSamplingSize(signal.getValue().length / 8);
+      acquisition.setSamplingFrequency(acq.getSamplingFrequency());
+      acquisition.setSignal(signal);
+      flight.getMechanicalComponentAcquisitions().add(acquisition);
+   }
+
+   private double[] computeResidualSignal(final HealthAlgorithm algorithm, final List<Double> parameters, final double[] averageSignal) throws AnalysisException {
+      if (averageSignal == null) {
+         throw new AnalysisException("Algorithm " + algorithm + " not applicable: no average signal");
+      }
+      double[][] rawFft = HEALTH_ALGORITHMS.rawFFT(averageSignal);
+      int[] lines = new int[parameters.size()];
+      for (int i = 0; i < parameters.size(); i++) {
+         lines[i] = parameters.get(i).intValue();
+      }
+      final int size = rawFft[1].length;
+      for (int i = size / 2; i < size; ++i) {
+         rawFft[1][i] *= -1;
+      }
+      double[][] residual = HEALTH_ALGORITHMS.residualComplex(rawFft, lines);
+      return HEALTH_ALGORITHMS.inverseFFTComplex(residual);
+   }
+
+   private double computeBearingIndicator(final HealthAlgorithm algorithm, final SignalType signalType, final List<Double> parameters,
+         final double[] rawSignal, final SignalEnvelopeCache envelopeCache, final boolean internal) throws AnalysisException {
+      if (rawSignal == null) {
+         throw new AnalysisException("Algorithm " + algorithm + " not applicable: no raw signal");
+      }
+      final double rotations = parameters.get(0);
+      final BearingData bearingData = buildBearingData(parameters);
+      final double[] envelope = envelopeCache.get(rawSignal);
+      if (internal) {
+         return BEARING_ALGORITHMS.internalBearingIndicator(envelope, rotations, bearingData) * signalType.getCoefficient();
+      } else {
+         return BEARING_ALGORITHMS.externalBearingIndicator(envelope, rotations, bearingData) * signalType.getCoefficient();
       }
    }
 }
+
+
+LINE 330 ray error asu chi.
+
+========================================================================================
