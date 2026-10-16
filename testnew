@@ -132,7 +132,9 @@ public class DeviationTableComposite extends Composite {
             case 6:
                return number(d.getMaxValue());
             case 7:
-               return number(d.getNbSuccessivePoints());
+               // BCR-6605 this column is Points (maxPointsPerHour), not the successive-point count,
+               // which is a configuration field and is never carried on a deviation
+               return number(d.getMaxPointsPerHour());
             case 8:
                return d.getFilteringLawName() != null ? d.getFilteringLawName() : "";
             case 9:
