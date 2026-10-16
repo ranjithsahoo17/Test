@@ -1,308 +1,171 @@
 /***************************************/
 /** Copyright Airbus Helicopters 2019 **/
 /***************************************/
-package com.eurocopter.mgs.download.analysis.health.impl;
+package com.eurocopter.mgs.presentation.configuration.preferences.healthalarms;
 
+import java.text.MessageFormat;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
 
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-import org.joda.time.Duration;
+import org.eclipse.jface.dialogs.MessageDialog;
+import org.eclipse.jface.viewers.ArrayContentProvider;
+import org.eclipse.jface.viewers.CheckboxTableViewer;
+import org.eclipse.jface.viewers.ITableColorProvider;
+import org.eclipse.jface.viewers.ITableLabelProvider;
+import org.eclipse.jface.viewers.LabelProvider;
+import org.eclipse.jface.viewers.TableViewer;
+import org.eclipse.swt.SWT;
+import org.eclipse.swt.graphics.Color;
+import org.eclipse.swt.graphics.Image;
+import org.eclipse.swt.layout.GridData;
+import org.eclipse.swt.layout.GridLayout;
+import org.eclipse.swt.widgets.Button;
+import org.eclipse.swt.widgets.Composite;
+import org.eclipse.swt.widgets.Table;
+import org.eclipse.swt.widgets.TableColumn;
 
+import com.eurocopter.mgs.core.presentation.i18n.Messages;
+import com.eurocopter.mgs.core.presentation.resources.CoreResourcesUtils;
+import com.eurocopter.mgs.core.presentation.utils.ConvertUtils;
 import com.eurocopter.mgs.datamodel.aircraft.Aircraft;
-import com.eurocopter.mgs.datamodel.aircraft.Avionic;
-import com.eurocopter.mgs.datamodel.aircraft.configuration.AircraftConfiguration;
-import com.eurocopter.mgs.datamodel.aircraft.configuration.AircraftHistory;
-import com.eurocopter.mgs.datamodel.alarm.Alarm;
-import com.eurocopter.mgs.datamodel.alarm.AlarmStatus;
-import com.eurocopter.mgs.datamodel.alarm.CloseMonitoredAcknowledgement;
-import com.eurocopter.mgs.datamodel.alarm.CloseMonitoring;
-import com.eurocopter.mgs.datamodel.flight.Flight;
-import com.eurocopter.mgs.datamodel.flight.FlightIndicatorValue;
-import com.eurocopter.mgs.datamodel.flight.FlightRawIndicatorValue;
-import com.eurocopter.mgs.datamodel.health.monitoring.FlightHourData;
-import com.eurocopter.mgs.datamodel.health.monitoring.HealthAlarm;
-import com.eurocopter.mgs.datamodel.health.monitoring.HealthMonitoringConfiguration;
-import com.eurocopter.mgs.datamodel.health.monitoring.Indicator;
-import com.eurocopter.mgs.datamodel.health.monitoring.TakeoffLandingDateTime;
-import com.eurocopter.mgs.download.analysis.exception.AnalysisException;
-import com.eurocopter.mgs.download.analysis.health.api.IHealthHistoryProvider;
-import com.eurocopter.mgs.download.analysis.health.api.IHealthMonitoringAnalyzer;
-import com.eurocopter.mgs.download.analysis.health.data.HealthErrorHandler;
-import com.eurocopter.mgs.download.analysis.health.data.HealthSubsequentFlightHandler;
-import com.eurocopter.mgs.download.analysis.health.data.IHealthSession;
-import com.eurocopter.mgs.parameter.health.monitoring.HealthMonitoringParameters;
+import com.eurocopter.mgs.presentation.common.MgsSession;
+import com.eurocopter.mgs.presentation.configuration.preferences.healthalarms.store.HealthAlarmsPreferenceStore;
+import com.eurocopter.mgs.service.health.common.dto.IndicatorDeviationDto;
 
-public class HealthMonitoringAnalyzer implements IHealthMonitoringAnalyzer {
+public class DeviationTableComposite extends Composite {
+   private static final String[] COLUMN_KEYS = { "deviationColIndicator", "Severity", "ThresholdLevel", "Type", "deviationColValue", "LearningThresholdMinValue", "LearningThresholdMaxValue",
+         "deviationColPoints", "FilteringLaw", "deviationColLawParameters", "deviationColTe",
+         "deviationColDate" };
+   private static final int[] COLUMN_WIDTHS = { 320, 70, 60, 70, 80, 80, 80, 60, 100, 280, 150, 170 };
+   private final HealthAlarmsPreferenceStore store;
+   private final boolean history;
+   private final Runnable onChanged;
+   private final TableViewer viewer;
+   private final SimpleDateFormat dateFormat = new SimpleDateFormat("dd/MM/yyyy");
+   private Aircraft aircraft;
 
-   private static final Logger LOGGER = LogManager.getLogger(HealthMonitoringAnalyzer.class);
+   public DeviationTableComposite(Composite parent, HealthAlarmsPreferenceStore store, boolean history, Runnable onChanged) {
+      super(parent, SWT.NONE);
+      this.store = store;
+      this.history = history;
+      this.onChanged = onChanged;
+      setLayout(new GridLayout(1, false));
+      if (!history) {
+         Button delete = new Button(this, SWT.PUSH);
+         delete.setText(Messages.CORE.getString("deviationDeleteButton"));
+         delete.setLayoutData(new GridData(SWT.END, SWT.CENTER, true, false));
+         delete.addListener(SWT.Selection, e -> deleteSelected());
+      }
 
-   private final GreyAlarmAnalyzer greyAlarmAnalyzer = new GreyAlarmAnalyzer();
-   private final RedAmberAlarmAnalyzer redAmberAlarmAnalyzer = new RedAmberAlarmAnalyzer();
-   private final HealthAcquisitionAnalyzer healthAcquisitionAnalyzer = new HealthAcquisitionAnalyzer();
-   private final EngineAcquisitionAnalyzer engineAcquisitionAnalyzer = new EngineAcquisitionAnalyzer();
-   private final SensorAnomalyAnalyzer sensorAnomalyAnalyser = new SensorAnomalyAnalyzer();
-   private final VpuAnomalyAnalyzer vpuAnomalyAnalyser = new VpuAnomalyAnalyzer();
-   private final IndicatorInvalidityAnalyzer indicatorInvalidityAnalyzer = new IndicatorInvalidityAnalyzer();
-   private final LearnedThresholdAnalyzer learnedThresholdAnalyzer = new LearnedThresholdAnalyzer();
-   private final AcquisitionRateAnalyzer acquisitionRateAnalyzer = new AcquisitionRateAnalyzer();
-   private final SlidingMedianAnalyzer slidingMedianAnalyzer = new SlidingMedianAnalyzer();
-
-   private static final Comparator<Flight> FLIGHT_COMPARATOR = Comparator.comparing(Flight::getUsageStartDate).thenComparingInt(Flight::getFlightId);
-
-   @Override
-   public void analyze(Aircraft aircraft, Flight flight, AircraftConfiguration configuration, IHealthSession session, IHealthHistoryProvider healthHistoryProvider,
-         HealthMonitoringParameters commonParameters, HealthErrorHandler healthErrorHandler, HealthSubsequentFlightHandler healthSubsequentFlightHandler) throws AnalysisException {
-      analyzeNullableSession(aircraft, flight, configuration, session, healthHistoryProvider, commonParameters, healthErrorHandler, healthSubsequentFlightHandler);
+      int style = SWT.BORDER | SWT.FULL_SELECTION | SWT.H_SCROLL | SWT.V_SCROLL | (history ? SWT.SINGLE : SWT.MULTI | SWT.CHECK);
+      Table table = new Table(this, style);
+      table.setHeaderVisible(true);
+      table.setLinesVisible(true);
+      table.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
+      for (int i = 0; i < COLUMN_KEYS.length; i++) {
+         TableColumn column = new TableColumn(table, SWT.LEFT);
+         column.setText(Messages.CORE.getString(COLUMN_KEYS[i]));
+         column.setWidth(COLUMN_WIDTHS[i]);
+      }
+      viewer = history ? new TableViewer(table) : new CheckboxTableViewer(table);
+      viewer.setContentProvider(ArrayContentProvider.getInstance());
+      viewer.setLabelProvider(new DeviationLabelProvider());
    }
 
-   @Override
-   public void analyzeSlidingMedianIndicators(Aircraft aircraft, Flight flight,
-         AircraftConfiguration configuration, IHealthHistoryProvider healthHistoryProvider,
-         HealthMonitoringParameters commonParameters, HealthErrorHandler healthErrorHandler)
-         throws AnalysisException {
-      // We are already analyzing a subsequent flight, we do not care about further subsequent flights
-      // since they are already handled in download process.
-      HealthSubsequentFlightHandler healthSubsequentFlightHandler = new HealthSubsequentFlightHandler();
-      analyzeNullableSession(aircraft, flight, configuration, null, healthHistoryProvider, commonParameters, healthErrorHandler, healthSubsequentFlightHandler);
+   public void setAircraft(Aircraft aircraft) {
+      this.aircraft = aircraft;
+      reload();
    }
 
-   @Override
-   public void analyzeGreyAlarms(final Aircraft aircraft, final AircraftConfiguration aircraftConfiguration, final Flight currentFlight, IHealthHistoryProvider healthHistoryProvider) {
-      final HealthMonitoringConfiguration healthConfiguration = (HealthMonitoringConfiguration) aircraftConfiguration.getConfigurations().get(HealthMonitoringConfiguration.TYPE);
-
-      // Retrieve and sort flights
-      final List<Flight> sortedFlights = new ArrayList<>(aircraft.getFlights());
-      removeFlightsWithoutUsageData(sortedFlights);
-      sortedFlights.sort(FLIGHT_COMPARATOR);
-
-      final int currentFlightIndex = Collections.binarySearch(sortedFlights, currentFlight, FLIGHT_COMPARATOR);
-
-      // Compute Grey alarms
-      greyAlarmAnalyzer.computeGreyAlarms(aircraft, healthConfiguration, sortedFlights, currentFlightIndex, healthHistoryProvider);
+   public void reload() {
+      viewer.setInput(history ? store.findDeviationHistory(aircraft) : store.findActiveDeviations(aircraft));
    }
 
-   private void analyzeNullableSession(Aircraft aircraft, Flight flight, AircraftConfiguration configuration, IHealthSession nullableSession, IHealthHistoryProvider healthHistoryProvider,
-         HealthMonitoringParameters commonParameters, HealthErrorHandler healthErrorHandler, HealthSubsequentFlightHandler healthSubsequentFlightHandler) throws AnalysisException {
-      // Retrieve applicable health configuration
-      final HealthMonitoringConfiguration healthConfiguration = (HealthMonitoringConfiguration) configuration.getConfigurations().get(HealthMonitoringConfiguration.TYPE);
-
-      long startTime = System.currentTimeMillis();
-
-      if (nullableSession != null) {
-         analyzeFlightHourData(aircraft.getAircraftType().getAvionic(), flight, nullableSession);
-         LOGGER.info("Flight hour data analysis done in {} ms.", (System.currentTimeMillis() - startTime));
+   private void deleteSelected() {
+      Object[] checked = ((CheckboxTableViewer) viewer).getCheckedElements();
+      if (checked.length == 0) {
+         return;
       }
-
-      // Compute flight indicator values
-      final Map<Indicator, FlightIndicatorValue> flightIndicatorValues = new HashMap<>();
-      for (FlightIndicatorValue flightIndicatorValue : flight.getFlightIndicatorValues()) {
-         flightIndicatorValues.put(flightIndicatorValue.getIndicator(), flightIndicatorValue);
+      List<String> ids = new ArrayList<>();
+      List<String> names = new ArrayList<>();
+      for (Object o : checked) {
+         IndicatorDeviationDto d = (IndicatorDeviationDto) o;
+         ids.add(d.getId());
+         names.add(store.getIndicatorDisplayName(d.getIndicatorId()));
       }
-
-      // Compute flight raw indicator values
-      final Map<Indicator, FlightRawIndicatorValue> flightIndicatorRawValues = new HashMap<>();
-      for (FlightRawIndicatorValue flightRawIndicatorValue : flight.getFlightRawIndicatorValues()) {
-         flightIndicatorRawValues.put(flightRawIndicatorValue.getIndicator(), flightRawIndicatorValue);
+      boolean confirmed = MessageDialog.openConfirm(getShell(), Messages.CORE.getString("deviationDeleteTitle"),
+            MessageFormat.format(Messages.CORE.getString("deviationDeleteConfirm"), String.join(", ", names)));
+      if (!confirmed) {
+         return;
       }
-
-      if (nullableSession != null) {
-         // BCR-6605 pass the provider so a deviated Points / filtering law can override the configuration
-         healthAcquisitionAnalyzer.analyzeHealthAcquisitions(aircraft, flight, nullableSession, healthConfiguration, flightIndicatorValues, flightIndicatorRawValues, healthHistoryProvider);
-         engineAcquisitionAnalyzer.analyzeEngineAcquisitions(aircraft, flight, nullableSession, healthConfiguration, flightIndicatorValues, healthErrorHandler);
-      }
-      slidingMedianAnalyzer.analyzeSlidingMedianIndicators(aircraft, flight, healthHistoryProvider, healthSubsequentFlightHandler, healthConfiguration, flightIndicatorValues,
-            flightIndicatorRawValues);
-
-      // Check that Health Start Date < Health End Date, if not we throw an Analysis Exception and we ignore health data for this flight
-      if (flight.getHealthStartDate() != null && flight.getHealthEndDate() != null && flight.getHealthEndDate().before(flight.getHealthStartDate())) {
-         flight.getFlightIndicatorValues().clear();
-         flight.getEngineAcquisition().clear();
-         throw new AnalysisException("Health Flight duration is negative, Health Data of flight " + flight.getFlightId() + " is ignored.");
-      }
-
-      // Update learned thresholds
-      startTime = System.currentTimeMillis();
-      learnedThresholdAnalyzer.updateLearnedThresholds(aircraft, flight, healthHistoryProvider.getLatestHealthConfiguration(), commonParameters, healthHistoryProvider);
-      LOGGER.info("Learned threshold analysis done in {} ms.", (System.currentTimeMillis() - startTime));
-
-      // Sort flights
-      final List<Flight> sortedFlights = new ArrayList<>(aircraft.getFlights());
-      removeFlightsWithoutUsageData(sortedFlights);
-      sortedFlights.sort(FLIGHT_COMPARATOR);
-
-      final int currentFlightIndex = Collections.binarySearch(sortedFlights, flight, FLIGHT_COMPARATOR);
-      final int nbSuccessiveValues = commonParameters.getNumberOfIndicatorSuccessivePointForAlarmRaising();
-
-      // Compute acquisition rate status
-      startTime = System.currentTimeMillis();
-      acquisitionRateAnalyzer.computeAcquisitionRateStatus(aircraft, healthConfiguration, sortedFlights, currentFlightIndex, healthHistoryProvider, flightIndicatorValues);
-      LOGGER.info("Acquisition rate analysis done in {} ms.", (System.currentTimeMillis() - startTime));
-
-      startTime = System.currentTimeMillis();
-      // Compute RED/AMBER alarms
-      redAmberAlarmAnalyzer.computeRedAmberAlarms(aircraft, sortedFlights, currentFlightIndex, nbSuccessiveValues, healthHistoryProvider, healthConfiguration,
-            flightIndicatorValues);
-      LOGGER.info("Red/amber alarm analysis done in {} ms.", (System.currentTimeMillis() - startTime));
-
-      startTime = System.currentTimeMillis();
-      // Compute Grey alarms
-      greyAlarmAnalyzer.computeGreyAlarms(aircraft, healthConfiguration, sortedFlights, currentFlightIndex, healthHistoryProvider);
-      LOGGER.info("Grey alarm analysis done in {} ms.", (System.currentTimeMillis() - startTime));
-
-      startTime = System.currentTimeMillis();
-      // Update close monitored alarms
-      updateCloseMonitoredAlarm(healthHistoryProvider.getAircraftHistory(), aircraft);
-      LOGGER.info("Close monitoring analysis done in {} ms.", (System.currentTimeMillis() - startTime));
-
-      startTime = System.currentTimeMillis();
-      // Compute Sensor Anomaly
-      sensorAnomalyAnalyser.computeSensorAnomalies(aircraft, sortedFlights, currentFlightIndex, healthHistoryProvider, healthConfiguration, flightIndicatorValues);
-      LOGGER.info("Sensor anomaly analysis done in {} ms.", (System.currentTimeMillis() - startTime));
-
-      if (nullableSession != null) {
-         startTime = System.currentTimeMillis();
-         // Compute VPU Anomaly
-         vpuAnomalyAnalyser.computeVpuAnomaly(healthConfiguration, flight, nullableSession);
-         LOGGER.info("VPU anomaly analysis done in {} ms.", (System.currentTimeMillis() - startTime));
-
-         startTime = System.currentTimeMillis();
-         // Compute Indicator Invalidities
-         indicatorInvalidityAnalyzer.computeIndicatorInvalidities(healthConfiguration, aircraft, flight, nullableSession);
-         LOGGER.info("Indicator invalidity analysis done in {} ms.", (System.currentTimeMillis() - startTime));
-      }
+      store.acknowledgeDeviations(MgsSession.getInstance().getAircraft(), ids);
+      onChanged.run();
    }
 
-   private void removeFlightsWithoutUsageData(Iterable<Flight> flights) {
-      // Remove flights without usage data, so they do not contribute and no alarms are generated for them
-      for (Iterator<Flight> it = flights.iterator(); it.hasNext();) {
-         if (!it.next().hasUsageData()) {
-            it.remove();
+   private String number(Number value) {
+      return value == null ? "" : ConvertUtils.formatNumber(value, -1);
+   }
+
+   private final class DeviationLabelProvider extends LabelProvider implements ITableLabelProvider, ITableColorProvider {
+      @Override
+      public Image getColumnImage(Object element, int column) {
+         return null;
+      }
+
+      @Override
+      public String getColumnText(Object element, int column) {
+         IndicatorDeviationDto d = (IndicatorDeviationDto) element;
+         switch (column) {
+            case 0:
+               return store.getIndicatorDisplayName(d.getIndicatorId());
+            case 1:
+               return d.getSeverity() != null ? d.getSeverity() : "";
+            case 2:
+               return d.getThresholdLevel() != null ? d.getThresholdLevel() : "";
+            case 3:
+               return d.getThresholdType() != null ? d.getThresholdType() : "";
+            case 4:
+               return number(d.getThresholdValue());
+            case 5:
+               return number(d.getMinValue());
+            case 6:
+               return number(d.getMaxValue());
+            case 7:
+               return number(d.getNbSuccessivePoints());
+            case 8:
+               return d.getFilteringLawName() != null ? d.getFilteringLawName() : "";
+            case 9:
+               return d.getFilteringLawParameters() != null ? d.getFilteringLawParameters() : "";
+            case 10:
+               return d.getTeReference();
+            case 11:
+               return history && d.getEndDate() != null
+                     ? dateFormat.format(d.getStartDate()) + " - " + dateFormat.format(d.getEndDate())
+                     : dateFormat.format(d.getStartDate());
+            default:
+               return "";
          }
       }
-   }
 
-   /**
-    * Analyze flight hour data.
-    * 
-    * @param flight
-    *           the current flight
-    * @param healthSession
-    *           the marms acq
-    */
-   private void analyzeFlightHourData(final Avionic avionic, final Flight flight, final IHealthSession healthSession) {
-      FlightHourData flightHourData = new FlightHourData(UUID.randomUUID().toString());
-      List<Date> takeoffDates = healthSession.getTakeoffDateTimes();
-      List<Date> landingDates = healthSession.getLandingDateTimes();
-      Date firstTakeOff = null;
-      Date lastLanding = null;
-      long duration = 0;
-      for (int i = 0; i < takeoffDates.size(); i++) {
-         TakeoffLandingDateTime takeoffLandingDateTime = new TakeoffLandingDateTime(UUID.randomUUID().toString());
-         Date takeoff = takeoffDates.get(i);
-         Date landing = landingDates.get(i);
-         takeoffLandingDateTime.setTakeoffDateTime(takeoff);
-         takeoffLandingDateTime.setLandingDateTime(landing);
-         flightHourData.getTakeoffLandingDateTimes().add(takeoffLandingDateTime);
-
-         if (firstTakeOff == null || takeoff.before(firstTakeOff)) {
-            firstTakeOff = takeoff;
+      @Override
+      public Color getBackground(Object element, int column) {
+         if (column != 1) {
+            return null;
          }
-         if (lastLanding == null || landing.after(lastLanding)) {
-            lastLanding = landing;
+         String severity = ((IndicatorDeviationDto) element).getSeverity();
+         if ("RED".equals(severity)) {
+            return CoreResourcesUtils.getColor(CoreResourcesUtils.COLOR_RED);
          }
-         duration += landing.getTime() - takeoff.getTime();
-      }
-      flightHourData.setDuration(duration);
-      flight.setFlightHourData(flightHourData);
-      flight.setHealthStartDate(new Date(healthSession.getStartDateTime().getTime() + healthSession.getGroundStartOffset()));
-      if (firstTakeOff != null && lastLanding != null) {
-         flightHourData.setFirstTakeoffDateTime(firstTakeOff);
-         flightHourData.setLastLandingDateTime(lastLanding);
-      } else {
-         flightHourData.setFirstTakeoffDateTime(flight.getHealthStartDate());
-         flightHourData.setLastLandingDateTime(flight.getHealthStartDate());
-      }
-      // Init health end date for ground acquisitions with usage end date
-      if (avionic == Avionic.CIGALHE) {
-         flight.setHealthEndDate(flight.getFlightHourData().getLastLandingDateTime());
-      } else {
-         flight.setHealthEndDate(new Date(flight.getHealthStartDate().getTime() + healthSession.getGroundDuration()));
-      }
-   }
-
-   /**
-    * Update close monitored alarm.
-    * 
-    * @param aircraft
-    *           the aircraft
-    */
-   private void updateCloseMonitoredAlarm(final AircraftHistory aircraftHistory, final Aircraft aircraft) {
-      final Duration totalNumberOfMaintenanceFlightHours = getTotalNumberMaintenanceFlightHours(aircraftHistory, aircraft);
-      final Duration totalNumberOfIcaoFlightHours = getTotalNumberIcaoFlightHours(aircraftHistory, aircraft);
-      for (final Flight flight : aircraft.getFlights()) {
-         final Set<Alarm> alarmSet = flight.getAlarms();
-         for (final Alarm alarm : alarmSet) {
-            if (alarm instanceof HealthAlarm && alarm.getAlarmStatus() == AlarmStatus.CLOSEMONITORED) {
-               final CloseMonitoredAcknowledgement closeMonitoredAcknowledgement = (CloseMonitoredAcknowledgement) alarm
-                     .getAcknowledgement();
-               // update remaining duration
-               final Duration passedFlightHours;
-               if (((HealthAlarm) alarm).getHealthMechanicalComponent().isGroundAcquisition()) {
-                  passedFlightHours = totalNumberOfIcaoFlightHours.minus(closeMonitoredAcknowledgement.getFlightHoursAtBeginning());
-               } else {
-                  passedFlightHours = totalNumberOfMaintenanceFlightHours.minus(closeMonitoredAcknowledgement.getFlightHoursAtBeginning());
-               }
-
-               closeMonitoredAcknowledgement.setRemainingDuration(closeMonitoredAcknowledgement.getCloseMonitoringDuration() - passedFlightHours.getMillis());
-
-               // Check if the close monitoring duration expired
-               if (closeMonitoredAcknowledgement.isCloseMonitoringDurationExpired()) {
-                  // update status from Close Monitored to Not Acknowledged
-                  alarm.setAlarmStatus(AlarmStatus.NOTACK);
-                  alarm.setCloseMonitoringStatus(CloseMonitoring.EXPIRED);
-               }
-            }
+         if ("AMBER".equals(severity)) {
+            return CoreResourcesUtils.getColor(CoreResourcesUtils.COLOR_AMBER);
          }
+         return null;
       }
-   }
 
-   /**
-    * Gets the total number of maintenance flight hours, including purged flights.
-    * 
-    * @param aircraft
-    *           The aircraft
-    * @return the total number of maintenance flight hours
-    */
-   private Duration getTotalNumberMaintenanceFlightHours(final AircraftHistory aircraftHistory, final Aircraft aircraft) {
-      long totalDuration = 0;
-      for (Flight flight : aircraft.getFlights()) {
-         totalDuration += flight.getMaintenanceFlightTime();
+      @Override
+      public Color getForeground(Object element, int column) {
+         return null;
       }
-      return new Duration(totalDuration + aircraftHistory.getMaintenanceFlightTime());
-   }
-
-   /**
-    * Gets the total number of ICAO flight hour, including purged flights.
-    * 
-    * @param aircraft
-    *           The aircraft
-    * @return the total number of ICAO flight hours
-    */
-   private Duration getTotalNumberIcaoFlightHours(final AircraftHistory aircraftHistory, final Aircraft aircraft) {
-      long totalDuration = 0;
-      for (Flight flight : aircraft.getFlights()) {
-         totalDuration += flight.getFlightDuration();
-      }
-      return new Duration(totalDuration + aircraftHistory.getIcaoFlightTime());
    }
 }
