@@ -116,7 +116,8 @@ public class HealthMonitoringAnalyzer implements IHealthMonitoringAnalyzer {
       }
 
       if (nullableSession != null) {
-         healthAcquisitionAnalyzer.analyzeHealthAcquisitions(aircraft, flight, nullableSession, healthConfiguration, flightIndicatorValues, flightIndicatorRawValues);
+         // BCR-6605 pass the provider so a deviated Points / filtering law can override the configuration
+         healthAcquisitionAnalyzer.analyzeHealthAcquisitions(aircraft, flight, nullableSession, healthConfiguration, flightIndicatorValues, flightIndicatorRawValues, healthHistoryProvider);
          engineAcquisitionAnalyzer.analyzeEngineAcquisitions(aircraft, flight, nullableSession, healthConfiguration, flightIndicatorValues, healthErrorHandler);
       }
       slidingMedianAnalyzer.analyzeSlidingMedianIndicators(aircraft, flight, healthHistoryProvider, healthSubsequentFlightHandler, healthConfiguration, flightIndicatorValues,
