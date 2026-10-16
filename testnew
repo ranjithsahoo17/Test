@@ -1,173 +1,125 @@
 /***************************************/
 /** Copyright Airbus Helicopters 2019 **/
 /***************************************/
-package com.eurocopter.mgs.presentation.configuration.preferences.healthalarms;
+package com.eurocopter.mgs.presentation.configuration.preferences.pages;
 
-import java.text.MessageFormat;
-import java.text.SimpleDateFormat;
+import org.eclipse.jface.preference.FieldEditorPreferencePage;
+import org.eclipse.ui.IWorkbench;
+import org.eclipse.ui.IWorkbenchPreferencePage;
+
+/**
+ * MGS PREFERENCES PAGES : MGS Configuration and User Preferences Settings.
+ *
+ */
+public abstract class MgsPreferencePage extends FieldEditorPreferencePage implements
+      IWorkbenchPreferencePage {
+
+   /**
+    *
+    * Default constructor. Builds a MGSPreferencePages.
+    */
+   public MgsPreferencePage() {
+      super();
+   }
+
+   /**
+    *
+    * Default constructor. Builds a MGSPreferencePages.
+    *
+    * @param title
+    *           the title
+    * @param style
+    *           the style
+    */
+   public MgsPreferencePage(String title, int style) {
+      super(title, style);
+   }
+
+   @Override
+   protected void createFieldEditors() {
+   }
+
+   @Override
+   public void init(IWorkbench workbench) {
+   }
+
+   @Override
+   public void performDefaults() {
+      super.performDefaults();
+   }
+}
+
+=================================
+/***************************************/
+/** Copyright Airbus Helicopters 2019 **/
+/***************************************/
+package com.eurocopter.mgs.presentation.configuration.store;
+
 import java.util.ArrayList;
 import java.util.List;
 
-import org.eclipse.jface.dialogs.MessageDialog;
-import org.eclipse.jface.viewers.ArrayContentProvider;
-import org.eclipse.jface.viewers.CheckboxTableViewer;
-import org.eclipse.jface.viewers.ITableColorProvider;
-import org.eclipse.jface.viewers.ITableLabelProvider;
-import org.eclipse.jface.viewers.LabelProvider;
-import org.eclipse.jface.viewers.TableViewer;
-import org.eclipse.swt.SWT;
-import org.eclipse.swt.graphics.Color;
-import org.eclipse.swt.graphics.Image;
-import org.eclipse.swt.layout.GridData;
-import org.eclipse.swt.layout.GridLayout;
-import org.eclipse.swt.widgets.Button;
-import org.eclipse.swt.widgets.Composite;
-import org.eclipse.swt.widgets.Table;
-import org.eclipse.swt.widgets.TableColumn;
+public class MgsPreferenceStoreComposer extends MgsPreferenceStore {
 
-import com.eurocopter.mgs.core.presentation.i18n.Messages;
-import com.eurocopter.mgs.core.presentation.resources.CoreResourcesUtils;
-import com.eurocopter.mgs.core.presentation.utils.ConvertUtils;
-import com.eurocopter.mgs.datamodel.aircraft.Aircraft;
-import com.eurocopter.mgs.presentation.common.MgsSession;
-import com.eurocopter.mgs.presentation.configuration.preferences.healthalarms.store.HealthAlarmsPreferenceStore;
-import com.eurocopter.mgs.service.health.common.dto.IndicatorDeviationDto;
+   /** list of stores */
+   private List<MgsPreferenceStore> stores = new ArrayList<>();
 
-public class DeviationTableComposite extends Composite {
-   private static final String[] COLUMN_KEYS = { "deviationColIndicator", "Severity", "ThresholdLevel", "Type", "deviationColValue", "LearningThresholdMinValue", "LearningThresholdMaxValue",
-         "deviationColPoints", "FilteringLaw", "deviationColLawParameters", "deviationColTe",
-         "deviationColDate" };
-   private static final int[] COLUMN_WIDTHS = { 320, 70, 60, 70, 80, 80, 80, 60, 100, 280, 150, 170 };
-   private final HealthAlarmsPreferenceStore store;
-   private final boolean history;
-   private final Runnable onChanged;
-   private final TableViewer viewer;
-   private final SimpleDateFormat dateFormat = new SimpleDateFormat("dd/MM/yyyy");
-   private Aircraft aircraft;
-
-   public DeviationTableComposite(Composite parent, HealthAlarmsPreferenceStore store, boolean history, Runnable onChanged) {
-      super(parent, SWT.NONE);
-      this.store = store;
-      this.history = history;
-      this.onChanged = onChanged;
-      setLayout(new GridLayout(1, false));
-      if (!history) {
-         Button delete = new Button(this, SWT.PUSH);
-         delete.setText(Messages.CORE.getString("deviationDeleteButton"));
-         delete.setLayoutData(new GridData(SWT.END, SWT.CENTER, true, false));
-         delete.addListener(SWT.Selection, e -> deleteSelected());
+   /**
+    * Add a store to the list.
+    *
+    * @param store
+    *           a store
+    */
+   public void addStore(MgsPreferenceStore store) {
+      if (!stores.contains(store)) {
+         stores.add(store);
       }
-
-      int style = SWT.BORDER | SWT.FULL_SELECTION | SWT.H_SCROLL | SWT.V_SCROLL | (history ? SWT.SINGLE : SWT.MULTI | SWT.CHECK);
-      Table table = new Table(this, style);
-      table.setHeaderVisible(true);
-      table.setLinesVisible(true);
-      table.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
-      for (int i = 0; i < COLUMN_KEYS.length; i++) {
-         TableColumn column = new TableColumn(table, SWT.LEFT);
-         column.setText(Messages.CORE.getString(COLUMN_KEYS[i]));
-         column.setWidth(COLUMN_WIDTHS[i]);
-      }
-      viewer = history ? new TableViewer(table) : new CheckboxTableViewer(table);
-      viewer.setContentProvider(ArrayContentProvider.getInstance());
-      viewer.setLabelProvider(new DeviationLabelProvider());
    }
 
-   public void setAircraft(Aircraft aircraft) {
-      this.aircraft = aircraft;
-      reload();
-   }
-
-   public void reload() {
-      viewer.setInput(history ? store.findDeviationHistory(aircraft) : store.findActiveDeviations(aircraft));
-   }
-
-   private void deleteSelected() {
-      Object[] checked = ((CheckboxTableViewer) viewer).getCheckedElements();
-      if (checked.length == 0) {
-         return;
-      }
-      List<String> ids = new ArrayList<>();
-      List<String> names = new ArrayList<>();
-      for (Object o : checked) {
-         IndicatorDeviationDto d = (IndicatorDeviationDto) o;
-         ids.add(d.getId());
-         names.add(store.getIndicatorDisplayName(d.getIndicatorId()));
-      }
-      boolean confirmed = MessageDialog.openConfirm(getShell(), Messages.CORE.getString("deviationDeleteTitle"),
-            MessageFormat.format(Messages.CORE.getString("deviationDeleteConfirm"), String.join(", ", names)));
-      if (!confirmed) {
-         return;
-      }
-      store.acknowledgeDeviations(MgsSession.getInstance().getAircraft(), ids);
-      onChanged.run();
-   }
-
-   private String number(Number value) {
-      return value == null ? "" : ConvertUtils.formatNumber(value, -1);
-   }
-
-   private final class DeviationLabelProvider extends LabelProvider implements ITableLabelProvider, ITableColorProvider {
-      @Override
-      public Image getColumnImage(Object element, int column) {
-         return null;
-      }
-
-      @Override
-      public String getColumnText(Object element, int column) {
-         IndicatorDeviationDto d = (IndicatorDeviationDto) element;
-         switch (column) {
-            case 0:
-               return store.getIndicatorDisplayName(d.getIndicatorId());
-            case 1:
-               return d.getSeverity() != null ? d.getSeverity() : "";
-            case 2:
-               return d.getThresholdLevel() != null ? d.getThresholdLevel() : "";
-            case 3:
-               return d.getThresholdType() != null ? d.getThresholdType() : "";
-            case 4:
-               return number(d.getThresholdValue());
-            case 5:
-               return number(d.getMinValue());
-            case 6:
-               return number(d.getMaxValue());
-            case 7:
-               // BCR-6605 this column is Points (maxPointsPerHour), not the successive-point count,
-               // which is a configuration field and is never carried on a deviation
-               return number(d.getMaxPointsPerHour());
-            case 8:
-               return d.getFilteringLawName() != null ? d.getFilteringLawName() : "";
-            case 9:
-               return d.getFilteringLawParameters() != null ? d.getFilteringLawParameters() : "";
-            case 10:
-               return d.getTeReference();
-            case 11:
-               return history && d.getEndDate() != null
-                     ? dateFormat.format(d.getStartDate()) + " - " + dateFormat.format(d.getEndDate())
-                     : dateFormat.format(d.getStartDate());
-            default:
-               return "";
+   /**
+    * {@inheritDoc}
+    * 
+    * @see com.eurocopter.mgs.configuration.presentation.preferences.store.MgsPreferenceStore#needsSaving()
+    */
+   @Override
+   public boolean needsSaving() {
+      boolean result = false;
+      if (!stores.isEmpty()) {
+         int i = 0;
+         while (i < stores.size() && !stores.get(i).needsSaving()) {
+            i++;
+         }
+         // check loop not finished
+         if (i < stores.size()) {
+            result = true;
          }
       }
+      return result;
+   }
 
-      @Override
-      public Color getBackground(Object element, int column) {
-         if (column != 1) {
-            return null;
-         }
-         String severity = ((IndicatorDeviationDto) element).getSeverity();
-         if ("RED".equals(severity)) {
-            return CoreResourcesUtils.getColor(CoreResourcesUtils.COLOR_RED);
-         }
-         if ("AMBER".equals(severity)) {
-            return CoreResourcesUtils.getColor(CoreResourcesUtils.COLOR_AMBER);
-         }
-         return null;
+   /**
+    * {@inheritDoc}
+    * 
+    * @see com.eurocopter.mgs.configuration.presentation.preferences.store.MgsPreferenceStore#innerLoad()
+    */
+   @Override
+   public void innerLoad() {
+      for (MgsPreferenceStore element : stores) {
+         element.load();
       }
+   }
 
-      @Override
-      public Color getForeground(Object element, int column) {
-         return null;
+   /**
+    * {@inheritDoc}
+    * 
+    * @see com.eurocopter.mgs.configuration.presentation.preferences.store.MgsPreferenceStore#innerSave()
+    */
+   @Override
+   public void innerSave() {
+      for (MgsPreferenceStore element : stores) {
+         // check again for each store
+         if (element.needsSaving()) {
+            element.save();
+         }
       }
    }
 }
