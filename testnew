@@ -1,125 +1,893 @@
 /***************************************/
 /** Copyright Airbus Helicopters 2019 **/
 /***************************************/
-package com.eurocopter.mgs.presentation.configuration.preferences.pages;
+package com.eurocopter.mgs.presentation.configuration.preferences.healthalarms;
 
-import org.eclipse.jface.preference.FieldEditorPreferencePage;
-import org.eclipse.ui.IWorkbench;
-import org.eclipse.ui.IWorkbenchPreferencePage;
-
-/**
- * MGS PREFERENCES PAGES : MGS Configuration and User Preferences Settings.
- *
- */
-public abstract class MgsPreferencePage extends FieldEditorPreferencePage implements
-      IWorkbenchPreferencePage {
-
-   /**
-    *
-    * Default constructor. Builds a MGSPreferencePages.
-    */
-   public MgsPreferencePage() {
-      super();
-   }
-
-   /**
-    *
-    * Default constructor. Builds a MGSPreferencePages.
-    *
-    * @param title
-    *           the title
-    * @param style
-    *           the style
-    */
-   public MgsPreferencePage(String title, int style) {
-      super(title, style);
-   }
-
-   @Override
-   protected void createFieldEditors() {
-   }
-
-   @Override
-   public void init(IWorkbench workbench) {
-   }
-
-   @Override
-   public void performDefaults() {
-      super.performDefaults();
-   }
-}
-
-=================================
-/***************************************/
-/** Copyright Airbus Helicopters 2019 **/
-/***************************************/
-package com.eurocopter.mgs.presentation.configuration.store;
-
+import java.text.MessageFormat;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.List;
 
-public class MgsPreferenceStoreComposer extends MgsPreferenceStore {
+import org.eclipse.jface.dialogs.MessageDialog;
+import org.eclipse.jface.viewers.ArrayContentProvider;
+import org.eclipse.jface.viewers.CheckboxTableViewer;
+import org.eclipse.jface.viewers.ITableColorProvider;
+import org.eclipse.jface.viewers.ITableLabelProvider;
+import org.eclipse.jface.viewers.LabelProvider;
+import org.eclipse.jface.viewers.TableViewer;
+import org.eclipse.swt.SWT;
+import org.eclipse.swt.graphics.Color;
+import org.eclipse.swt.graphics.Image;
+import org.eclipse.swt.layout.GridData;
+import org.eclipse.swt.layout.GridLayout;
+import org.eclipse.swt.widgets.Button;
+import org.eclipse.swt.widgets.Composite;
+import org.eclipse.swt.widgets.Table;
+import org.eclipse.swt.widgets.TableColumn;
 
-   /** list of stores */
-   private List<MgsPreferenceStore> stores = new ArrayList<>();
+import com.eurocopter.mgs.core.presentation.i18n.Messages;
+import com.eurocopter.mgs.core.presentation.resources.CoreResourcesUtils;
+import com.eurocopter.mgs.core.presentation.utils.ConvertUtils;
+import com.eurocopter.mgs.datamodel.aircraft.Aircraft;
+import com.eurocopter.mgs.presentation.configuration.preferences.healthalarms.store.HealthAlarmsPreferenceStore;
+import com.eurocopter.mgs.service.health.common.dto.IndicatorDeviationDto;
 
-   /**
-    * Add a store to the list.
-    *
-    * @param store
-    *           a store
-    */
-   public void addStore(MgsPreferenceStore store) {
-      if (!stores.contains(store)) {
-         stores.add(store);
+public class DeviationTableComposite extends Composite {
+   private static final String[] COLUMN_KEYS = { "deviationColIndicator", "Severity", "ThresholdLevel", "Type", "deviationColValue", "LearningThresholdMinValue", "LearningThresholdMaxValue",
+         "deviationColPoints", "FilteringLaw", "deviationColLawParameters", "deviationColTe",
+         "deviationColDate" };
+   private static final int[] COLUMN_WIDTHS = { 320, 70, 60, 70, 80, 80, 80, 60, 100, 280, 150, 170 };
+   private final HealthAlarmsPreferenceStore store;
+   private final boolean history;
+   private final Runnable onChanged;
+   private final TableViewer viewer;
+   private final SimpleDateFormat dateFormat = new SimpleDateFormat("dd/MM/yyyy");
+   private Aircraft aircraft;
+
+   public DeviationTableComposite(Composite parent, HealthAlarmsPreferenceStore store, boolean history, Runnable onChanged) {
+      super(parent, SWT.NONE);
+      this.store = store;
+      this.history = history;
+      this.onChanged = onChanged;
+      setLayout(new GridLayout(1, false));
+      if (!history) {
+         Button delete = new Button(this, SWT.PUSH);
+         delete.setText(Messages.CORE.getString("deviationDeleteButton"));
+         delete.setLayoutData(new GridData(SWT.END, SWT.CENTER, true, false));
+         delete.addListener(SWT.Selection, e -> deleteSelected());
       }
+
+      int style = SWT.BORDER | SWT.FULL_SELECTION | SWT.H_SCROLL | SWT.V_SCROLL | (history ? SWT.SINGLE : SWT.MULTI | SWT.CHECK);
+      Table table = new Table(this, style);
+      table.setHeaderVisible(true);
+      table.setLinesVisible(true);
+      table.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
+      for (int i = 0; i < COLUMN_KEYS.length; i++) {
+         TableColumn column = new TableColumn(table, SWT.LEFT);
+         column.setText(Messages.CORE.getString(COLUMN_KEYS[i]));
+         column.setWidth(COLUMN_WIDTHS[i]);
+      }
+      viewer = history ? new TableViewer(table) : new CheckboxTableViewer(table);
+      viewer.setContentProvider(ArrayContentProvider.getInstance());
+      viewer.setLabelProvider(new DeviationLabelProvider());
    }
 
-   /**
-    * {@inheritDoc}
-    * 
-    * @see com.eurocopter.mgs.configuration.presentation.preferences.store.MgsPreferenceStore#needsSaving()
-    */
-   @Override
-   public boolean needsSaving() {
-      boolean result = false;
-      if (!stores.isEmpty()) {
-         int i = 0;
-         while (i < stores.size() && !stores.get(i).needsSaving()) {
-            i++;
-         }
-         // check loop not finished
-         if (i < stores.size()) {
-            result = true;
-         }
-      }
-      return result;
+   public void setAircraft(Aircraft aircraft) {
+      this.aircraft = aircraft;
+      reload();
    }
 
-   /**
-    * {@inheritDoc}
-    * 
-    * @see com.eurocopter.mgs.configuration.presentation.preferences.store.MgsPreferenceStore#innerLoad()
-    */
-   @Override
-   public void innerLoad() {
-      for (MgsPreferenceStore element : stores) {
-         element.load();
-      }
+   public void reload() {
+      viewer.setInput(history ? store.findDeviationHistory(aircraft) : store.findActiveDeviations(aircraft));
    }
 
-   /**
-    * {@inheritDoc}
-    * 
-    * @see com.eurocopter.mgs.configuration.presentation.preferences.store.MgsPreferenceStore#innerSave()
-    */
-   @Override
-   public void innerSave() {
-      for (MgsPreferenceStore element : stores) {
-         // check again for each store
-         if (element.needsSaving()) {
-            element.save();
+   private void deleteSelected() {
+      Object[] checked = ((CheckboxTableViewer) viewer).getCheckedElements();
+      if (checked.length == 0) {
+         return;
+      }
+      List<String> ids = new ArrayList<>();
+      List<String> names = new ArrayList<>();
+      for (Object o : checked) {
+         IndicatorDeviationDto d = (IndicatorDeviationDto) o;
+         ids.add(d.getId());
+         names.add(store.getIndicatorDisplayName(d.getIndicatorId()));
+      }
+      boolean confirmed = MessageDialog.openConfirm(getShell(), Messages.CORE.getString("deviationDeleteTitle"),
+            MessageFormat.format(Messages.CORE.getString("deviationDeleteConfirm"), String.join(", ", names)));
+      if (!confirmed) {
+         return;
+      }
+      // BCR-6605 use the aircraft selected on this page, not whatever the main window has
+      store.acknowledgeDeviations(aircraft, ids);
+      onChanged.run();
+   }
+
+   private String number(Number value) {
+      return value == null ? "" : ConvertUtils.formatNumber(value, -1);
+   }
+
+   private final class DeviationLabelProvider extends LabelProvider implements ITableLabelProvider, ITableColorProvider {
+      @Override
+      public Image getColumnImage(Object element, int column) {
+         return null;
+      }
+
+      @Override
+      public String getColumnText(Object element, int column) {
+         IndicatorDeviationDto d = (IndicatorDeviationDto) element;
+         switch (column) {
+            case 0:
+               return store.getIndicatorDisplayName(d.getIndicatorId());
+            case 1:
+               return d.getSeverity() != null ? d.getSeverity() : "";
+            case 2:
+               return d.getThresholdLevel() != null ? d.getThresholdLevel() : "";
+            case 3:
+               return d.getThresholdType() != null ? d.getThresholdType() : "";
+            case 4:
+               return number(d.getThresholdValue());
+            case 5:
+               return number(d.getMinValue());
+            case 6:
+               return number(d.getMaxValue());
+            case 7:
+               // BCR-6605 this column is Points (maxPointsPerHour), not the successive-point count,
+               // which is a configuration field and is never carried on a deviation
+               return number(d.getMaxPointsPerHour());
+            case 8:
+               return d.getFilteringLawName() != null ? d.getFilteringLawName() : "";
+            case 9:
+               return d.getFilteringLawParameters() != null ? d.getFilteringLawParameters() : "";
+            case 10:
+               return d.getTeReference();
+            case 11:
+               return history && d.getEndDate() != null
+                     ? dateFormat.format(d.getStartDate()) + " - " + dateFormat.format(d.getEndDate())
+                     : dateFormat.format(d.getStartDate());
+            default:
+               return "";
          }
+      }
+
+      @Override
+      public Color getBackground(Object element, int column) {
+         if (column != 1) {
+            return null;
+         }
+         String severity = ((IndicatorDeviationDto) element).getSeverity();
+         if ("RED".equals(severity)) {
+            return CoreResourcesUtils.getColor(CoreResourcesUtils.COLOR_RED);
+         }
+         if ("AMBER".equals(severity)) {
+            return CoreResourcesUtils.getColor(CoreResourcesUtils.COLOR_AMBER);
+         }
+         return null;
+      }
+
+      @Override
+      public Color getForeground(Object element, int column) {
+         return null;
       }
    }
 }
+
+
+
+
+
+
+
+---------------
+
+/***************************************/
+/** Copyright Airbus Helicopters 2019 **/
+/***************************************/
+package com.eurocopter.mgs.presentation.configuration.preferences.healthalarms.editor;
+
+import java.text.NumberFormat;
+import java.text.ParseException;
+import java.util.Locale;
+
+import org.eclipse.jface.dialogs.MessageDialog;
+import org.eclipse.jface.viewers.ICellModifier;
+import org.eclipse.jface.viewers.TreeViewer;
+import org.eclipse.swt.widgets.Item;
+
+import com.eurocopter.mgs.business.health.model.WCThresholdModel;
+import com.eurocopter.mgs.core.presentation.i18n.Messages;
+import com.eurocopter.mgs.datamodel.aircraft.Aircraft;
+import com.eurocopter.mgs.datamodel.health.monitoring.ThresholdLevel;
+import com.eurocopter.mgs.datamodel.health.monitoring.ThresholdType;
+import com.eurocopter.mgs.presentation.common.MgsSession;
+import com.eurocopter.mgs.presentation.configuration.preferences.healthalarms.WCHealthMechanicalComponentModel;
+import com.eurocopter.mgs.presentation.configuration.preferences.healthalarms.WCMechanicalComponentModel;
+import com.eurocopter.mgs.presentation.configuration.preferences.healthalarms.WCModelDisplayProperty;
+import com.eurocopter.mgs.presentation.configuration.store.MgsPreferenceStoreManager;
+
+public class WCTreeCellModifier implements ICellModifier {
+
+   /** point character. */
+   private static final String POINT = ".";
+
+   /** Coma character. */
+   private static final String COMA = ",";
+
+   /** The format number. */
+   private final NumberFormat format = NumberFormat.getInstance(Locale.getDefault());
+
+   private final TreeViewer treeViewer;
+
+   /**
+    * Default constructor. Builds a WCTreeCellModifier.
+    *
+    * @param treeViewer
+    *           TreeViewer treeViewer
+    */
+   public WCTreeCellModifier(TreeViewer treeViewer) {
+      super();
+      this.treeViewer = treeViewer;
+      format.setMaximumFractionDigits(5);
+   }
+
+   @Override
+   public boolean canModify(Object element, String property) {
+      if (element instanceof WCMechanicalComponentModel) {
+         if (WCModelDisplayProperty.MAX_TIME_WO_ACQ.equals(WCModelDisplayProperty.fromKey(property))) {
+            return true;
+         }
+      }
+      if (element instanceof WCHealthMechanicalComponentModel wcModel) {
+         if (!wcModel.getThresholdModels().isEmpty()
+               && WCModelDisplayProperty.WORKCARD_REF == WCModelDisplayProperty.fromKey(property)) {
+            return MgsSession.getInstance().getUser().getProfile().canEditWorkcards();
+         }
+         if (WCModelDisplayProperty.MAX_TIME_WO_ACQ.equals(WCModelDisplayProperty.fromKey(property))) {
+            return true;
+         }
+      }
+      if (element instanceof WCThresholdModel thresholdModel) {
+         if (thresholdModel.isDeviated()) {
+            return false;
+         }
+         switch (WCModelDisplayProperty.fromKey(property)) {
+            case COMPONENT:
+               return false;
+            case MIN_VALUE:
+            case MAX_VALUE:
+            case LEARN_TIME:
+            case MIN_DEV:
+            case MEAN_MULT_FACTOR:
+            case DEV_COEF:
+               // These values can only be modified if threshold is Learning
+               WCThresholdModel wcThresholdModel = (WCThresholdModel) element;
+               return ThresholdType.LEARNED.equals(wcThresholdModel.getType());
+            case WORKCARD_REF:
+               // The workcards column can only be modified by authorized users
+               return MgsSession.getInstance().getUser().getProfile().canEditWorkcards();
+            default:
+               return true;
+         }
+      }
+      return false;
+   }
+
+   @Override
+   public Object getValue(Object element, String property) {
+      if (element instanceof WCMechanicalComponentModel wcMechanicalComponent) {
+         switch (WCModelDisplayProperty.fromKey(property)) {
+            case COMPONENT:
+               return wcMechanicalComponent.getName();
+            case MAX_TIME_WO_ACQ:
+               return getMaxTimeWOAcquition(wcMechanicalComponent);
+            default:
+               return "";
+         }
+      } else if (element instanceof WCHealthMechanicalComponentModel mcModel) {
+         switch (WCModelDisplayProperty.fromKey(property)) {
+            case WORKCARD_REF:
+               return mcModel.getWorkcardReference() != null ? mcModel.getWorkcardReference() : "";
+            case MAX_TIME_WO_ACQ:
+               return format.format(mcModel.getMaxtimeWithoutAcquitision());
+            default:
+               return "";
+         }
+      } else if (element instanceof WCThresholdModel thresholdModel) {
+         switch (WCModelDisplayProperty.fromKey(property)) {
+            /*
+             * BCR-6605 Check box code disable. case CHECKBOX: return thresholdModel.isEnabled();
+             */
+
+            case LEVEL:
+               return thresholdModel.getLevel();
+
+            case TYPE:
+               return thresholdModel.getType();
+
+            case VALUE:
+               if (thresholdModel.getDefaultValue() != null) {
+                  return format.format(thresholdModel.getDefaultValue());
+               }
+               return "";
+
+            case MIN_VALUE:
+               if (thresholdModel.getMinValue() != null) {
+                  return format.format(thresholdModel.getMinValue());
+               }
+               return "";
+
+            case MAX_VALUE:
+               return format.format(thresholdModel.getMaxValue());
+
+            case LEARN_TIME:
+               return format.format(thresholdModel.getLearningTime() / 3600000.0);
+
+            case WORKCARD_REF:
+               return thresholdModel.getWorkCardReference();
+
+            case MIN_DEV:
+               if (thresholdModel.getMinimumDeviation() != null) {
+                  return format.format(thresholdModel.getMinimumDeviation());
+               }
+               return "";
+
+            case MEAN_MULT_FACTOR:
+               if (thresholdModel.getMeanFactor() != null) {
+                  return format.format(thresholdModel.getMeanFactor());
+               }
+               return "";
+
+            case DEV_COEF:
+               if (thresholdModel.getDeviationCoefficient() != null) {
+                  return format.format(thresholdModel.getDeviationCoefficient());
+               }
+               return "";
+
+            case NB_POINTS:
+               if (thresholdModel.getNbSuccessivePoints() != null) {
+                  return format.format(thresholdModel.getNbSuccessivePoints());
+               }
+               return "";
+            case FILTERING_LAW:
+               return thresholdModel.getFilteringLawName() != null ? thresholdModel.getFilteringLawName() : "";
+
+            case TE:
+               return thresholdModel.getTeReference() != null ? thresholdModel.getTeReference() : "";
+
+            // BCR-6605 Points = IndicatorConfiguration.maxPointsPerHour
+            case POINTS:
+               if (thresholdModel.getMaxPointsPerHour() != null) {
+                  return format.format(thresholdModel.getMaxPointsPerHour());
+               }
+               return "";
+            default:
+               return "";
+
+         }
+      }
+      return null;
+   }
+
+   @Override
+   public void modify(Object element, String property, Object value) {
+      Object data;
+      if (element instanceof Item) {
+         data = ((Item) element).getData();
+
+         try {
+            if (data instanceof WCMechanicalComponentModel wcMechanicalComponent) {
+               boolean configurationField = false;
+               switch (WCModelDisplayProperty.fromKey(property)) {
+                  case MAX_TIME_WO_ACQ:
+                     configurationField = true;
+                     if (value != null && !value.toString().trim().isEmpty()
+                           && !"none".equals(value.toString().trim())) {
+                        long newValue = format.parse(replaceSeparatorValue(value).toString()).longValue();
+                        if (newValue >= 0) {
+                           updateCascadeMaxTimeWOAcq(wcMechanicalComponent, value,
+                                 wcMechanicalComponent.getName().contains("Engine"));
+                        }
+                     }
+                     break;
+                  default:
+                     break;
+               }
+               // BCR-6605 only a configuration field creates a new A/C configuration. Without this
+               // guard, touching ANY column on a group row marked the aircraft dirty and raised the
+               // applicable-flight popup even for Points, TE and Filtering Law.
+               if (configurationField) {
+                  MgsPreferenceStoreManager.markAsDirty((Aircraft) treeViewer.getData("aircraft"));
+               }
+               treeViewer.refresh();
+
+            } else if (data instanceof WCHealthMechanicalComponentModel wCModel) {
+               boolean configurationField = false;
+               switch (WCModelDisplayProperty.fromKey(property)) {
+                  case WORKCARD_REF:
+                     configurationField = true;
+                     if (value != null && !value.toString().trim().isEmpty()) {
+                        wCModel.setWorkCardReference(value.toString());
+                     } else {
+                        wCModel.setWorkCardReference("");
+                     }
+                     break;
+                  case MAX_TIME_WO_ACQ:
+                     configurationField = true;
+                     if (value != null && !value.toString().trim().isEmpty()
+                           && !"none".equals(value.toString().trim())) {
+                        long newValue = format.parse(replaceSeparatorValue(value).toString()).longValue();
+                        if (wCModel.getMaxtimeWithoutAcquitision() != newValue && newValue >= 0) {
+                           wCModel.setMaxtimeWithoutAcquitision(newValue);
+                        }
+                     } else
+                        wCModel.setMaxtimeWithoutAcquitision(0);
+                     break;
+                  default:
+                     break;
+               }
+               // BCR-6605 only a configuration field creates a new A/C configuration
+               if (configurationField) {
+                  MgsPreferenceStoreManager.markAsDirty((Aircraft) treeViewer.getData("aircraft"));
+               }
+               treeViewer.refresh();
+
+            } else if (data instanceof WCThresholdModel thresholdModel) {
+               boolean configurationField = false;
+               switch (WCModelDisplayProperty.fromKey(property)) {
+                  /*
+                   * case CHECKBOX: thresholdModel.setEnabled((Boolean) value); break;
+                   */
+                  case LEVEL:
+                     thresholdModel.setLevel((ThresholdLevel) value);
+                     break;
+                  case TYPE:
+                     thresholdModel.setType((ThresholdType) value);
+                     break;
+                  case VALUE:
+                     configurationField = true;
+                     if (value != null && !value.toString().trim().isEmpty()
+                           && !"none".equals(value.toString().trim())) {
+                        Number val = format.parse(replaceSeparatorValue(value).toString());
+                        thresholdModel.setDefaultValue(val.doubleValue());
+                     } else {
+                        thresholdModel.setDefaultValue(null);
+                     }
+                     break;
+                  case MIN_VALUE:
+                     if (value != null && !value.toString().trim().isEmpty()) {
+                        Number val = format.parse(replaceSeparatorValue(value).toString());
+                        thresholdModel.setMinValue(val.doubleValue());
+                     } else {
+                        thresholdModel.setMinValue(null);
+                     }
+                     break;
+                  case MAX_VALUE:
+                     if (value != null && !value.toString().trim().isEmpty()) {
+                        Number val = format.parse(replaceSeparatorValue(value).toString());
+                        thresholdModel.setMaxValue(val.doubleValue());
+                     } else {
+                        thresholdModel.setMaxValue(0.0d);
+                     }
+                     break;
+                  case LEARN_TIME:
+                     configurationField = true;
+                     if (value != null && !value.toString().trim().isEmpty()) {
+                        long newValue = format.parse(replaceSeparatorValue(value).toString()).longValue() * 3600000;
+                        if (thresholdModel.getLearningTime() != newValue && newValue >= 0) {
+                           thresholdModel.setLearningTime(newValue);
+                        }
+                     }
+                     break;
+                  case WORKCARD_REF:
+                     if (value != null && !value.toString().trim().isEmpty()) {
+                        thresholdModel.setWorkCardReference(value.toString());
+                     } else {
+                        thresholdModel.setWorkCardReference("");
+                     }
+                     break;
+                  case MIN_DEV:
+                     configurationField = true;
+                     if (value != null && !value.toString().trim().isEmpty()) {
+                        Number val = format.parse(replaceSeparatorValue(value).toString());
+                        thresholdModel.setMinimumDeviation(val.doubleValue());
+                     } else {
+                        thresholdModel.setMinimumDeviation(null);
+                     }
+                     break;
+                  case MEAN_MULT_FACTOR:
+                     configurationField = true;
+                     if (value != null && !value.toString().trim().isEmpty()) {
+                        Number val = format.parse(replaceSeparatorValue(value).toString());
+                        thresholdModel.setMeanFactor(val.doubleValue());
+                     } else {
+                        thresholdModel.setMeanFactor(null);
+                     }
+                     break;
+                  case DEV_COEF:
+                     configurationField = true;
+                     if (value != null && !value.toString().trim().isEmpty()) {
+                        Number val = format.parse(replaceSeparatorValue(value).toString());
+                        thresholdModel.setDeviationCoefficient(val.doubleValue());
+                     } else {
+                        thresholdModel.setDeviationCoefficient(null);
+                     }
+                     break;
+                  case POINTS:
+                     // BCR-6605 deviation field. Each severity row keeps its own value: the deviation
+                     // table stores Points per severity, only the configuration is one per indicator.
+                     if (value != null && !value.toString().trim().isEmpty()) {
+                        Number val = format.parse(replaceSeparatorValue(value).toString());
+                        thresholdModel.setMaxPointsPerHour(val.intValue());
+                     } else {
+                        thresholdModel.setMaxPointsPerHour(null);
+                     }
+                     break;
+                  case NB_POINTS:
+                     configurationField = true;
+                     if (value != null && !value.toString().trim().isEmpty()) {
+                        Number val = format.parse(replaceSeparatorValue(value).toString());
+                        thresholdModel.setNbSuccessivePoints(val.intValue());
+                     } else {
+                        thresholdModel.setNbSuccessivePoints(null);
+                     }
+                     break;
+                  case FILTERING_LAW:
+                     if (value != null && !value.toString().trim().isEmpty()) {
+                        thresholdModel.setFilteringLawName(value.toString());
+                     } else {
+                        thresholdModel.setFilteringLawName(null);
+                     }
+                     break;
+                  case TE:
+                     if (value != null && !value.toString().trim().isEmpty()) {
+                        thresholdModel.setTeReference(value.toString().trim());
+                     } else {
+                        thresholdModel.setTeReference(null);
+                     }
+                     break;
+
+                  default:
+                     break;
+               }
+               // BCR-6605 only a configuration field creates a new A/C configuration
+               if (configurationField) {
+                  MgsPreferenceStoreManager.markAsDirty((Aircraft) treeViewer.getData("aircraft"));
+               }
+
+               treeViewer.refresh();
+            }
+         } catch (ParseException e) {
+            MessageDialog.openError(((Item) element).getDisplay().getActiveShell(),
+                  Messages.CORE.getString("healthAlarmPageDataInvalidTitle"),
+                  Messages.CORE.getMnemonicEscapedString("healthAlarmPageDataInvalidCellFormat"));
+         }
+      }
+   }
+
+   /**
+    * Replace the separator value.
+    *
+    * @param value
+    *           Object
+    * @return the value
+    */
+   private Object replaceSeparatorValue(final Object value) {
+      Object val = value;
+      Locale locale = Locale.getDefault();
+      if (val.toString().contains(POINT) && (locale.equals(Locale.FRENCH) || locale.equals(Locale.FRANCE))) {
+         val = val.toString().replace(POINT, COMA);
+      } else if (val.toString().contains(COMA) && locale.equals(Locale.ENGLISH)) {
+         val = val.toString().replace(COMA, POINT);
+      }
+      return val;
+   }
+
+   private void updateCascadeMaxTimeWOAcq(WCMechanicalComponentModel wcMechanicalComponent, Object value,
+         boolean force) throws ParseException {
+
+      for (WCHealthMechanicalComponentModel wCModel : wcMechanicalComponent.getHealthComponentModels()) {
+         if (value != null && !value.toString().trim().isEmpty() && !"none".equals(value.toString().trim())) {
+            Number val = format.parse(replaceSeparatorValue(value).toString());
+            if (force || !wCModel.getHealthMechanicalComponent().getName().contains(":Engine"))
+               wCModel.setMaxtimeWithoutAcquitision(val.longValue());
+         }
+      }
+      for (WCMechanicalComponentModel wCModel : wcMechanicalComponent.getSubHealthWCModel()) {
+         updateCascadeMaxTimeWOAcq(wCModel, value, force);
+      }
+   }
+
+   /**
+    * return the maximum time without acquisition if all the sub health component have the same value. Else return ""
+    *
+    * @return
+    */
+   private String getMaxTimeWOAcquition(WCMechanicalComponentModel element) {
+
+      String maxTimeWOAcqValue = null;
+      for (WCHealthMechanicalComponentModel wCModel : element.getHealthComponentModels()) {
+         if (maxTimeWOAcqValue == null) {
+            maxTimeWOAcqValue = format.format(wCModel.getMaxtimeWithoutAcquitision());
+         } else if (!maxTimeWOAcqValue.equals(format.format(wCModel.getMaxtimeWithoutAcquitision()))) {
+            return "";
+         }
+      }
+      for (WCMechanicalComponentModel wcModel : element.getSubHealthWCModel()) {
+         if (maxTimeWOAcqValue == null) {
+            maxTimeWOAcqValue = getMaxTimeWOAcquition(wcModel);
+         } else if (!maxTimeWOAcqValue.equals(getMaxTimeWOAcquition(wcModel))) {
+            return "";
+         }
+      }
+      return maxTimeWOAcqValue;
+   }
+
+}
+
+----------------
+
+/***************************************/
+/** Copyright Airbus Helicopters 2019 **/
+/***************************************/
+package com.eurocopter.mgs.presentation.configuration.preferences.healthalarms;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.eclipse.jface.dialogs.MessageDialog;
+import org.eclipse.jface.viewers.ISelectionChangedListener;
+import org.eclipse.swt.SWT;
+import org.eclipse.swt.graphics.Point;
+import org.eclipse.swt.layout.GridData;
+import org.eclipse.swt.layout.GridLayout;
+import org.eclipse.swt.widgets.Composite;
+import org.eclipse.swt.widgets.Label;
+import org.eclipse.swt.widgets.TabFolder;
+import org.eclipse.swt.widgets.TabItem;
+import org.eclipse.swt.widgets.Tree;
+import org.eclipse.swt.widgets.TreeItem;
+
+import com.eurocopter.mgs.business.health.model.WCThresholdModel;
+import com.eurocopter.mgs.core.presentation.i18n.Messages;
+import com.eurocopter.mgs.datamodel.aircraft.Aircraft;
+import com.eurocopter.mgs.presentation.configuration.preferences.health.AircraftSelectionComposite;
+import com.eurocopter.mgs.presentation.configuration.preferences.healthalarms.editor.WCTreeCellModifier;
+import com.eurocopter.mgs.presentation.configuration.preferences.healthalarms.provider.WCTreeContentProvider;
+import com.eurocopter.mgs.presentation.configuration.preferences.healthalarms.provider.WCTreeLabelProvider;
+import com.eurocopter.mgs.presentation.configuration.preferences.healthalarms.store.HealthAlarmsPreferenceStore;
+import com.eurocopter.mgs.presentation.configuration.preferences.healthalarms.viewer.WCModelTreeViewer;
+import com.eurocopter.mgs.presentation.configuration.store.MgsPreferenceStoreComposer;
+import com.eurocopter.mgs.presentation.configuration.store.MgsPreferenceStoreManager;
+
+public class HealthAlarmsComposite extends Composite {
+
+   private static final Logger LOGGER = LogManager.getLogger(HealthAlarmsComposite.class);
+
+   /** Hash Map for the health mechanical component. */
+   private final Map<Aircraft, WCMechanicalComponentModel> healthWcModelMap;
+
+   private DeviationTableComposite deviationListComposite;
+
+   private DeviationTableComposite deviationHistoryComposite;
+
+   /** TreeViewer for the thresholds. */
+   private WCModelTreeViewer thresholdsTreeViewer;
+
+   /**
+    * ComboBox - A/C Type.
+    */
+   private final AircraftSelectionComposite aircraftCombo;
+
+   /**
+    * The Key.
+    */
+   private Aircraft selectedAircraft = null;
+
+   /**
+    * Store.
+    */
+   private final HealthAlarmsPreferenceStore healthAlarmsPreferenceStore;
+
+   /**
+    * Default constructor. Builds a HealthAlarmsComposite.
+    * 
+    * @param parentStore
+    *           the parent store
+    * @param parent
+    *           the parent composite
+    */
+   public HealthAlarmsComposite(MgsPreferenceStoreComposer parentStore, Composite parent) {
+      super(parent, SWT.NONE);
+      GridLayout layout = new GridLayout();
+      layout.marginHeight = 0;
+      layout.marginWidth = 0;
+      layout.verticalSpacing = 0;
+      setLayout(layout);
+      setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true, 1, 1));
+
+      // add the store
+      healthAlarmsPreferenceStore = new HealthAlarmsPreferenceStore(this);
+      parentStore.addStore(healthAlarmsPreferenceStore);
+
+      // instantiate the hash map
+      healthWcModelMap = new HashMap<>();
+
+      // A/C type composite
+      aircraftCombo = new AircraftSelectionComposite(this);
+      // BCR-6605 Message display
+      aircraftCombo.setLayoutData(new GridData(SWT.FILL, SWT.TOP, true, false));
+      aircraftCombo.forceFocus();
+
+      // set a space between composite
+      new Label(this, SWT.NONE);
+
+      TabFolder tabFolder = new TabFolder(this, SWT.NONE);
+      tabFolder.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
+
+      // Tab 1 - Configuration: holds the existing tree
+      TabItem configurationTab = new TabItem(tabFolder, SWT.NONE);
+      configurationTab.setText(Messages.CORE.getString("deviationTabConfiguration"));
+      Composite configurationComposite = new Composite(tabFolder, SWT.NONE);
+      GridLayout tabLayout = new GridLayout();
+      tabLayout.marginHeight = 0;
+      tabLayout.marginWidth = 0;
+      configurationComposite.setLayout(tabLayout);
+      configurationTab.setControl(configurationComposite);
+      createTreeViewer(configurationComposite);
+
+      // Tab 2 - Deviation list
+      TabItem deviationListTab = new TabItem(tabFolder, SWT.NONE);
+      deviationListTab.setText(Messages.CORE.getString("deviationTabList"));
+      deviationListComposite = new DeviationTableComposite(tabFolder, healthAlarmsPreferenceStore, false, this::reloadAll);
+      deviationListTab.setControl(deviationListComposite);
+
+      // Tab 3 - Deviation history
+      TabItem deviationHistoryTab = new TabItem(tabFolder, SWT.NONE);
+      deviationHistoryTab.setText(Messages.CORE.getString("deviationTabHistory"));
+      deviationHistoryComposite = new DeviationTableComposite(tabFolder, healthAlarmsPreferenceStore, true, this::reloadAll);
+      deviationHistoryTab.setControl(deviationHistoryComposite);
+
+      Composite lawButtonBar = new Composite(this, SWT.NONE);
+      lawButtonBar.setLayout(new GridLayout(1, false));
+      lawButtonBar.setLayoutData(new GridData(SWT.END, SWT.CENTER, true, false));
+
+      aircraftCombo.getComboViewer().addSelectionChangedListener((ISelectionChangedListener) event -> {
+         selectedAircraft = aircraftCombo.getSelectedAircraft();
+         if (selectedAircraft != null) {
+            healthAlarmsPreferenceStore.initMechanicalComponentData(selectedAircraft);
+            WCMechanicalComponentModel aircraftComponentModel = healthAlarmsPreferenceStore.getHealthModels(selectedAircraft);
+            refreshViewer(selectedAircraft, aircraftComponentModel);
+            deviationListComposite.setAircraft(selectedAircraft);
+            deviationHistoryComposite.setAircraft(selectedAircraft);
+         }
+      });
+   }
+
+   /**
+    * Create the thresholds Tree Viewer.
+    * 
+    * @param composite
+    *           Parent Composite
+    */
+   private void createTreeViewer(Composite composite) {
+      final Tree tree = new Tree(composite, SWT.BORDER | SWT.H_SCROLL | SWT.V_SCROLL | SWT.FULL_SELECTION);
+      tree.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true, 2, 1));
+      tree.setHeaderVisible(true);
+      tree.setLinesVisible(true);
+      thresholdsTreeViewer = new WCModelTreeViewer(tree, healthWcModelMap, healthAlarmsPreferenceStore);
+      thresholdsTreeViewer.setLabelProvider(new WCTreeLabelProvider());
+      thresholdsTreeViewer.setContentProvider(new WCTreeContentProvider());
+      thresholdsTreeViewer.setCellModifier(new WCTreeCellModifier(thresholdsTreeViewer));
+
+      tree.addListener(SWT.MouseDown, event -> {
+         TreeItem item = tree.getItem(new Point(event.x, event.y));
+         if (item != null && item.getData() instanceof WCThresholdModel model && model.isDeviated()) {
+            MessageDialog.openInformation(tree.getShell(), Messages.CORE.getString("deviationAlreadySetTitle"), Messages.CORE.getString("deviationAlreadySet"));
+         }
+      });
+   }
+
+   /**
+    * Refresh Viewer.
+    * 
+    * @param wcModel
+    *           List<HealthWCModel> models.
+    */
+   private void refreshViewer(Aircraft aircraft, WCMechanicalComponentModel wcModel) {
+      thresholdsTreeViewer.setData("aircraft", aircraft);
+      thresholdsTreeViewer.setSelectedAircraft(aircraft);
+      thresholdsTreeViewer.setInput(wcModel);
+      thresholdsTreeViewer.expandAll();
+      thresholdsTreeViewer.refresh();
+   }
+
+   /**
+    * Perform Apply for the preference page.
+    */
+
+   /*
+    * public void performApply() { healthAlarmsPreferenceStore.innerSave(); try { MgsPreferenceStoreManager.saveAircraftConfigurations();
+    * 
+    * healthAlarmsPreferenceStore.saveDeviations(); MgsPreferenceStoreManager.clearAircraftConfigurations(); reloadAll();
+    * 
+    * MgsPreferenceStoreManager.clearAircraftConfigurations(); performDefaults();
+    * 
+    * } catch (Exception e) { LOGGER.error("Error while saving health preferences", e); } }
+    */
+
+   public void performApply() {
+      healthAlarmsPreferenceStore.innerSave();
+      try {
+         MgsPreferenceStoreManager.saveAircraftConfigurations();
+         /*
+          * if (MgsPreferenceStoreManager.wasLastSaveConfirmed()) { healthAlarmsPreferenceStore.saveDeviations(); }
+          */
+         healthAlarmsPreferenceStore.saveDeviations();
+         List<String> deviated = healthAlarmsPreferenceStore.getLastSavedDeviationIndicatorNames();
+         if (!deviated.isEmpty()) {
+            MessageDialog.openInformation(getShell(),
+                  Messages.CORE.getString("deviation.created.title"),
+                  Messages.CORE.getString("deviation.created.message") + " " + String.join(", ", deviated));
+         }
+
+         MgsPreferenceStoreManager.clearAircraftConfigurations();
+         // BCR-6605 refresh the tree and both deviation tabs so the saved rows turn green
+         reloadAll();
+      } catch (Exception e) {
+         LOGGER.error("Error while saving health preferences", e);
+      }
+   }
+
+   /**
+    * Validate data before setting them.
+    * 
+    * @return true if data are valid, false otherwise
+    */
+   public boolean isValidData() {
+      return healthAlarmsPreferenceStore.isValidData(healthWcModelMap);
+   }
+
+   /**
+    * Perform Defaults for the preference page.
+    */
+   public void performDefaults() {
+      if (selectedAircraft != null) {
+         healthWcModelMap.clear();
+         refreshViewer(selectedAircraft, healthAlarmsPreferenceStore.loadHealthModels(selectedAircraft));
+      }
+   }
+
+   /**
+    * Cancel was pressed.
+    */
+   public void performCancel() {
+      // empty the store, otherwise data will be saved because of our handling of needSaving method.
+      healthAlarmsPreferenceStore.emptyData();
+   }
+
+   /**
+    * BCR-6605 reload the tree and both deviation tabs.
+    */
+   private void reloadAll() {
+      if (selectedAircraft == null) {
+         return;
+      }
+      healthWcModelMap.clear();
+      refreshViewer(selectedAircraft, healthAlarmsPreferenceStore.loadHealthModels(selectedAircraft));
+      deviationListComposite.setAircraft(selectedAircraft);
+      deviationHistoryComposite.setAircraft(selectedAircraft);
+   }
+
+   public void openFilteringLawDialog() {
+      if (selectedAircraft != null) {
+         new FilteringLawDialog(healthAlarmsPreferenceStore, selectedAircraft).open();
+         reloadAll();
+      }
+   }
+
+}
+
+
