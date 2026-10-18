@@ -1,185 +1,520 @@
 /***************************************/
 /** Copyright Airbus Helicopters 2019 **/
 /***************************************/
-package com.eurocopter.mgs.presentation.configuration.preferences.healthalarms;
+package com.eurocopter.mgs.presentation.configuration.store;
 
-import java.text.MessageFormat;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.List;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
 
-import org.eclipse.jface.dialogs.MessageDialog;
-import org.eclipse.jface.viewers.ArrayContentProvider;
-import org.eclipse.jface.viewers.CheckboxTableViewer;
-import org.eclipse.jface.viewers.ITableColorProvider;
-import org.eclipse.jface.viewers.ITableLabelProvider;
-import org.eclipse.jface.viewers.LabelProvider;
-import org.eclipse.jface.viewers.TableViewer;
-import org.eclipse.swt.SWT;
-import org.eclipse.swt.graphics.Color;
-import org.eclipse.swt.graphics.Image;
-import org.eclipse.swt.layout.GridData;
-import org.eclipse.swt.layout.GridLayout;
-import org.eclipse.swt.widgets.Button;
-import org.eclipse.swt.widgets.Composite;
-import org.eclipse.swt.widgets.Table;
-import org.eclipse.swt.widgets.TableColumn;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.eclipse.core.runtime.IStatus;
+import org.eclipse.ui.statushandlers.StatusManager;
+import org.osgi.framework.BundleContext;
+import org.osgi.framework.FrameworkUtil;
 
+import com.eurocopter.mgs.app.Activator;
+import com.eurocopter.mgs.business.aircraft.api.IAircraftBusiness;
+import com.eurocopter.mgs.business.configuration.api.IConfigurationBusiness;
 import com.eurocopter.mgs.core.presentation.i18n.Messages;
-import com.eurocopter.mgs.core.presentation.resources.CoreResourcesUtils;
-import com.eurocopter.mgs.core.presentation.utils.ConvertUtils;
 import com.eurocopter.mgs.datamodel.aircraft.Aircraft;
-import com.eurocopter.mgs.presentation.configuration.preferences.healthalarms.store.HealthAlarmsPreferenceStore;
-import com.eurocopter.mgs.service.health.common.dto.IndicatorDeviationDto;
+import com.eurocopter.mgs.datamodel.aircraft.configuration.AircraftConfiguration;
+import com.eurocopter.mgs.datamodel.aircraft.configuration.Configuration;
+import com.eurocopter.mgs.datamodel.flight.Flight;
+import com.eurocopter.mgs.datamodel.usage.epc.UmsData;
+import com.eurocopter.mgs.presentation.configuration.store.dialog.MgsPreferenceDialogHandler;
+import com.eurocopter.mgs.presentation.status.GenericStatus;
+import com.eurocopter.mgs.presentation.utils.AircraftExceptionHandler;
+import com.eurocopter.mgs.service.aircraft.dto.AircraftConfigurationHistoryDto;
+import com.eurocopter.mgs.service.aircraft.exception.AircraftConcurrentAccessException;
+import com.eurocopter.mgs.service.exception.ConcurrentAccessException;
+import com.eurocopter.mgs.service.exception.EntityNotFoundException;
+import com.eurocopter.mgs.service.exception.ServiceException;
+import com.google.common.collect.ArrayListMultimap;
+import com.google.common.collect.Multimap;
 
-public class DeviationTableComposite extends Composite {
-   private static final String[] COLUMN_KEYS = { "deviationColIndicator", "Severity", "ThresholdLevel", "Type", "deviationColValue", "LearningThresholdMinValue", "LearningThresholdMaxValue",
-         "deviationColPoints", "FilteringLaw", "deviationColLawParameters", "deviationColTe",
-         "deviationColDate" };
-   private static final int[] COLUMN_WIDTHS = { 320, 70, 60, 70, 80, 80, 80, 60, 100, 280, 150, 170 };
-   private final HealthAlarmsPreferenceStore store;
-   private final boolean history;
-   private final Runnable onChanged;
-   private final TableViewer viewer;
-   private final SimpleDateFormat dateFormat = new SimpleDateFormat("dd/MM/yyyy");
-   private Aircraft aircraft;
+/**
+ * Manager for Preference Store Objects .
+ */
+public final class MgsPreferenceStoreManager {
 
-   public DeviationTableComposite(Composite parent, HealthAlarmsPreferenceStore store, boolean history, Runnable onChanged) {
-      super(parent, SWT.NONE);
-      this.store = store;
-      this.history = history;
-      this.onChanged = onChanged;
-      setLayout(new GridLayout(1, false));
-      if (!history) {
-         Button delete = new Button(this, SWT.PUSH);
-         delete.setText(Messages.CORE.getString("deviationDeleteButton"));
-         delete.setLayoutData(new GridData(SWT.END, SWT.CENTER, true, false));
-         delete.addListener(SWT.Selection, e -> deleteSelected());
-      }
+   private static final Logger LOGGER = LogManager.getLogger(MgsPreferenceStoreManager.class);
 
-      int style = SWT.BORDER | SWT.FULL_SELECTION | SWT.H_SCROLL | SWT.V_SCROLL | (history ? SWT.SINGLE : SWT.MULTI | SWT.CHECK);
-      Table table = new Table(this, style);
-      table.setHeaderVisible(true);
-      table.setLinesVisible(true);
-      table.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
-      for (int i = 0; i < COLUMN_KEYS.length; i++) {
-         TableColumn column = new TableColumn(table, SWT.LEFT);
-         column.setText(Messages.CORE.getString(COLUMN_KEYS[i]));
-         column.setWidth(COLUMN_WIDTHS[i]);
-      }
-      viewer = history ? new TableViewer(table) : new CheckboxTableViewer(table);
-      viewer.setContentProvider(ArrayContentProvider.getInstance());
-      viewer.setLabelProvider(new DeviationLabelProvider());
+   // The EPC UMS data and flight synthesis preferences is saved by the method saveAircraftConfigurations() to avoid to display multiple time the error message in case a download is processing
+   public static final Multimap<Aircraft, String> SELECTED_FLIGHT_SYNTHESIS_DATA = ArrayListMultimap.create();
+   public static final Multimap<Aircraft, UmsData> EPC_UMS_DATA = ArrayListMultimap.create();
+
+   private static final Map<Aircraft, AircraftConfiguration> AIRCRAFT_CONFIGURATIONS = new HashMap<>();
+
+   private static final Map<Aircraft, AircraftConfigurationHistoryDto> AIRCRAFT_CONFIGURATION_HISTORIES = new HashMap<>();
+
+   private static final Set<Aircraft> DIRTY_AIRCRAFTS = new HashSet<>();
+   private static final Set<Aircraft> FLIGHT_SYNTHESIS_DIRTY_AIRCRAFTS = new HashSet<>();
+
+   private static boolean lastSaveConfirmed = false;
+
+   /** BCR-6605 true when the applicable-flight popup was actually shown for the last save. */
+   private static boolean lastSavePrompted = false;
+
+   private static final MgsPreferenceStore MGS_CONFIGURATION_PREFERENCE_STORE = MgsConfigurationPreferenceStore.getInstance();
+   private static final MgsPreferenceStore USER_PREFERENCE_STORE = UserConfigurationPreferenceStore.getInstance();
+
+   /**
+    *
+    * Default constructor. Builds a MGSPreferenceStoreManager.
+    */
+   private MgsPreferenceStoreManager() {
    }
 
-   public void setAircraft(Aircraft aircraft) {
-      this.aircraft = aircraft;
-      reload();
+   /**
+    * Getting the MGS PreferenceStore object.
+    *
+    * @return instance of MGSConfigurationpreferenceStore
+    */
+   public static synchronized MgsPreferenceStore getMgsConfigurationPreferenceStore() {
+      return MGS_CONFIGURATION_PREFERENCE_STORE;
    }
 
-   public void reload() {
-      viewer.setInput(history ? store.findDeviationHistory(aircraft) : store.findActiveDeviations(aircraft));
+   /**
+    * Getting the user configuration preference store.
+    *
+    * @return instance of UserConfigurationPreferenceStore
+    */
+   public static synchronized MgsPreferenceStore getUserPreferenceStore() {
+      return USER_PREFERENCE_STORE;
    }
 
-   private void deleteSelected() {
-      Object[] checked = ((CheckboxTableViewer) viewer).getCheckedElements();
-      if (checked.length == 0) {
-         return;
-      }
-      List<String> ids = new ArrayList<>();
-      List<String> names = new ArrayList<>();
-      for (Object o : checked) {
-         IndicatorDeviationDto d = (IndicatorDeviationDto) o;
-         ids.add(d.getId());
-         names.add(store.getIndicatorDisplayName(d.getIndicatorId()));
-      }
-      boolean confirmed = MessageDialog.openConfirm(getShell(), Messages.CORE.getString("deviationDeleteTitle"),
-            MessageFormat.format(Messages.CORE.getString("deviationDeleteConfirm"), String.join(", ", names)));
-      if (!confirmed) {
-         return;
-      }
-      // BCR-6605 use the aircraft selected on this page, not whatever the main window has
-      store.acknowledgeDeviations(aircraft, ids);
-      onChanged.run();
-   }
+   public static synchronized void saveAircraftConfigurations() {
+      lastSaveConfirmed = false;
+      lastSavePrompted = false;
+      try {
+         // Save first the preferences that are not historicized: avoid to show the "Applicable flight" popup in case of concurrent access error
+         saveFlightSynthesisConfigurations();
+         saveUmsDataConfigurations();
 
-   private String number(Number value) {
-      return value == null ? "" : ConvertUtils.formatNumber(value, -1);
-   }
-
-   private final class DeviationLabelProvider extends LabelProvider implements ITableLabelProvider, ITableColorProvider {
-      @Override
-      public Image getColumnImage(Object element, int column) {
-         return null;
-      }
-
-      @Override
-      public String getColumnText(Object element, int column) {
-         IndicatorDeviationDto d = (IndicatorDeviationDto) element;
-         switch (column) {
-            case 0:
-               return store.getIndicatorDisplayName(d.getIndicatorId());
-            case 1:
-               return d.getSeverity() != null ? d.getSeverity() : "";
-            case 2:
-               return d.getThresholdLevel() != null ? d.getThresholdLevel() : "";
-            case 3:
-               return d.getThresholdType() != null ? d.getThresholdType() : "";
-            case 4:
-               return number(d.getThresholdValue());
-            case 5:
-               return number(d.getMinValue());
-            case 6:
-               return number(d.getMaxValue());
-            case 7:
-               // BCR-6605 this column is Points (maxPointsPerHour), not the successive-point count,
-               // which is a configuration field and is never carried on a deviation
-               return number(d.getMaxPointsPerHour());
-            case 8:
-               return d.getFilteringLawName() != null ? d.getFilteringLawName() : "";
-            case 9:
-               return d.getFilteringLawParameters() != null ? d.getFilteringLawParameters() : "";
-            case 10:
-               return d.getTeReference();
-            case 11:
-               return history && d.getEndDate() != null
-                     ? dateFormat.format(d.getStartDate()) + " - " + dateFormat.format(d.getEndDate())
-                     : dateFormat.format(d.getStartDate());
-            default:
-               return "";
+         IAircraftBusiness aircraftBusiness = getAircraftBusiness();
+         Map<Aircraft, AircraftConfigurationHistoryDto> dirtyAircraftsConfigurations = new HashMap<>();
+         for (Map.Entry<Aircraft, AircraftConfigurationHistoryDto> entry : AIRCRAFT_CONFIGURATION_HISTORIES.entrySet()) {
+            Aircraft aircraft = entry.getKey();
+            if (DIRTY_AIRCRAFTS.contains(aircraft)) {
+               dirtyAircraftsConfigurations.put(aircraft, AIRCRAFT_CONFIGURATION_HISTORIES.get(aircraft));
+            }
          }
+         // BCR-6605 remember that the user was asked, so the caller can tell "nothing to confirm"
+         // apart from "asked and cancelled"
+         lastSavePrompted = !dirtyAircraftsConfigurations.isEmpty();
+         if (!dirtyAircraftsConfigurations.isEmpty()) {
+            MgsPreferenceDialogHandler mgsPreferenceDialogHandler = new MgsPreferenceDialogHandler();
+            mgsPreferenceDialogHandler.openDialog(dirtyAircraftsConfigurations);
+            for (Map.Entry<Aircraft, AircraftConfigurationHistoryDto> entry : dirtyAircraftsConfigurations.entrySet()) {
+               AircraftConfigurationHistoryDto configurationHistorizationDto = entry.getValue();
+               if (mgsPreferenceDialogHandler.getOkCancel(configurationHistorizationDto)) {
+                  lastSaveConfirmed = true;
+                  Flight applicableFlight = mgsPreferenceDialogHandler.getApplicableFlight(configurationHistorizationDto);
+                  final String applicableFlightId;
+                  if (applicableFlight != null) {
+                     applicableFlightId = applicableFlight.getId();
+                  } else {
+                     applicableFlightId = null;
+                  }
+                  aircraftBusiness.updateAircraftConfiguration(configurationHistorizationDto, null, applicableFlightId);
+               }
+            }
+         }
+      } catch (AircraftConcurrentAccessException e) {
+         StatusManager.getManager().handle(AircraftExceptionHandler.getStatusForAircraftException(e, "update", Activator.PLUGIN_ID), StatusManager.SHOW); //$NON-NLS-1$
+      } catch (ConcurrentAccessException e) {
+         LOGGER.warn("Concurrent access exception", e);
+         StatusManager.getManager().handle(new GenericStatus(IStatus.ERROR, Activator.PLUGIN_ID, Messages.CORE.getString("update.aborted.concurrentUpdate")), StatusManager.BLOCK); //$NON-NLS-1$
+      } catch (EntityNotFoundException e) {
+         LOGGER.warn("Entity not found exception", e);
+         StatusManager.getManager().handle(
+               new GenericStatus(IStatus.ERROR, Activator.PLUGIN_ID, Messages.CORE.getString("updateConf.aborted.missingElement"), e), //$NON-NLS-1$
+               StatusManager.SHOW);
+      } catch (ServiceException e) {
+         LOGGER.warn("Service exception", e);
+         StatusManager.getManager().handle(
+               new GenericStatus(IStatus.ERROR, Activator.PLUGIN_ID, Messages.CORE.getString("updateConf.aborted.unknownCause"), e), StatusManager.BLOCK); //$NON-NLS-1$
       }
+      DIRTY_AIRCRAFTS.clear();
+   }
 
-      @Override
-      public Color getBackground(Object element, int column) {
-         if (column != 1) {
-            return null;
-         }
-         String severity = ((IndicatorDeviationDto) element).getSeverity();
-         if ("RED".equals(severity)) {
-            return CoreResourcesUtils.getColor(CoreResourcesUtils.COLOR_RED);
-         }
-         if ("AMBER".equals(severity)) {
-            return CoreResourcesUtils.getColor(CoreResourcesUtils.COLOR_AMBER);
-         }
-         return null;
+   // Save flight synthesis preferences
+   public static synchronized void saveFlightSynthesisConfigurations() throws EntityNotFoundException, ConcurrentAccessException {
+      IConfigurationBusiness configurationBusiness = getConfigurationBusiness();
+      for (Aircraft aircraft : FLIGHT_SYNTHESIS_DIRTY_AIRCRAFTS) {
+         Collection<String> usageParamIds = SELECTED_FLIGHT_SYNTHESIS_DATA.get(aircraft);
+         configurationBusiness.setFlightSynthesisUsageParameters(aircraft.getId(), new ArrayList<>(usageParamIds));
       }
+      FLIGHT_SYNTHESIS_DIRTY_AIRCRAFTS.clear();
+   }
 
-      @Override
-      public Color getForeground(Object element, int column) {
-         return null;
+   // Save the UMS data preferences
+   public static synchronized void saveUmsDataConfigurations() throws EntityNotFoundException, ConcurrentAccessException {
+      IConfigurationBusiness configurationBusiness = getConfigurationBusiness();
+      for (Entry<Aircraft, Collection<UmsData>> entry : EPC_UMS_DATA.asMap().entrySet()) {
+         configurationBusiness.setUmsDatas(entry.getKey().getId(), new HashSet<>(entry.getValue()));
       }
+   }
+
+   public static void loadStores() {
+      MGS_CONFIGURATION_PREFERENCE_STORE.load();
+      USER_PREFERENCE_STORE.load();
+   }
+
+   public static synchronized void clearStores() {
+      MGS_CONFIGURATION_PREFERENCE_STORE.clear();
+      USER_PREFERENCE_STORE.clear();
+   }
+
+   public static synchronized void clearAircraftConfigurations() {
+      AIRCRAFT_CONFIGURATIONS.clear();
+      AIRCRAFT_CONFIGURATION_HISTORIES.clear();
+      SELECTED_FLIGHT_SYNTHESIS_DATA.clear();
+      EPC_UMS_DATA.clear();
+   }
+
+   public static synchronized <T extends Configuration> T getConfiguration(Aircraft aircraft, String configurationType, Class<T> className) throws EntityNotFoundException {
+      Configuration configuration = getAircraftConfiguration(aircraft).getConfigurations().get(configurationType);
+      if (configuration == null) {
+         throw new EntityNotFoundException("No " + configurationType + " configuration found !"); //$NON-NLS-1$
+      }
+      return className.cast(configuration);
+   }
+
+   public static synchronized AircraftConfiguration getAircraftConfiguration(Aircraft aircraft) throws EntityNotFoundException {
+      AircraftConfiguration aircraftConfiguration = AIRCRAFT_CONFIGURATIONS.get(aircraft);
+      if (aircraftConfiguration == null) {
+         aircraftConfiguration = getAircraftBusiness().getAircraftConfiguration(aircraft.getId());
+         AIRCRAFT_CONFIGURATIONS.put(aircraft, aircraftConfiguration);
+      }
+      return aircraftConfiguration;
+   }
+
+   public static synchronized AircraftConfigurationHistoryDto getAircraftConfigurationDto(Aircraft aircraft) throws EntityNotFoundException {
+      AircraftConfigurationHistoryDto aircraftConfigurationHistoryDto = AIRCRAFT_CONFIGURATION_HISTORIES.get(aircraft);
+      if (aircraftConfigurationHistoryDto == null) {
+         AircraftConfiguration aircraftConfiguration = getAircraftConfiguration(aircraft);
+         aircraftConfigurationHistoryDto = new AircraftConfigurationHistoryDto(aircraftConfiguration.getId());
+         AIRCRAFT_CONFIGURATION_HISTORIES.put(aircraft, aircraftConfigurationHistoryDto);
+      }
+      return aircraftConfigurationHistoryDto;
+   }
+
+   private static IAircraftBusiness getAircraftBusiness() {
+      BundleContext healthBundleContext = FrameworkUtil.getBundle(IAircraftBusiness.class).getBundleContext();
+      return healthBundleContext.getService(healthBundleContext.getServiceReference(IAircraftBusiness.class));
+   }
+
+   private static IConfigurationBusiness getConfigurationBusiness() {
+      BundleContext bundleContext = FrameworkUtil.getBundle(IConfigurationBusiness.class).getBundleContext();
+      return bundleContext.getService(bundleContext.getServiceReference(IConfigurationBusiness.class));
+   }
+
+   public static void markAsDirty(Aircraft aircraft) {
+      DIRTY_AIRCRAFTS.add(aircraft);
+   }
+
+   public static void markFlightSynthesisDataChanged(Aircraft aircraft) {
+      FLIGHT_SYNTHESIS_DIRTY_AIRCRAFTS.add(aircraft);
+   }
+
+   public static synchronized boolean wasLastSaveConfirmed() {
+      return lastSaveConfirmed;
+   }
+
+   /**
+    * BCR-6605 whether the applicable-flight popup was shown for the last save.
+    *
+    * @return true when the user was asked to choose a flight
+    */
+   public static synchronized boolean wasLastSavePrompted() {
+      return lastSavePrompted;
    }
 }
 
+=========================================================
+
+/***************************************/
+/** Copyright Airbus Helicopters 2019 **/
+/***************************************/
+package com.eurocopter.mgs.presentation.configuration.preferences.healthalarms;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.eclipse.jface.dialogs.MessageDialog;
+import org.eclipse.jface.viewers.ISelectionChangedListener;
+import org.eclipse.swt.SWT;
+import org.eclipse.swt.graphics.Point;
+import org.eclipse.swt.layout.GridData;
+import org.eclipse.swt.layout.GridLayout;
+import org.eclipse.swt.widgets.Composite;
+import org.eclipse.swt.widgets.Label;
+import org.eclipse.swt.widgets.TabFolder;
+import org.eclipse.swt.widgets.TabItem;
+import org.eclipse.swt.widgets.Tree;
+import org.eclipse.swt.widgets.TreeItem;
+
+import com.eurocopter.mgs.business.health.model.WCThresholdModel;
+import com.eurocopter.mgs.core.presentation.i18n.Messages;
+import com.eurocopter.mgs.datamodel.aircraft.Aircraft;
+import com.eurocopter.mgs.presentation.configuration.preferences.health.AircraftSelectionComposite;
+import com.eurocopter.mgs.presentation.configuration.preferences.healthalarms.editor.WCTreeCellModifier;
+import com.eurocopter.mgs.presentation.configuration.preferences.healthalarms.provider.WCTreeContentProvider;
+import com.eurocopter.mgs.presentation.configuration.preferences.healthalarms.provider.WCTreeLabelProvider;
+import com.eurocopter.mgs.presentation.configuration.preferences.healthalarms.store.HealthAlarmsPreferenceStore;
+import com.eurocopter.mgs.presentation.configuration.preferences.healthalarms.viewer.WCModelTreeViewer;
+import com.eurocopter.mgs.presentation.configuration.store.MgsPreferenceStoreComposer;
+import com.eurocopter.mgs.presentation.configuration.store.MgsPreferenceStoreManager;
+
+public class HealthAlarmsComposite extends Composite {
+
+   private static final Logger LOGGER = LogManager.getLogger(HealthAlarmsComposite.class);
+
+   /** Hash Map for the health mechanical component. */
+   private final Map<Aircraft, WCMechanicalComponentModel> healthWcModelMap;
+
+   private DeviationTableComposite deviationListComposite;
+
+   private DeviationTableComposite deviationHistoryComposite;
+
+   /** TreeViewer for the thresholds. */
+   private WCModelTreeViewer thresholdsTreeViewer;
+
+   /**
+    * ComboBox - A/C Type.
+    */
+   private final AircraftSelectionComposite aircraftCombo;
+
+   /**
+    * The Key.
+    */
+   private Aircraft selectedAircraft = null;
+
+   /**
+    * Store.
+    */
+   private final HealthAlarmsPreferenceStore healthAlarmsPreferenceStore;
+
+   /**
+    * Default constructor. Builds a HealthAlarmsComposite.
+    * 
+    * @param parentStore
+    *           the parent store
+    * @param parent
+    *           the parent composite
+    */
+   public HealthAlarmsComposite(MgsPreferenceStoreComposer parentStore, Composite parent) {
+      super(parent, SWT.NONE);
+      GridLayout layout = new GridLayout();
+      layout.marginHeight = 0;
+      layout.marginWidth = 0;
+      layout.verticalSpacing = 0;
+      setLayout(layout);
+      setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true, 1, 1));
+
+      // add the store
+      healthAlarmsPreferenceStore = new HealthAlarmsPreferenceStore(this);
+      parentStore.addStore(healthAlarmsPreferenceStore);
+
+      // instantiate the hash map
+      healthWcModelMap = new HashMap<>();
+
+      // A/C type composite
+      aircraftCombo = new AircraftSelectionComposite(this);
+      // BCR-6605 Message display
+      aircraftCombo.setLayoutData(new GridData(SWT.FILL, SWT.TOP, true, false));
+      aircraftCombo.forceFocus();
+
+      // set a space between composite
+      new Label(this, SWT.NONE);
+
+      TabFolder tabFolder = new TabFolder(this, SWT.NONE);
+      tabFolder.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
+
+      // Tab 1 - Configuration: holds the existing tree
+      TabItem configurationTab = new TabItem(tabFolder, SWT.NONE);
+      configurationTab.setText(Messages.CORE.getString("deviationTabConfiguration"));
+      Composite configurationComposite = new Composite(tabFolder, SWT.NONE);
+      GridLayout tabLayout = new GridLayout();
+      tabLayout.marginHeight = 0;
+      tabLayout.marginWidth = 0;
+      configurationComposite.setLayout(tabLayout);
+      configurationTab.setControl(configurationComposite);
+      createTreeViewer(configurationComposite);
+
+      // Tab 2 - Deviation list
+      TabItem deviationListTab = new TabItem(tabFolder, SWT.NONE);
+      deviationListTab.setText(Messages.CORE.getString("deviationTabList"));
+      deviationListComposite = new DeviationTableComposite(tabFolder, healthAlarmsPreferenceStore, false, this::reloadAll);
+      deviationListTab.setControl(deviationListComposite);
+
+      // Tab 3 - Deviation history
+      TabItem deviationHistoryTab = new TabItem(tabFolder, SWT.NONE);
+      deviationHistoryTab.setText(Messages.CORE.getString("deviationTabHistory"));
+      deviationHistoryComposite = new DeviationTableComposite(tabFolder, healthAlarmsPreferenceStore, true, this::reloadAll);
+      deviationHistoryTab.setControl(deviationHistoryComposite);
+
+      Composite lawButtonBar = new Composite(this, SWT.NONE);
+      lawButtonBar.setLayout(new GridLayout(1, false));
+      lawButtonBar.setLayoutData(new GridData(SWT.END, SWT.CENTER, true, false));
+
+      aircraftCombo.getComboViewer().addSelectionChangedListener((ISelectionChangedListener) event -> {
+         selectedAircraft = aircraftCombo.getSelectedAircraft();
+         if (selectedAircraft != null) {
+            healthAlarmsPreferenceStore.initMechanicalComponentData(selectedAircraft);
+            WCMechanicalComponentModel aircraftComponentModel = healthAlarmsPreferenceStore.getHealthModels(selectedAircraft);
+            refreshViewer(selectedAircraft, aircraftComponentModel);
+            deviationListComposite.setAircraft(selectedAircraft);
+            deviationHistoryComposite.setAircraft(selectedAircraft);
+         }
+      });
+   }
+
+   /**
+    * Create the thresholds Tree Viewer.
+    * 
+    * @param composite
+    *           Parent Composite
+    */
+   private void createTreeViewer(Composite composite) {
+      final Tree tree = new Tree(composite, SWT.BORDER | SWT.H_SCROLL | SWT.V_SCROLL | SWT.FULL_SELECTION);
+      tree.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true, 2, 1));
+      tree.setHeaderVisible(true);
+      tree.setLinesVisible(true);
+      thresholdsTreeViewer = new WCModelTreeViewer(tree, healthWcModelMap, healthAlarmsPreferenceStore);
+      thresholdsTreeViewer.setLabelProvider(new WCTreeLabelProvider());
+      thresholdsTreeViewer.setContentProvider(new WCTreeContentProvider());
+      thresholdsTreeViewer.setCellModifier(new WCTreeCellModifier(thresholdsTreeViewer));
+
+      tree.addListener(SWT.MouseDown, event -> {
+         TreeItem item = tree.getItem(new Point(event.x, event.y));
+         if (item != null && item.getData() instanceof WCThresholdModel model && model.isDeviated()) {
+            MessageDialog.openInformation(tree.getShell(), Messages.CORE.getString("deviationAlreadySetTitle"), Messages.CORE.getString("deviationAlreadySet"));
+         }
+      });
+   }
+
+   /**
+    * Refresh Viewer.
+    * 
+    * @param wcModel
+    *           List<HealthWCModel> models.
+    */
+   private void refreshViewer(Aircraft aircraft, WCMechanicalComponentModel wcModel) {
+      thresholdsTreeViewer.setData("aircraft", aircraft);
+      thresholdsTreeViewer.setSelectedAircraft(aircraft);
+      thresholdsTreeViewer.setInput(wcModel);
+      thresholdsTreeViewer.expandAll();
+      thresholdsTreeViewer.refresh();
+   }
+
+   /**
+    * Perform Apply for the preference page.
+    */
+
+   /*
+    * public void performApply() { healthAlarmsPreferenceStore.innerSave(); try { MgsPreferenceStoreManager.saveAircraftConfigurations();
+    * 
+    * healthAlarmsPreferenceStore.saveDeviations(); MgsPreferenceStoreManager.clearAircraftConfigurations(); reloadAll();
+    * 
+    * MgsPreferenceStoreManager.clearAircraftConfigurations(); performDefaults();
+    * 
+    * } catch (Exception e) { LOGGER.error("Error while saving health preferences", e); } }
+    */
+
+   public void performApply() {
+      healthAlarmsPreferenceStore.innerSave();
+      try {
+         MgsPreferenceStoreManager.saveAircraftConfigurations();
+         /*
+          * if (MgsPreferenceStoreManager.wasLastSaveConfirmed()) { healthAlarmsPreferenceStore.saveDeviations(); }
+          */
+         // BCR-6605 if the applicable-flight popup was shown and the user cancelled it, abort
+         // everything - the deviation must not be created behind a Cancel. When no popup was shown
+         // (a deviation-only change) there is nothing to confirm, so the deviation saves normally.
+         if (MgsPreferenceStoreManager.wasLastSavePrompted() && !MgsPreferenceStoreManager.wasLastSaveConfirmed()) {
+            MgsPreferenceStoreManager.clearAircraftConfigurations();
+            reloadAll();
+            return;
+         }
+
+         healthAlarmsPreferenceStore.saveDeviations();
+         List<String> deviated = healthAlarmsPreferenceStore.getLastSavedDeviationIndicatorNames();
+         if (!deviated.isEmpty()) {
+            MessageDialog.openInformation(getShell(),
+                  Messages.CORE.getString("deviation.created.title"),
+                  Messages.CORE.getString("deviation.created.message") + " " + String.join(", ", deviated));
+         }
+
+         MgsPreferenceStoreManager.clearAircraftConfigurations();
+         // BCR-6605 refresh the tree and both deviation tabs so the saved rows turn green
+         reloadAll();
+      } catch (Exception e) {
+         LOGGER.error("Error while saving health preferences", e);
+      }
+   }
+
+   /**
+    * Validate data before setting them.
+    * 
+    * @return true if data are valid, false otherwise
+    */
+   public boolean isValidData() {
+      return healthAlarmsPreferenceStore.isValidData(healthWcModelMap);
+   }
+
+   /**
+    * Perform Defaults for the preference page.
+    */
+   public void performDefaults() {
+      if (selectedAircraft != null) {
+         healthWcModelMap.clear();
+         refreshViewer(selectedAircraft, healthAlarmsPreferenceStore.loadHealthModels(selectedAircraft));
+      }
+   }
+
+   /**
+    * Cancel was pressed.
+    */
+   public void performCancel() {
+      // empty the store, otherwise data will be saved because of our handling of needSaving method.
+      healthAlarmsPreferenceStore.emptyData();
+   }
+
+   /**
+    * BCR-6605 reload the tree and both deviation tabs.
+    */
+   private void reloadAll() {
+      if (selectedAircraft == null) {
+         return;
+      }
+      healthWcModelMap.clear();
+      refreshViewer(selectedAircraft, healthAlarmsPreferenceStore.loadHealthModels(selectedAircraft));
+      deviationListComposite.setAircraft(selectedAircraft);
+      deviationHistoryComposite.setAircraft(selectedAircraft);
+   }
+
+   public void openFilteringLawDialog() {
+      if (selectedAircraft != null) {
+         new FilteringLawDialog(healthAlarmsPreferenceStore, selectedAircraft).open();
+         reloadAll();
+      }
+   }
+
+}
 
 
-
-
-
-
----------------
-
+=====================
 /***************************************/
 /** Copyright Airbus Helicopters 2019 **/
 /***************************************/
@@ -192,7 +527,9 @@ import java.util.Locale;
 import org.eclipse.jface.dialogs.MessageDialog;
 import org.eclipse.jface.viewers.ICellModifier;
 import org.eclipse.jface.viewers.TreeViewer;
+import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Item;
+import org.eclipse.swt.widgets.Shell;
 
 import com.eurocopter.mgs.business.health.model.WCThresholdModel;
 import com.eurocopter.mgs.core.presentation.i18n.Messages;
@@ -557,9 +894,18 @@ public class WCTreeCellModifier implements ICellModifier {
                treeViewer.refresh();
             }
          } catch (ParseException e) {
-            MessageDialog.openError(((Item) element).getDisplay().getActiveShell(),
+            // BCR-6605 cancel the cell editor BEFORE showing the dialog, and show the dialog
+            // asynchronously. Opening a modal dialog from inside modify() left the bad value in the
+            // active editor, which re-applied it on every later edit and repeated this message until
+            // the client was restarted.
+            if (treeViewer.isCellEditorActive()) {
+               treeViewer.cancelEditing();
+            }
+            final Display display = ((Item) element).getDisplay();
+            final Shell shell = display.getActiveShell();
+            display.asyncExec(() -> MessageDialog.openError(shell,
                   Messages.CORE.getString("healthAlarmPageDataInvalidTitle"),
-                  Messages.CORE.getMnemonicEscapedString("healthAlarmPageDataInvalidCellFormat"));
+                  Messages.CORE.getMnemonicEscapedString("healthAlarmPageDataInvalidCellFormat")));
          }
       }
    }
@@ -623,271 +969,3 @@ public class WCTreeCellModifier implements ICellModifier {
    }
 
 }
-
-----------------
-
-/***************************************/
-/** Copyright Airbus Helicopters 2019 **/
-/***************************************/
-package com.eurocopter.mgs.presentation.configuration.preferences.healthalarms;
-
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-import org.eclipse.jface.dialogs.MessageDialog;
-import org.eclipse.jface.viewers.ISelectionChangedListener;
-import org.eclipse.swt.SWT;
-import org.eclipse.swt.graphics.Point;
-import org.eclipse.swt.layout.GridData;
-import org.eclipse.swt.layout.GridLayout;
-import org.eclipse.swt.widgets.Composite;
-import org.eclipse.swt.widgets.Label;
-import org.eclipse.swt.widgets.TabFolder;
-import org.eclipse.swt.widgets.TabItem;
-import org.eclipse.swt.widgets.Tree;
-import org.eclipse.swt.widgets.TreeItem;
-
-import com.eurocopter.mgs.business.health.model.WCThresholdModel;
-import com.eurocopter.mgs.core.presentation.i18n.Messages;
-import com.eurocopter.mgs.datamodel.aircraft.Aircraft;
-import com.eurocopter.mgs.presentation.configuration.preferences.health.AircraftSelectionComposite;
-import com.eurocopter.mgs.presentation.configuration.preferences.healthalarms.editor.WCTreeCellModifier;
-import com.eurocopter.mgs.presentation.configuration.preferences.healthalarms.provider.WCTreeContentProvider;
-import com.eurocopter.mgs.presentation.configuration.preferences.healthalarms.provider.WCTreeLabelProvider;
-import com.eurocopter.mgs.presentation.configuration.preferences.healthalarms.store.HealthAlarmsPreferenceStore;
-import com.eurocopter.mgs.presentation.configuration.preferences.healthalarms.viewer.WCModelTreeViewer;
-import com.eurocopter.mgs.presentation.configuration.store.MgsPreferenceStoreComposer;
-import com.eurocopter.mgs.presentation.configuration.store.MgsPreferenceStoreManager;
-
-public class HealthAlarmsComposite extends Composite {
-
-   private static final Logger LOGGER = LogManager.getLogger(HealthAlarmsComposite.class);
-
-   /** Hash Map for the health mechanical component. */
-   private final Map<Aircraft, WCMechanicalComponentModel> healthWcModelMap;
-
-   private DeviationTableComposite deviationListComposite;
-
-   private DeviationTableComposite deviationHistoryComposite;
-
-   /** TreeViewer for the thresholds. */
-   private WCModelTreeViewer thresholdsTreeViewer;
-
-   /**
-    * ComboBox - A/C Type.
-    */
-   private final AircraftSelectionComposite aircraftCombo;
-
-   /**
-    * The Key.
-    */
-   private Aircraft selectedAircraft = null;
-
-   /**
-    * Store.
-    */
-   private final HealthAlarmsPreferenceStore healthAlarmsPreferenceStore;
-
-   /**
-    * Default constructor. Builds a HealthAlarmsComposite.
-    * 
-    * @param parentStore
-    *           the parent store
-    * @param parent
-    *           the parent composite
-    */
-   public HealthAlarmsComposite(MgsPreferenceStoreComposer parentStore, Composite parent) {
-      super(parent, SWT.NONE);
-      GridLayout layout = new GridLayout();
-      layout.marginHeight = 0;
-      layout.marginWidth = 0;
-      layout.verticalSpacing = 0;
-      setLayout(layout);
-      setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true, 1, 1));
-
-      // add the store
-      healthAlarmsPreferenceStore = new HealthAlarmsPreferenceStore(this);
-      parentStore.addStore(healthAlarmsPreferenceStore);
-
-      // instantiate the hash map
-      healthWcModelMap = new HashMap<>();
-
-      // A/C type composite
-      aircraftCombo = new AircraftSelectionComposite(this);
-      // BCR-6605 Message display
-      aircraftCombo.setLayoutData(new GridData(SWT.FILL, SWT.TOP, true, false));
-      aircraftCombo.forceFocus();
-
-      // set a space between composite
-      new Label(this, SWT.NONE);
-
-      TabFolder tabFolder = new TabFolder(this, SWT.NONE);
-      tabFolder.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
-
-      // Tab 1 - Configuration: holds the existing tree
-      TabItem configurationTab = new TabItem(tabFolder, SWT.NONE);
-      configurationTab.setText(Messages.CORE.getString("deviationTabConfiguration"));
-      Composite configurationComposite = new Composite(tabFolder, SWT.NONE);
-      GridLayout tabLayout = new GridLayout();
-      tabLayout.marginHeight = 0;
-      tabLayout.marginWidth = 0;
-      configurationComposite.setLayout(tabLayout);
-      configurationTab.setControl(configurationComposite);
-      createTreeViewer(configurationComposite);
-
-      // Tab 2 - Deviation list
-      TabItem deviationListTab = new TabItem(tabFolder, SWT.NONE);
-      deviationListTab.setText(Messages.CORE.getString("deviationTabList"));
-      deviationListComposite = new DeviationTableComposite(tabFolder, healthAlarmsPreferenceStore, false, this::reloadAll);
-      deviationListTab.setControl(deviationListComposite);
-
-      // Tab 3 - Deviation history
-      TabItem deviationHistoryTab = new TabItem(tabFolder, SWT.NONE);
-      deviationHistoryTab.setText(Messages.CORE.getString("deviationTabHistory"));
-      deviationHistoryComposite = new DeviationTableComposite(tabFolder, healthAlarmsPreferenceStore, true, this::reloadAll);
-      deviationHistoryTab.setControl(deviationHistoryComposite);
-
-      Composite lawButtonBar = new Composite(this, SWT.NONE);
-      lawButtonBar.setLayout(new GridLayout(1, false));
-      lawButtonBar.setLayoutData(new GridData(SWT.END, SWT.CENTER, true, false));
-
-      aircraftCombo.getComboViewer().addSelectionChangedListener((ISelectionChangedListener) event -> {
-         selectedAircraft = aircraftCombo.getSelectedAircraft();
-         if (selectedAircraft != null) {
-            healthAlarmsPreferenceStore.initMechanicalComponentData(selectedAircraft);
-            WCMechanicalComponentModel aircraftComponentModel = healthAlarmsPreferenceStore.getHealthModels(selectedAircraft);
-            refreshViewer(selectedAircraft, aircraftComponentModel);
-            deviationListComposite.setAircraft(selectedAircraft);
-            deviationHistoryComposite.setAircraft(selectedAircraft);
-         }
-      });
-   }
-
-   /**
-    * Create the thresholds Tree Viewer.
-    * 
-    * @param composite
-    *           Parent Composite
-    */
-   private void createTreeViewer(Composite composite) {
-      final Tree tree = new Tree(composite, SWT.BORDER | SWT.H_SCROLL | SWT.V_SCROLL | SWT.FULL_SELECTION);
-      tree.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true, 2, 1));
-      tree.setHeaderVisible(true);
-      tree.setLinesVisible(true);
-      thresholdsTreeViewer = new WCModelTreeViewer(tree, healthWcModelMap, healthAlarmsPreferenceStore);
-      thresholdsTreeViewer.setLabelProvider(new WCTreeLabelProvider());
-      thresholdsTreeViewer.setContentProvider(new WCTreeContentProvider());
-      thresholdsTreeViewer.setCellModifier(new WCTreeCellModifier(thresholdsTreeViewer));
-
-      tree.addListener(SWT.MouseDown, event -> {
-         TreeItem item = tree.getItem(new Point(event.x, event.y));
-         if (item != null && item.getData() instanceof WCThresholdModel model && model.isDeviated()) {
-            MessageDialog.openInformation(tree.getShell(), Messages.CORE.getString("deviationAlreadySetTitle"), Messages.CORE.getString("deviationAlreadySet"));
-         }
-      });
-   }
-
-   /**
-    * Refresh Viewer.
-    * 
-    * @param wcModel
-    *           List<HealthWCModel> models.
-    */
-   private void refreshViewer(Aircraft aircraft, WCMechanicalComponentModel wcModel) {
-      thresholdsTreeViewer.setData("aircraft", aircraft);
-      thresholdsTreeViewer.setSelectedAircraft(aircraft);
-      thresholdsTreeViewer.setInput(wcModel);
-      thresholdsTreeViewer.expandAll();
-      thresholdsTreeViewer.refresh();
-   }
-
-   /**
-    * Perform Apply for the preference page.
-    */
-
-   /*
-    * public void performApply() { healthAlarmsPreferenceStore.innerSave(); try { MgsPreferenceStoreManager.saveAircraftConfigurations();
-    * 
-    * healthAlarmsPreferenceStore.saveDeviations(); MgsPreferenceStoreManager.clearAircraftConfigurations(); reloadAll();
-    * 
-    * MgsPreferenceStoreManager.clearAircraftConfigurations(); performDefaults();
-    * 
-    * } catch (Exception e) { LOGGER.error("Error while saving health preferences", e); } }
-    */
-
-   public void performApply() {
-      healthAlarmsPreferenceStore.innerSave();
-      try {
-         MgsPreferenceStoreManager.saveAircraftConfigurations();
-         /*
-          * if (MgsPreferenceStoreManager.wasLastSaveConfirmed()) { healthAlarmsPreferenceStore.saveDeviations(); }
-          */
-         healthAlarmsPreferenceStore.saveDeviations();
-         List<String> deviated = healthAlarmsPreferenceStore.getLastSavedDeviationIndicatorNames();
-         if (!deviated.isEmpty()) {
-            MessageDialog.openInformation(getShell(),
-                  Messages.CORE.getString("deviation.created.title"),
-                  Messages.CORE.getString("deviation.created.message") + " " + String.join(", ", deviated));
-         }
-
-         MgsPreferenceStoreManager.clearAircraftConfigurations();
-         // BCR-6605 refresh the tree and both deviation tabs so the saved rows turn green
-         reloadAll();
-      } catch (Exception e) {
-         LOGGER.error("Error while saving health preferences", e);
-      }
-   }
-
-   /**
-    * Validate data before setting them.
-    * 
-    * @return true if data are valid, false otherwise
-    */
-   public boolean isValidData() {
-      return healthAlarmsPreferenceStore.isValidData(healthWcModelMap);
-   }
-
-   /**
-    * Perform Defaults for the preference page.
-    */
-   public void performDefaults() {
-      if (selectedAircraft != null) {
-         healthWcModelMap.clear();
-         refreshViewer(selectedAircraft, healthAlarmsPreferenceStore.loadHealthModels(selectedAircraft));
-      }
-   }
-
-   /**
-    * Cancel was pressed.
-    */
-   public void performCancel() {
-      // empty the store, otherwise data will be saved because of our handling of needSaving method.
-      healthAlarmsPreferenceStore.emptyData();
-   }
-
-   /**
-    * BCR-6605 reload the tree and both deviation tabs.
-    */
-   private void reloadAll() {
-      if (selectedAircraft == null) {
-         return;
-      }
-      healthWcModelMap.clear();
-      refreshViewer(selectedAircraft, healthAlarmsPreferenceStore.loadHealthModels(selectedAircraft));
-      deviationListComposite.setAircraft(selectedAircraft);
-      deviationHistoryComposite.setAircraft(selectedAircraft);
-   }
-
-   public void openFilteringLawDialog() {
-      if (selectedAircraft != null) {
-         new FilteringLawDialog(healthAlarmsPreferenceStore, selectedAircraft).open();
-         reloadAll();
-      }
-   }
-
-}
-
-
